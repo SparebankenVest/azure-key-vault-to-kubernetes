@@ -23,32 +23,43 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Foo is a specification for a Foo resource
-type Foo struct {
+// AzureKeyVaultSecret is a specification for a AzureKeyVaultSecret resource
+type AzureKeyVaultSecret struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   FooSpec   `json:"spec"`
-	Status FooStatus `json:"status"`
+	Spec AzureKeyVaultSecretSpec `json:"spec"`
+	// Status AzureKeyVaultSecretStatus `json:"status"`
 }
 
-// FooSpec is the spec for a Foo resource
-type FooSpec struct {
-	DeploymentName string `json:"deploymentName"`
-	Replicas       *int32 `json:"replicas"`
+// AzureKeyVaultSecretSpec is the spec for a AzureKeyVaultSecret resource
+type AzureKeyVaultSecretSpec struct {
+	Vault        AzureKeyVaultSecretVaultSpec        `json:"vault"`
+	OutputSecret AzureKeyVaultSecretOutputSecretSpec `json:"outputSecret"`
 }
 
-// FooStatus is the status for a Foo resource
-type FooStatus struct {
-	AvailableReplicas int32 `json:"availableReplicas"`
+type AzureKeyVaultSecretVaultSpec struct {
+	Name       string `json:"name"`
+	ObjectType string `json:"objectType"`
+	ObjectName string `json:"objectName"`
 }
+
+type AzureKeyVaultSecretOutputSecretSpec struct {
+	Name    string `json:"name"`
+	KeyName string `json:"keyName"`
+}
+
+// // AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource
+// type AzureKeyVaultSecretStatus struct {
+// 	AvailableReplicas int32 `json:"availableReplicas"`
+// }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// FooList is a list of Foo resources
-type FooList struct {
+// AzureKeyVaultSecretList is a list of AzureKeyVaultSecret resources
+type AzureKeyVaultSecretList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []Foo `json:"items"`
+	Items []AzureKeyVaultSecret `json:"items"`
 }
