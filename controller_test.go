@@ -31,7 +31,7 @@ import (
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
+	// "k8s.io/client-go/tools/record"
 
 	azurekeyvaultcontroller "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
 	"github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned/fake"
@@ -100,7 +100,7 @@ func (f *fixture) newController() (*Controller, informers.SharedInformerFactory,
 
 	c.azureKeyVaultSecretsSynced = alwaysReady
 	c.secretsSynced = alwaysReady
-	c.recorder = &record.FakeRecorder{}
+	// c.recorder = &record.FakeRecorder{}
 
 	for _, f := range f.azureKeyVaultSecretLister {
 		i.Azurekeyvaultcontroller().V1alpha1().AzureKeyVaultSecrets().Informer().GetIndexer().Add(f)

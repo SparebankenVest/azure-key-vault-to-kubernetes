@@ -1,43 +1,24 @@
-/*
-Copyright 2017 The Kubernetes Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package main
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog"
 
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
 	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
-	samplescheme "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned/scheme"
 	informers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions/azurekeyvaultcontroller/v1alpha1"
 	listers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/listers/azurekeyvaultcontroller/v1alpha1"
 )
@@ -79,7 +60,7 @@ type Controller struct {
 	workqueue workqueue.RateLimitingInterface
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
-	recorder record.EventRecorder
+	// recorder record.EventRecorder
 }
 
 // NewController returns a new AzureKeyVaultSecret controller
@@ -89,15 +70,15 @@ func NewController(
 	secretInformer coreinformers.SecretInformer,
 	azureKeyVaultSecretsInformer informers.AzureKeyVaultSecretInformer) *Controller {
 
-	// Create event broadcaster
-	// Add sample-controller types to the default Kubernetes Scheme so Events can be
-	// logged for sample-controller types.
-	utilruntime.Must(samplescheme.AddToScheme(scheme.Scheme))
-	klog.V(4).Info("Creating event broadcaster")
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
+	// // Create event broadcaster
+	// // Add sample-controller types to the default Kubernetes Scheme so Events can be
+	// // logged for sample-controller types.
+	// utilruntime.Must(samplescheme.AddToScheme(scheme.Scheme))
+	// klog.V(4).Info("Creating event broadcaster")
+	// eventBroadcaster := record.NewBroadcaster()
+	// eventBroadcaster.StartLogging(klog.Infof)
+	// eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
+	// recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
 	controller := &Controller{
 		kubeclientset:              kubeclientset,
@@ -107,17 +88,19 @@ func NewController(
 		azureKeyVaultSecretsLister: azureKeyVaultSecretsInformer.Lister(),
 		azureKeyVaultSecretsSynced: azureKeyVaultSecretsInformer.Informer().HasSynced,
 		workqueue:                  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "AzureKeyVaultSecrets"),
-		recorder:                   recorder,
+		// recorder:                   recorder,
 	}
 
-	klog.Info("Setting up event handlers")
+	log.Printf("Setting up event handlers")
 	// Set up an event handler for when AzureKeyVaultSecret resources change
 	azureKeyVaultSecretsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueAzureKeyVaultSecret,
 		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueAzureKeyVaultSecret(new)
 		},
+		DeleteFunc: controller.dequeueAzureKeyVaultSecret,
 	})
+
 	// Set up an event handler for when AzureKeyVaultSecret resources change. This
 	// handler will lookup the owner of the given AzureKeyVaultSecret, and if it is
 	// owned by a AzureKeyVaultSecret resource will enqueue that AzureKeyVaultSecret resource for
@@ -151,23 +134,23 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer c.workqueue.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
-	klog.Info("Starting AzureKeyVaultSecret controller")
+	log.Printf("Starting AzureKeyVaultSecret controller")
 
 	// Wait for the caches to be synced before starting workers
-	klog.Info("Waiting for informer caches to sync")
+	log.Printf("Waiting for informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, c.secretsSynced, c.azureKeyVaultSecretsSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
-	klog.Info("Starting workers")
+	log.Printf("Starting workers")
 	// Launch two workers to process AzureKeyVaultSecret resources
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 
-	klog.Info("Started workers")
+	log.Printf("Started workers")
 	<-stopCh
-	klog.Info("Shutting down workers")
+	log.Printf("Shutting down workers")
 
 	return nil
 }
@@ -223,7 +206,7 @@ func (c *Controller) processNextWorkItem() bool {
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
-		klog.Infof("Successfully synced '%s'", key)
+		log.Printf("Successfully synced '%s'", key)
 		return nil
 	}(obj)
 
@@ -284,12 +267,13 @@ func (c *Controller) syncHandler(key string) error {
 
 	// If the Secret is not controlled by this AzureKeyVaultSecret resource, we should log
 	// a warning to the event recorder and return
-	// if !metav1.IsControlledBy(secret, azureKeyVaultSecret) { // checks if the object has a controllerRef set to the given owner
-	// 	msg := fmt.Sprintf(MessageResourceExists, secret.Name)
-	// 	c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrResourceExists, msg)
-	// 	return fmt.Errorf(msg)
-	// }
+	if !metav1.IsControlledBy(secret, azureKeyVaultSecret) { // checks if the object has a controllerRef set to the given owner
+		msg := fmt.Sprintf(MessageResourceExists, secret.Name)
+		// c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrResourceExists, msg)
+		return fmt.Errorf(msg)
+	}
 
+	log.Printf("Here is where we want to get secret from Azure Key Vault...")
 	// // If this number of the replicas on the AzureKeyVaultSecret resource is specified, and the
 	// // number does not equal the current desired replicas on the Deployment, we
 	// // should update the AzureKeyVaultSecret resource.
@@ -312,7 +296,7 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	// c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
 
@@ -344,6 +328,19 @@ func (c *Controller) enqueueAzureKeyVaultSecret(obj interface{}) {
 	c.workqueue.AddRateLimited(key)
 }
 
+// dequeueAzureKeyVaultSecret takes a AzureKeyVaultSecret resource and converts it into a namespace/name
+// string which is then put onto the work queue for deltion. This method should *not* be
+// passed resources of any type other than AzureKeyVaultSecret.
+func (c *Controller) dequeueAzureKeyVaultSecret(obj interface{}) {
+	var key string
+	var err error
+	if key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj); err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+	c.workqueue.AddRateLimited(key)
+}
+
 // handleObject will take any resource implementing metav1.Object and attempt
 // to find the AzureKeyVaultSecret resource that 'owns' it. It does this by looking at the
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
@@ -363,9 +360,9 @@ func (c *Controller) handleObject(obj interface{}) {
 			utilruntime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
 			return
 		}
-		klog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
+		log.Printf("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
-	klog.V(4).Infof("Processing object: %s", object.GetName())
+	log.Printf("Processing object: %s", object.GetName())
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
 		// If this object is not owned by a AzureKeyVaultSecret, we should not do anything more
 		// with it.
@@ -375,7 +372,7 @@ func (c *Controller) handleObject(obj interface{}) {
 
 		azureKeyVaultSecret, err := c.azureKeyVaultSecretsLister.AzureKeyVaultSecrets(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
-			klog.V(4).Infof("ignoring orphaned object '%s' of azureKeyVaultSecret '%s'", object.GetSelfLink(), ownerRef.Name)
+			log.Printf("ignoring orphaned object '%s' of azureKeyVaultSecret '%s'", object.GetSelfLink(), ownerRef.Name)
 			return
 		}
 
@@ -400,6 +397,13 @@ func newSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSec
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      azureKeyVaultSecret.Spec.OutputSecret.Name,
 			Namespace: azureKeyVaultSecret.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(azureKeyVaultSecret, schema.GroupVersionKind{
+					Group:   azureKeyVaultSecretv1alpha1.SchemeGroupVersion.Group,
+					Version: azureKeyVaultSecretv1alpha1.SchemeGroupVersion.Version,
+					Kind:    "AzureKeyVaultSecret",
+				}),
+			},
 		},
 		Type:       corev1.SecretTypeOpaque,
 		StringData: stringData,
