@@ -22,4 +22,4 @@ limitations under the License.
 // AdmissionConfiguration and AdmissionPluginConfiguration are legacy static admission plugin configuration
 // InitializerConfiguration and validatingWebhookConfiguration is for the
 // new dynamic admission controller configuration.
-package v1alpha1
+package v1alpha1 // import "k8s.io/api/admissionregistration/v1alpha1"
