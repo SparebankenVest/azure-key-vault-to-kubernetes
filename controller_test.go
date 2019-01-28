@@ -262,7 +262,7 @@ func TestCreatesSecret(t *testing.T) {
 	f.azureKeyVaultSecretLister = append(f.azureKeyVaultSecretLister, azureKeyVaultSecret)
 	f.objects = append(f.objects, azureKeyVaultSecret)
 
-	expSecret := newSecret(azureKeyVaultSecret, "secret data")
+	expSecret := newSecret(azureKeyVaultSecret)
 	f.expectCreateSecretAction(expSecret)
 	f.expectUpdateAzureKeyVaultSecretStatusAction(azureKeyVaultSecret)
 
@@ -272,7 +272,7 @@ func TestCreatesSecret(t *testing.T) {
 func TestDoNothing(t *testing.T) {
 	f := newFixture(t)
 	azureKeyVaultSecret := newAzureKeyVaultSecret("test", "very secret")
-	d := newSecret(azureKeyVaultSecret, "secret data")
+	d := newSecret(azureKeyVaultSecret)
 
 	f.azureKeyVaultSecretLister = append(f.azureKeyVaultSecretLister, azureKeyVaultSecret)
 	f.objects = append(f.objects, azureKeyVaultSecret)
@@ -286,11 +286,11 @@ func TestDoNothing(t *testing.T) {
 func TestUpdateDeployment(t *testing.T) {
 	f := newFixture(t)
 	azureKeyVaultSecret := newAzureKeyVaultSecret("test", "very secret")
-	d := newSecret(azureKeyVaultSecret, "secret data")
+	d := newSecret(azureKeyVaultSecret)
 
 	// Update replicas
 	// azureKeyVaultSecret.Spec.Replicas = int32Ptr(2)
-	expSecret := newSecret(azureKeyVaultSecret, "secret data")
+	expSecret := newSecret(azureKeyVaultSecret)
 
 	f.azureKeyVaultSecretLister = append(f.azureKeyVaultSecretLister, azureKeyVaultSecret)
 	f.objects = append(f.objects, azureKeyVaultSecret)
@@ -305,7 +305,7 @@ func TestUpdateDeployment(t *testing.T) {
 func TestNotControlledByUs(t *testing.T) {
 	f := newFixture(t)
 	azureKeyVaultSecret := newAzureKeyVaultSecret("test", "very secret")
-	d := newSecret(azureKeyVaultSecret, "bogus secret")
+	d := newSecret(azureKeyVaultSecret)
 
 	d.ObjectMeta.OwnerReferences = []metav1.OwnerReference{}
 

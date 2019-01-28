@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	openapi_v2 "github.com/googleapis/gnostic/OpenAPIv2"
+	"github.com/googleapis/gnostic/OpenAPIv2"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,9 +60,6 @@ type DiscoveryInterface interface {
 }
 
 // CachedDiscoveryInterface is a DiscoveryInterface with cache invalidation and freshness.
-// Note that If the ServerResourcesForGroupVersion method returns a cache miss
-// error, the user needs to explicitly call Invalidate to clear the cache,
-// otherwise the same cache miss error will be returned next time.
 type CachedDiscoveryInterface interface {
 	DiscoveryInterface
 	// Fresh is supposed to tell the caller whether or not to retry if the cache
@@ -71,8 +68,7 @@ type CachedDiscoveryInterface interface {
 	// TODO: this needs to be revisited, this interface can't be locked properly
 	// and doesn't make a lot of sense.
 	Fresh() bool
-	// Invalidate enforces that no cached data that is older than the current time
-	// is used.
+	// Invalidate enforces that no cached data is used in the future that is older than the current time.
 	Invalidate()
 }
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -96,7 +97,15 @@ func NewController(
 	azureKeyVaultSecretsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueAzureKeyVaultSecret,
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueueAzureKeyVaultSecret(new)
+			// controller.enqueueAzureKeyVaultSecret(new)
+			newSecret := new.(*azureKeyVaultSecretv1alpha1.Secret)
+			oldSecret := old.(*azureKeyVaultSecretv1alpha1.Secret)
+			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
+				// Periodic resync will send update events for all known Deployments.
+				// Two different versions of the same Deployment will always have different RVs.
+				return
+			}
+			controller.handleObject(new)
 		},
 		DeleteFunc: controller.dequeueAzureKeyVaultSecret,
 	})
@@ -255,7 +264,7 @@ func (c *Controller) syncHandler(key string) error {
 	secret, err := c.secretsLister.Secrets(azureKeyVaultSecret.Namespace).Get(secretName)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
-		secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(newSecret(azureKeyVaultSecret, "alskdjf"))
+		secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(newSecret(azureKeyVaultSecret))
 	}
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
@@ -273,7 +282,6 @@ func (c *Controller) syncHandler(key string) error {
 		return fmt.Errorf(msg)
 	}
 
-	log.Printf("Here is where we want to get secret from Azure Key Vault...")
 	// // If this number of the replicas on the AzureKeyVaultSecret resource is specified, and the
 	// // number does not equal the current desired replicas on the Deployment, we
 	// // should update the AzureKeyVaultSecret resource.
@@ -384,14 +392,23 @@ func (c *Controller) handleObject(obj interface{}) {
 // newSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func newSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, secretData string) *corev1.Secret {
+func newSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) *corev1.Secret {
 	// labels := map[string]string{
 	// 	"app":        "nginx",
 	// 	"controller": azureKeyVaultSecret.Name,
 	// }
 
+	vaultClient := GetKeysClient("https://vault.azure.net")
+
+	baseUrl := fmt.Sprintf("https://%s.vault.azure.net", azureKeyVaultSecret.Spec.Vault.Name)
+
+	secretPack, err := vaultClient.GetSecret(context.Background(), baseUrl, azureKeyVaultSecret.Spec.Vault.ObjectName, "")
+	if err != nil {
+		log.Printf("failed to get Key Vault Secret, Error: %+v", err)
+	}
+
 	stringData := make(map[string]string)
-	stringData[azureKeyVaultSecret.Spec.OutputSecret.KeyName] = secretData
+	stringData[azureKeyVaultSecret.Spec.OutputSecret.KeyName] = *secretPack.Value
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

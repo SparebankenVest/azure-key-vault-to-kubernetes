@@ -24,11 +24,20 @@
 #   go-tests = true
 #   unused-packages = true
 
+# required = ["google.golang.org/grpc"]
 
 [[constraint]]
   name = "github.com/Azure/azure-sdk-for-go"
-  version = "24.1.0"
+  version = "24.0.0"
+
+# [[constraint]]
+#   name = "google.golang.org/grpc"
+#   version = "1.18.0"
 
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/Azure/go-autorest"
+  version = "11.3.2"

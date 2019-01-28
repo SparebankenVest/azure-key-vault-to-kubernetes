@@ -31,8 +31,16 @@ import (
 )
 
 var (
-	masterURL  string
-	kubeconfig string
+	masterURL      string
+	kubeconfig     string
+	retryWaitTime  int
+	resource       string
+	subscriptionID string
+	clientID       string
+	tenantID       string
+	resourceGroup  string
+	podName        string
+	podNamespace   string
 )
 
 func main() {
@@ -74,6 +82,15 @@ func main() {
 }
 
 func init() {
+	flag.IntVar(&retryWaitTime, "retry-wait-time", 20, "retry wait time in seconds")
+	flag.StringVar(&resource, "aad-resourcename", "https://management.azure.com/", "name of resource to grant token")
+	flag.StringVar(&subscriptionID, "subscriptionid", "", "subscription id for test")
+	flag.StringVar(&clientID, "clientid", "", "client id for the msi id")
+	flag.StringVar(&resourceGroup, "resourcegroup", "", "any resource group name with reader permission to the aad object")
+	flag.StringVar(&tenantID, "tenantid", "", "tenantid")
+	flag.StringVar(&podName, "podName", "", "Name of the pod")
+	flag.StringVar(&podNamespace, "podNamespace", "", "Namespace of the pod")
+
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 }
