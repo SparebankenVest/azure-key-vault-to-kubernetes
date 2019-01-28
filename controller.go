@@ -98,8 +98,8 @@ func NewController(
 		AddFunc: controller.enqueueAzureKeyVaultSecret,
 		UpdateFunc: func(old, new interface{}) {
 			// controller.enqueueAzureKeyVaultSecret(new)
-			newSecret := new.(*azureKeyVaultSecretv1alpha1.Secret)
-			oldSecret := old.(*azureKeyVaultSecretv1alpha1.Secret)
+			newSecret := new.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
+			oldSecret := old.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
 			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
 				// Periodic resync will send update events for all known Deployments.
 				// Two different versions of the same Deployment will always have different RVs.
