@@ -141,6 +141,12 @@
   version = "v1.1.5"
 
 [[projects]]
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  revision = "5c8c8bd35d3832f5d134ae1e1e375b69a4d25242"
+  version = "v1.0.1"
+
+[[projects]]
   name = "github.com/modern-go/concurrent"
   packages = ["."]
   revision = "bacd9c7ef1dd9b15be4a9909b8ac7a4e313eec94"
@@ -163,6 +169,12 @@
   packages = ["."]
   revision = "5f041e8faa004a95c88a202771f4cc3e991971e6"
   version = "v2.0.1"
+
+[[projects]]
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  revision = "e1e72e9de974bd926e5c56f83753fba2df402ce5"
+  version = "v1.3.0"
 
 [[projects]]
   name = "github.com/spf13/pflag"
@@ -626,6 +638,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2d26c394004932af96c5728f100a9fe398156d142f1b68342aa42a94b6ad898c"
+  inputs-digest = "aae9c49cdb39a596ac771f1e5f8c39d8ddd21e5e91cfca1f5ad6253b3268dda9"
   solver-name = "gps-cdcl"
   solver-version = 1
