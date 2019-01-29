@@ -1,3 +1,19 @@
+/*
+Copyright 2017 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
@@ -100,13 +116,11 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 	azureKeyVaultSecretsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueAzureKeyVaultSecret,
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueueAzurePoll(new)
-
 			newSecret := new.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
 			oldSecret := old.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
 			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
-				// Periodic resync will send update events for all known Deployments.
-				// Two different versions of the same Deployment will always have different RVs.
+				// Check if secret has changed in Azure
+				controller.enqueueAzurePoll(new)
 				return
 			}
 			controller.enqueueAzureKeyVaultSecret(new)
@@ -129,8 +143,8 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 			newSecret := new.(*corev1.Secret)
 			oldSecret := old.(*corev1.Secret)
 			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
-				// Periodic resync will send update events for all known Deployments.
-				// Two different versions of the same Deployment will always have different RVs.
+				// Periodic resync will send update events for all known Secrets.
+				// Two different versions of the same Secret will always have different RVs.
 				return
 			}
 			log.Printf("warning: Secret controlled by AzureKeyVaultSecret changed. Adding to queue.")
