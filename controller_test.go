@@ -41,6 +41,7 @@ import (
 var (
 	alwaysReady        = func() bool { return true }
 	noResyncPeriodFunc = func() time.Duration { return 0 }
+	secretData         = "my very secret secret"
 )
 
 type fixture struct {
@@ -130,7 +131,7 @@ func (f *fixture) runController(azureKeyVaultSecretName string, startInformers b
 		k8sI.Start(stopCh)
 	}
 
-	err := c.syncHandler(azureKeyVaultSecretName)
+	err := c.syncHandler(azureKeyVaultSecretName, false)
 	if !expectError && err != nil {
 		f.t.Errorf("error syncing azureKeyVaultSecret: %v", err)
 	} else if expectError && err == nil {
@@ -262,7 +263,7 @@ func TestCreatesSecret(t *testing.T) {
 	f.azureKeyVaultSecretLister = append(f.azureKeyVaultSecretLister, azureKeyVaultSecret)
 	f.objects = append(f.objects, azureKeyVaultSecret)
 
-	expSecret := newSecret(azureKeyVaultSecret)
+	expSecret := newSecret(azureKeyVaultSecret, &secretData)
 	f.expectCreateSecretAction(expSecret)
 	f.expectUpdateAzureKeyVaultSecretStatusAction(azureKeyVaultSecret)
 
@@ -272,7 +273,7 @@ func TestCreatesSecret(t *testing.T) {
 func TestDoNothing(t *testing.T) {
 	f := newFixture(t)
 	azureKeyVaultSecret := newAzureKeyVaultSecret("test", "very secret")
-	d := newSecret(azureKeyVaultSecret)
+	d := newSecret(azureKeyVaultSecret, &secretData)
 
 	f.azureKeyVaultSecretLister = append(f.azureKeyVaultSecretLister, azureKeyVaultSecret)
 	f.objects = append(f.objects, azureKeyVaultSecret)
@@ -286,11 +287,11 @@ func TestDoNothing(t *testing.T) {
 func TestUpdateDeployment(t *testing.T) {
 	f := newFixture(t)
 	azureKeyVaultSecret := newAzureKeyVaultSecret("test", "very secret")
-	d := newSecret(azureKeyVaultSecret)
+	d := newSecret(azureKeyVaultSecret, &secretData)
 
 	// Update replicas
 	// azureKeyVaultSecret.Spec.Replicas = int32Ptr(2)
-	expSecret := newSecret(azureKeyVaultSecret)
+	expSecret := newSecret(azureKeyVaultSecret, &secretData)
 
 	f.azureKeyVaultSecretLister = append(f.azureKeyVaultSecretLister, azureKeyVaultSecret)
 	f.objects = append(f.objects, azureKeyVaultSecret)
@@ -305,7 +306,7 @@ func TestUpdateDeployment(t *testing.T) {
 func TestNotControlledByUs(t *testing.T) {
 	f := newFixture(t)
 	azureKeyVaultSecret := newAzureKeyVaultSecret("test", "very secret")
-	d := newSecret(azureKeyVaultSecret)
+	d := newSecret(azureKeyVaultSecret, &secretData)
 
 	d.ObjectMeta.OwnerReferences = []metav1.OwnerReference{}
 

@@ -22,8 +22,6 @@
     "autorest",
     "autorest/adal",
     "autorest/azure",
-    "autorest/azure/auth",
-    "autorest/azure/cli",
     "autorest/date",
     "autorest/to",
     "autorest/validation",
@@ -57,12 +55,6 @@
   version = "v3.2.0"
 
 [[projects]]
-  name = "github.com/dimchansky/utfbom"
-  packages = ["."]
-  revision = "d2133a1ce379ef6fa992b0514a77146c60db9d1c"
-  version = "v1.1.0"
-
-[[projects]]
   name = "github.com/evanphx/json-patch"
   packages = ["."]
   revision = "72bf35d0ff611848c1dc9df0f976c81192392fa5"
@@ -76,6 +68,12 @@
   ]
   revision = "4cbf7e384e768b4e01799441fdf2a706a5635ae7"
   version = "v1.2.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/golang/groupcache"
+  packages = ["lru"]
+  revision = "c65c006176ff7ff98bb916961c7abbc6b0afc0aa"
 
 [[projects]]
   name = "github.com/golang/protobuf"
@@ -143,12 +141,6 @@
   version = "v1.1.5"
 
 [[projects]]
-  name = "github.com/mitchellh/go-homedir"
-  packages = ["."]
-  revision = "af06845cf3004701891bf4fdb884bfe4920b3727"
-  version = "v1.1.0"
-
-[[projects]]
   name = "github.com/modern-go/concurrent"
   packages = ["."]
   revision = "bacd9c7ef1dd9b15be4a9909b8ac7a4e313eec94"
@@ -203,11 +195,7 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
-  packages = [
-    "pkcs12",
-    "pkcs12/internal/rc2",
-    "ssh/terminal"
-  ]
+  packages = ["ssh/terminal"]
   revision = "057139ce5d2bdbe6fe73c53679e24e9cf007f637"
 
 [[projects]]
@@ -602,6 +590,7 @@
     "tools/clientcmd/api/v1",
     "tools/metrics",
     "tools/pager",
+    "tools/record",
     "tools/reference",
     "transport",
     "util/buffer",
@@ -637,6 +626,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "cb71209b96f223193d834112f68410008330fe3c46c48bb0dfecce6e1e509030"
+  inputs-digest = "f6d54d950936e5ee7b1b62f1249e4d840d4727bf5a213a7c75ed60205c5a7fa5"
   solver-name = "gps-cdcl"
   solver-version = 1

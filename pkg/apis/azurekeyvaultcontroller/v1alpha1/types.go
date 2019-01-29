@@ -28,8 +28,8 @@ type AzureKeyVaultSecret struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec AzureKeyVaultSecretSpec `json:"spec"`
-	// Status AzureKeyVaultSecretStatus `json:"status"`
+	Spec   AzureKeyVaultSecretSpec   `json:"spec"`
+	Status AzureKeyVaultSecretStatus `json:"status"`
 }
 
 // AzureKeyVaultSecretSpec is the spec for a AzureKeyVaultSecret resource
@@ -49,10 +49,10 @@ type AzureKeyVaultSecretOutputSecretSpec struct {
 	KeyName string `json:"keyName"`
 }
 
-// // AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource
-// type AzureKeyVaultSecretStatus struct {
-// 	AvailableReplicas int32 `json:"availableReplicas"`
-// }
+// AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource
+type AzureKeyVaultSecretStatus struct {
+	SecretHash string `json:"secretHash"`
+}
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
