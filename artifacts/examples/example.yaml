@@ -1,0 +1,13 @@
+apiVersion: azure-keyvault-controller.spv.no/v1alpha1
+kind: AzureKeyVaultSecret
+metadata:
+  name: my-first-azure-keyvault-secret
+  namespace: default
+spec:
+  vault:
+    name: my-kv
+    objectType: secret
+    objectName: test
+  outputSecret:
+    name: my-kubernetes-azure-secret
+    keyName: value

@@ -1,11 +1,37 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: foos.samplecontroller.k8s.io
+  name: azurekeyvaultsecrets.azure-keyvault-controller.spv.no
 spec:
-  group: samplecontroller.k8s.io
-  version: v1alpha1
+  group: azure-keyvault-controller.spv.no
   names:
-    kind: Foo
-    plural: foos
+    kind: AzureKeyVaultSecret
+    listKind: AzureKeyVaultSecretList
+    plural: azurekeyvaultsecrets
+    singular: azurekeyvaultsecret
   scope: Namespaced
+  version: v1alpha1
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          required: ['vault', 'outputSecret']
+          properties:
+            vault:
+              required: ['name', 'objectType', 'objectName']
+              properties:
+                name:
+                  type: string
+                objectType:
+                  type: string
+                objectName:
+                  type: string
+            outputSecret:
+              required: ['name', 'keyName']
+              properties:
+                name:
+                  type: string
+                keyName:
+                  type: string
