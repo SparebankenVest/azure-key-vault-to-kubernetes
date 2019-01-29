@@ -15,8 +15,8 @@ import (
 func GetSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (string, error) {
 	//Get secret value from Azure Key Vault
 	vaultClient := getKeysClient("https://vault.azure.net")
-	baseUrl := fmt.Sprintf("https://%s.vault.azure.net", secret.Spec.Vault.Name)
-	secretPack, err := vaultClient.GetSecret(context.Background(), baseUrl, secret.Spec.Vault.ObjectName, "")
+	baseURL := fmt.Sprintf("https://%s.vault.azure.net", secret.Spec.Vault.Name)
+	secretPack, err := vaultClient.GetSecret(context.Background(), baseURL, secret.Spec.Vault.ObjectName, "")
 	if err != nil {
 		log.Printf("failed to get Key Vault Secret, Error: %+v", err)
 		return "", err

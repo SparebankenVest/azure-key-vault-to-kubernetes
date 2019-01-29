@@ -18,6 +18,8 @@ package main
 
 import (
 	"flag"
+	"os"
+	"strconv"
 	"time"
 
 	kubeinformers "k8s.io/client-go/informers"
@@ -31,11 +33,12 @@ import (
 )
 
 var (
-	masterURL      string
-	kubeconfig     string
-	subscriptionID string
-	clientID       string
-	tenantID       string
+	masterURL  string
+	kubeconfig string
+
+	azureVaultFastRate        time.Duration
+	azureVaultSlowRate        time.Duration
+	azureVaultMaxFastAttempts int
 )
 
 func main() {
@@ -43,6 +46,22 @@ func main() {
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
+
+	var err error
+	azureVaultFastRate, err = getEnvDuration("AZURE_VAULT_FAST_RATE", time.Minute*1)
+	if err != nil {
+		klog.Fatalf("Error parsing env var AZURE_VAULT_FAST_RATE: %s", err.Error())
+	}
+
+	azureVaultSlowRate, err = getEnvDuration("AZURE_VAULT_SLOW_RATE", time.Minute*5)
+	if err != nil {
+		klog.Fatalf("Error parsing env var AZURE_VAULT_SLOW_RATE: %s", err.Error())
+	}
+
+	azureVaultMaxFastAttempts, err = getEnvInt("AZURE_VAULT_MAX_FAST_ATTEMPTS", 5)
+	if err != nil {
+		klog.Fatalf("Error parsing env var AZURE_VAULT_MAX_FAST_ATTEMPTS: %s", err.Error())
+	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
@@ -77,10 +96,22 @@ func main() {
 }
 
 func init() {
-	flag.StringVar(&subscriptionID, "subscriptionid", "", "subscription id for test")
-	flag.StringVar(&clientID, "clientid", "", "client id for the msi id")
-	flag.StringVar(&tenantID, "tenantid", "", "tenantid")
-
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+}
+
+func getEnvDuration(key string, fallback time.Duration) (time.Duration, error) {
+	if value, ok := os.LookupEnv(key); ok {
+		duration, err := time.ParseDuration(value)
+		return duration, err
+	}
+	return fallback, nil
+}
+
+func getEnvInt(key string, fallback int) (int, error) {
+	if value, ok := os.LookupEnv(key); ok {
+		intVal, err := strconv.Atoi(value)
+		return intVal, err
+	}
+	return fallback, nil
 }

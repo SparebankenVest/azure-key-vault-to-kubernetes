@@ -51,13 +51,23 @@ const controllerAgentName = "azure-keyvault-controller"
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a AzureKeyVaultSecret is synced
 	SuccessSynced = "Synced"
+
 	// ErrResourceExists is used as part of the Event 'reason' when a AzureKeyVaultSecret fails
-	// to sync due to a Deployment of the same name already existing.
+	// to sync due to a Secret of the same name already existing.
 	ErrResourceExists = "ErrResourceExists"
+
+	// ErrResourceExists is used as part of the Event 'reason' when a AzureKeyVaultSecret fails
+	// to sync due to a Secret of the same name already existing.
+	ErrAzureVault = "ErrAzureVault"
+
+	// FailedAzureKeyVault is the message used for Events when a resource
+	// fails to get secret from Azure Key Vault
+	FailedAzureKeyVault = "Failed to get secret for %q from Azure Key Vault %q"
 
 	// MessageResourceExists is the message used for Events when a resource
 	// fails to sync due to a Deployment already existing
 	MessageResourceExists = "Resource %q already exists and is not managed by AzureKeyVaultSecret"
+
 	// MessageResourceSynced is the message used for an Event fired when a AzureKeyVaultSecret
 	// is synced successfully
 	MessageResourceSynced = "AzureKeyVaultSecret synced successfully"
@@ -107,7 +117,7 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 		azureKeyVaultSecretsLister: azureKeyVaultSecretsInformer.Lister(),
 		azureKeyVaultSecretsSynced: azureKeyVaultSecretsInformer.Informer().HasSynced,
 		workqueue:                  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "AzureKeyVaultSecrets"),
-		workqueueAzure:             workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(time.Minute, time.Minute*5, 5), "AzureKeyVault"),
+		workqueueAzure:             workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(azureVaultFastRate, azureVaultSlowRate, azureVaultMaxFastAttempts), "AzureKeyVault"),
 		recorder:                   recorder,
 	}
 
@@ -136,7 +146,7 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			log.Printf("New Secret added. Handling.")
+			klog.Info("New Secret added. Handling.")
 			controller.handleObject(obj)
 		},
 		UpdateFunc: func(old, new interface{}) {
@@ -147,11 +157,11 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 				// Two different versions of the same Secret will always have different RVs.
 				return
 			}
-			log.Printf("warning: Secret controlled by AzureKeyVaultSecret changed. Adding to queue.")
+			klog.Warning("Secret controlled by AzureKeyVaultSecret changed. Adding to queue.")
 			controller.handleObject(new)
 		},
 		DeleteFunc: func(obj interface{}) {
-			log.Printf("Secret deleted. Handling.")
+			klog.Info("Secret deleted. Handling.")
 			controller.handleObject(obj)
 		},
 	})
@@ -169,24 +179,24 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer c.workqueueAzure.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
-	log.Printf("Starting AzureKeyVaultSecret controller")
+	klog.Info("Starting AzureKeyVaultSecret controller")
 
 	// Wait for the caches to be synced before starting workers
-	log.Printf("Waiting for informer caches to sync")
+	klog.Info("Waiting for informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, c.secretsSynced, c.azureKeyVaultSecretsSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
-	log.Printf("Starting workers")
+	klog.Info("Starting workers")
 	// Launch two workers to process AzureKeyVaultSecret resources
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 		go wait.Until(c.runAzureWorker, time.Second, stopCh)
 	}
 
-	log.Printf("Started workers")
+	klog.Info("Started workers")
 	<-stopCh
-	log.Printf("Shutting down workers")
+	klog.Info("Shutting down workers")
 
 	return nil
 }
@@ -247,7 +257,7 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		queue.Forget(obj)
-		log.Printf("Successfully synced '%s'", key)
+		klog.Infof("Successfully synced '%s'", key)
 		return nil
 	}(obj)
 
@@ -264,7 +274,7 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 // with the current status of the resource.
 func (c *Controller) syncHandler(key string, pollAzure bool) error {
 	// Convert the namespace/name string into a distinct namespace and name
-	log.Printf("Checking state for %s", key)
+	klog.Infof("Checking state for %s", key)
 
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -300,7 +310,14 @@ func (c *Controller) syncHandler(key string, pollAzure bool) error {
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(getSecretErr) {
 		// Get secret form Azure
-		secret, getSecretErr = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(newSecret(azureKeyVaultSecret, nil))
+		newSecret, err := newSecret(azureKeyVaultSecret, nil)
+		if err != nil {
+			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
+			c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
+			return fmt.Errorf(msg)
+		}
+
+		secret, getSecretErr = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(newSecret)
 	}
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
@@ -322,8 +339,9 @@ func (c *Controller) syncHandler(key string, pollAzure bool) error {
 		// Get secret form Azure
 		secretValue, err := GetSecret(azureKeyVaultSecret)
 		if err != nil {
-			log.Printf("failed to get secret from Azure Key Vault, Error: %+v", err)
-			return err
+			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
+			c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
+			return fmt.Errorf(msg)
 		}
 
 		// If hash on the AzureKeyVaultSecret resource is specified, and
@@ -332,14 +350,20 @@ func (c *Controller) syncHandler(key string, pollAzure bool) error {
 		secretHash := getMD5Hash(secretValue)
 
 		if azureKeyVaultSecret.Status.SecretHash != secretHash {
-			log.Printf("secret has changed in Azure Key Vault for AzureKeyvVaultSecret %s. Updating Secret now.", name)
-			secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Update(newSecret(azureKeyVaultSecret, &secretValue))
+			klog.Infof("secret has changed in Azure Key Vault for AzureKeyvVaultSecret %s. Updating Secret now.", name)
+			newSecret, err := newSecret(azureKeyVaultSecret, &secretValue)
+			if err != nil {
+				msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
+				return fmt.Errorf(msg)
+			}
+
+			secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Update(newSecret)
 
 			// If an error occurs during Update, we'll requeue the item so we can
 			// attempt processing again later. THis could have been caused by a
 			// temporary network failure, or any other transient reason.
 			if err != nil {
-				log.Printf("failed to create Secret, Error: %+v", err)
+				klog.Warningf("failed to create Secret, Error: %+v", err)
 				return err
 			}
 		}
@@ -432,9 +456,9 @@ func (c *Controller) handleObject(obj interface{}) {
 			utilruntime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
 			return
 		}
-		log.Printf("Recovered deleted object '%s' from tombstone", object.GetName())
+		klog.Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
-	log.Printf("Processing object: %s", object.GetName())
+	klog.Infof("Processing object: %s", object.GetName())
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
 		// If this object is not owned by a AzureKeyVaultSecret, we should not do anything more
 		// with it.
@@ -444,7 +468,7 @@ func (c *Controller) handleObject(obj interface{}) {
 
 		azureKeyVaultSecret, err := c.azureKeyVaultSecretsLister.AzureKeyVaultSecrets(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
-			log.Printf("ignoring orphaned object '%s' of azureKeyVaultSecret '%s'", object.GetSelfLink(), ownerRef.Name)
+			klog.Infof("ignoring orphaned object '%s' of azureKeyVaultSecret '%s'", object.GetSelfLink(), ownerRef.Name)
 			return
 		}
 
@@ -456,15 +480,15 @@ func (c *Controller) handleObject(obj interface{}) {
 // newSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func newSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue *string) *corev1.Secret {
+func newSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue *string) (*corev1.Secret, error) {
 	var secretValue string
 
 	if azureSecretValue == nil {
 		var err error
 		secretValue, err = GetSecret(azureKeyVaultSecret)
 		if err != nil {
-			log.Printf("failed to get secret from Azure Key Vault, Error: %+v", err)
-			return nil
+			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
+			return nil, fmt.Errorf(msg)
 		}
 	} else {
 		secretValue = *azureSecretValue
@@ -487,7 +511,7 @@ func newSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSec
 		},
 		Type:       corev1.SecretTypeOpaque,
 		StringData: stringData,
-	}
+	}, nil
 }
 
 func getMD5Hash(text string) string {
