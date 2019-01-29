@@ -90,6 +90,18 @@ func (c *FakeAzureKeyVaultSecrets) Update(azureKeyVaultSecret *v1alpha1.AzureKey
 	return obj.(*v1alpha1.AzureKeyVaultSecret), err
 }
 
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeAzureKeyVaultSecrets) UpdateStatus(azureKeyVaultSecret *v1alpha1.AzureKeyVaultSecret) (*v1alpha1.AzureKeyVaultSecret, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewUpdateSubresourceAction(azurekeyvaultsecretsResource, "status", c.ns, azureKeyVaultSecret), &v1alpha1.AzureKeyVaultSecret{})
+
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v1alpha1.AzureKeyVaultSecret), err
+}
+
 // Delete takes name of the azureKeyVaultSecret and deletes it. Returns an error if one occurs.
 func (c *FakeAzureKeyVaultSecrets) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
