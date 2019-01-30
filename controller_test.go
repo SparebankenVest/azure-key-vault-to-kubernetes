@@ -131,7 +131,7 @@ func (f *fixture) runController(azureKeyVaultSecretName string, startInformers b
 		k8sI.Start(stopCh)
 	}
 
-	err := c.syncHandler(azureKeyVaultSecretName, false)
+	err := c.syncHandler(azureKeyVaultSecretName)
 	if !expectError && err != nil {
 		f.t.Errorf("error syncing azureKeyVaultSecret: %v", err)
 	} else if expectError && err == nil {
