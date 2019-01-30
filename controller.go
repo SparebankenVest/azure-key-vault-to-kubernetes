@@ -73,6 +73,8 @@ const (
 	// is synced successfully
 	MessageResourceSynced = "AzureKeyVaultSecret synced successfully"
 
+	// MessageResourceSyncedWithAzure is the message used for an Event fired when a AzureKeyVaultSecret
+	// is synced successfully after getting updated secret from Azure Key Vault
 	MessageResourceSyncedWithAzure = "AzureKeyVaultSecret synced successfully with Azure Key Vault"
 )
 
@@ -260,43 +262,36 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 	return true
 }
 
+func handleKeyVaultError(err error, key string) bool {
+	if err != nil {
+		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop processing.
+		if errors.IsNotFound(err) {
+			utilruntime.HandleError(fmt.Errorf("foo '%s' in work queue no longer exists", key))
+			return true
+		}
+	}
+	return false
+}
+
 // syncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the AzureKeyVaultSecret resource
 // with the current status of the resource.
 func (c *Controller) syncHandler(key string) error {
+	var azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret
+	var secret *corev1.Secret
+	var err error
+
 	log.Infof("Checking state for %s", key)
-	azureKeyVaultSecret, err := c.getAzureKeyVaultSecret(key)
-	if err != nil {
-		return err
-	}
 
-	secret, err := c.getKubernetesSecret(azureKeyVaultSecret)
-	if err != nil {
-		return err
-	}
-
-	secretName := azureKeyVaultSecret.Spec.OutputSecret.Name
-	if secretName == "" {
-		utilruntime.HandleError(fmt.Errorf("%s: secret name must be specified", key))
-		return nil
-	}
-
-	secret, getSecretErr := c.secretsLister.Secrets(azureKeyVaultSecret.Namespace).Get(secretName)
-
-	if errors.IsNotFound(getSecretErr) {
-		newSecret, err := newSecret(azureKeyVaultSecret, nil)
-
-		if err != nil {
-			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
-			c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
-			return fmt.Errorf(msg)
+	if azureKeyVaultSecret, err = c.getAzureKeyVaultSecret(key); err != nil {
+		if exit := handleKeyVaultError(err, key); exit {
+			return nil
 		}
-
-		secret, getSecretErr = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(newSecret)
+		return err
 	}
 
-	if getSecretErr != nil {
-		return getSecretErr
+	if secret, err = c.getOrCreateKubernetesSecret(azureKeyVaultSecret); err != nil {
+		return err
 	}
 
 	if !metav1.IsControlledBy(secret, azureKeyVaultSecret) { // checks if the object has a controllerRef set to the given owner
@@ -305,8 +300,7 @@ func (c *Controller) syncHandler(key string) error {
 		return fmt.Errorf(msg)
 	}
 
-	err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret)
-	if err != nil {
+	if err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
 		return err
 	}
 
@@ -315,18 +309,19 @@ func (c *Controller) syncHandler(key string) error {
 }
 
 func (c *Controller) azureSyncHandler(key string) error {
-	azureKeyVaultSecret, err := c.getAzureKeyVaultSecret(key)
-	if err != nil {
+	var azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret
+	var secret *corev1.Secret
+	var secretValue string
+	var err error
+
+	if azureKeyVaultSecret, err = c.getAzureKeyVaultSecret(key); err != nil {
+		if exit := handleKeyVaultError(err, key); exit {
+			return nil
+		}
 		return err
 	}
 
-	secret, err := c.getKubernetesSecret(azureKeyVaultSecret)
-	if err != nil {
-		return err
-	}
-
-	secretValue, err := vault.GetSecret(azureKeyVaultSecret)
-	if err != nil {
+	if secretValue, err = vault.GetSecret(azureKeyVaultSecret); err != nil {
 		msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 		c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
 		return fmt.Errorf(msg)
@@ -336,21 +331,18 @@ func (c *Controller) azureSyncHandler(key string) error {
 
 	if azureKeyVaultSecret.Status.SecretHash != secretHash {
 		log.Infof("Secret has changed in Azure Key Vault for AzureKeyvVaultSecret %s. Updating Secret now.", azureKeyVaultSecret.Name)
-		newSecret, err := newSecret(azureKeyVaultSecret, &secretValue)
+		newSecret, err := createNewSecret(azureKeyVaultSecret, &secretValue)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 			return fmt.Errorf(msg)
 		}
 
-		secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Update(newSecret)
-
-		if err != nil {
+		if secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Update(newSecret); err != nil {
 			log.Warningf("failed to create Secret, Error: %+v", err)
 			return err
 		}
 
-		err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret)
-		if err != nil {
+		if err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
 			return err
 		}
 
@@ -367,23 +359,37 @@ func (c *Controller) getAzureKeyVaultSecret(key string) (*azureKeyVaultSecretv1a
 	}
 
 	azureKeyVaultSecret, err := c.azureKeyVaultSecretsLister.AzureKeyVaultSecrets(namespace).Get(name)
+
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil, fmt.Errorf("AzureKeyVaultSecret '%s' in work queue no longer exists", key)
-		}
 		return nil, err
 	}
-
-	return azureKeyVaultSecret, nil
+	return azureKeyVaultSecret, err
 }
 
-func (c *Controller) getKubernetesSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (*corev1.Secret, error) {
+func (c *Controller) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (*corev1.Secret, error) {
+	var secret *corev1.Secret
+	var err error
+
 	secretName := azureKeyVaultSecret.Spec.OutputSecret.Name
 	if secretName == "" {
 		return nil, fmt.Errorf("%s: secret name must be specified", azureKeyVaultSecret.Name)
 	}
 
-	secret, err := c.secretsLister.Secrets(azureKeyVaultSecret.Namespace).Get(secretName)
+	if secret, err = c.secretsLister.Secrets(azureKeyVaultSecret.Namespace).Get(secretName); err != nil {
+		if errors.IsNotFound(err) {
+			var newSecret *corev1.Secret
+
+			if newSecret, err = createNewSecret(azureKeyVaultSecret, nil); err != nil {
+				msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
+				c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
+				return nil, fmt.Errorf(msg)
+			}
+
+			secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(newSecret)
+			return secret, nil
+		}
+	}
+
 	return secret, err
 }
 
@@ -465,7 +471,8 @@ func (c *Controller) handleObject(obj interface{}) {
 		}
 		log.Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
-	log.Debugf("Processing object: %s", object.GetName())
+
+	log.Infof("Processing object: %s", object.GetName())
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
 		// If this object is not owned by a AzureKeyVaultSecret, we should not do anything more
 		// with it.
@@ -487,7 +494,7 @@ func (c *Controller) handleObject(obj interface{}) {
 // newSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func newSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue *string) (*corev1.Secret, error) {
+func createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue *string) (*corev1.Secret, error) {
 	var secretValue string
 
 	if azureSecretValue == nil {
