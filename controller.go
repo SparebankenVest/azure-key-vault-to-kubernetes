@@ -222,37 +222,21 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 
 	// We wrap this block in a func so we can defer c.workqueue.Done.
 	err := func(obj interface{}) error {
-		// We call Done here so the workqueue knows we have finished
-		// processing this item. We also must remember to call Forget if we
-		// do not want this work item being re-queued. For example, we do
-		// not call Forget if a transient error occurs, instead the item is
-		// put back on the workqueue and attempted again after a back-off
-		// period.
 		defer queue.Done(obj)
 		var key string
 		var ok bool
-		// We expect strings to come off the workqueue. These are of the
-		// form namespace/name. We do this as the delayed nature of the
-		// workqueue means the items in the informer cache may actually be
-		// more up to date that when the item was initially put onto the
-		// workqueue.
+
 		if key, ok = obj.(string); !ok {
-			// As the item in the workqueue is actually invalid, we call
-			// Forget here else we'd go into a loop of attempting to
-			// process a work item that is invalid.
 			queue.Forget(obj)
 			utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
 			return nil
 		}
-		// Run the syncHandler, passing it the namespace/name string of the
-		// AzureKeyVaultSecret resource to be synced.
+
 		if err := c.syncHandler(key, syncAzure); err != nil {
-			// Put the item back on the workqueue to handle any transient errors.
 			queue.AddRateLimited(key)
 			return fmt.Errorf("error syncing '%s': %s, requeuing", key, err.Error())
 		}
-		// Finally, if no error occurs we Forget this item so it does not
-		// get queued again until another change happens.
+
 		queue.Forget(obj)
 		log.Infof("Successfully synced '%s'", key)
 		return nil
@@ -270,44 +254,34 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 // converge the two. It then updates the Status block of the AzureKeyVaultSecret resource
 // with the current status of the resource.
 func (c *Controller) syncHandler(key string, pollAzure bool) error {
-	// Convert the namespace/name string into a distinct namespace and name
 	log.Infof("Checking state for %s", key)
-
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
 		return nil
 	}
 
-	// Get the AzureKeyVaultSecret resource with this namespace/name
 	azureKeyVaultSecret, err := c.azureKeyVaultSecretsLister.AzureKeyVaultSecrets(namespace).Get(name)
 	if err != nil {
-		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop
-		// processing.
 		if errors.IsNotFound(err) {
 			utilruntime.HandleError(fmt.Errorf("AzureKeyVaultSecret '%s' in work queue no longer exists", key))
 			return nil
 		}
-
 		return err
 	}
 
 	secretName := azureKeyVaultSecret.Spec.OutputSecret.Name
 	if secretName == "" {
-		// We choose to absorb the error here as the worker would requeue the
-		// resource otherwise. Instead, the next time the resource is updated
-		// the resource will be queued again.
 		utilruntime.HandleError(fmt.Errorf("%s: secret name must be specified", key))
 		return nil
 	}
 
-	// Get the secret with the name specified in AzureKeyVaultSecret.spec
 	secret, getSecretErr := c.secretsLister.Secrets(azureKeyVaultSecret.Namespace).Get(secretName)
 
-	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(getSecretErr) {
-		// Get secret form Azure
 		newSecret, err := newSecret(azureKeyVaultSecret, nil)
+
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 			c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
@@ -317,15 +291,10 @@ func (c *Controller) syncHandler(key string, pollAzure bool) error {
 		secret, getSecretErr = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(newSecret)
 	}
 
-	// If an error occurs during Get/Create, we'll requeue the item so we can
-	// attempt processing again later. This could have been caused by a
-	// temporary network failure, or any other transient reason.
 	if getSecretErr != nil {
 		return getSecretErr
 	}
 
-	// If the Secret is not controlled by this AzureKeyVaultSecret resource, we should log
-	// a warning to the event recorder and return
 	if !metav1.IsControlledBy(secret, azureKeyVaultSecret) { // checks if the object has a controllerRef set to the given owner
 		msg := fmt.Sprintf(MessageResourceExists, secret.Name)
 		c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrResourceExists, msg)
@@ -333,7 +302,6 @@ func (c *Controller) syncHandler(key string, pollAzure bool) error {
 	}
 
 	if pollAzure {
-		// Get secret form Azure
 		secretValue, err := GetSecret(azureKeyVaultSecret)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
@@ -341,9 +309,6 @@ func (c *Controller) syncHandler(key string, pollAzure bool) error {
 			return fmt.Errorf(msg)
 		}
 
-		// If hash on the AzureKeyVaultSecret resource is specified, and
-		// it is not equal the current hash on the Secret, we
-		// should update the AzureKeyVaultSecret resource.
 		secretHash := getMD5Hash(secretValue)
 
 		if azureKeyVaultSecret.Status.SecretHash != secretHash {
@@ -356,9 +321,6 @@ func (c *Controller) syncHandler(key string, pollAzure bool) error {
 
 			secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Update(newSecret)
 
-			// If an error occurs during Update, we'll requeue the item so we can
-			// attempt processing again later. THis could have been caused by a
-			// temporary network failure, or any other transient reason.
 			if err != nil {
 				log.Warningf("failed to create Secret, Error: %+v", err)
 				return err

@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azure-keyvault-controller
+  namespace: spv-system
+  labels:
+    app: azure-keyvault-controller
+    aadpodidbinding: azure_key_vault # Binding from AzureIdentityBinding
+spec:
+  selector:
+    matchLabels:
+      app: azure-keyvault-controller
+  template:
+    metadata:
+      labels:
+        app: azure-keyvault-controller
+        aadpodidbinding: azure_key_vault # Binding from AzureIdentityBinding
+    spec:
+      serviceAccountName: azure-keyvault-controller
+      containers:
+      - name: azure-keyvault-controller
+        image: dokken.azurecr.io/azure-keyvault-controller:0.0.32
+        imagePullPolicy: Always
+        env:
+        - name: AZURE_VAULT_FAST_RATE # Optional - How often we check Vault for changes in secrets
+          value: 2m
+        - name: AZURE_VAULT_SLOW_RATE # Optional - How often we check Vault for changes in secrets, given AZURE_VAULT_MAX_FAST_ATTEMPTS has previously failed
+          value: 10m
+        - name: AZURE_VAULT_MAX_FAST_ATTEMPTS # Optional - How many fast attempts can fail before we start using slow rate
+          value: "5"
