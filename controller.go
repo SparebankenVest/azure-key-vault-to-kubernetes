@@ -44,6 +44,7 @@ import (
 	keyvaultScheme "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned/scheme"
 	informers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions/azurekeyvaultcontroller/v1alpha1"
 	listers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/listers/azurekeyvaultcontroller/v1alpha1"
+	"github.com/SparebankenVest/azure-keyvault-controller/vault"
 )
 
 const controllerAgentName = "azure-keyvault-controller"
@@ -56,7 +57,7 @@ const (
 	// to sync due to a Secret of the same name already existing.
 	ErrResourceExists = "ErrResourceExists"
 
-	// ErrResourceExists is used as part of the Event 'reason' when a AzureKeyVaultSecret fails
+	// ErrAzureVault is used as part of the Event 'reason' when a AzureKeyVaultSecret fails
 	// to sync due to a Secret of the same name already existing.
 	ErrAzureVault = "ErrAzureVault"
 
@@ -302,7 +303,7 @@ func (c *Controller) syncHandler(key string, pollAzure bool) error {
 	}
 
 	if pollAzure {
-		secretValue, err := GetSecret(azureKeyVaultSecret)
+		secretValue, err := vault.GetSecret(azureKeyVaultSecret)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 			c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
@@ -444,7 +445,7 @@ func newSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSec
 
 	if azureSecretValue == nil {
 		var err error
-		secretValue, err = GetSecret(azureKeyVaultSecret)
+		secretValue, err = vault.GetSecret(azureKeyVaultSecret)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 			return nil, fmt.Errorf(msg)
