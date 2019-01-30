@@ -72,6 +72,8 @@ const (
 	// MessageResourceSynced is the message used for an Event fired when a AzureKeyVaultSecret
 	// is synced successfully
 	MessageResourceSynced = "AzureKeyVaultSecret synced successfully"
+
+	MessageResourceSyncedWithAzure = "AzureKeyVaultSecret synced successfully with Azure Key Vault"
 )
 
 // Controller is the controller implementation for AzureKeyVaultSecret resources
@@ -346,14 +348,15 @@ func (c *Controller) azureSyncHandler(key string) error {
 			log.Warningf("failed to create Secret, Error: %+v", err)
 			return err
 		}
+
+		err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret)
+		if err != nil {
+			return err
+		}
+
+		c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSyncedWithAzure)
 	}
 
-	err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret)
-	if err != nil {
-		return err
-	}
-
-	c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
 
