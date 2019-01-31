@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -38,15 +39,21 @@ type AzureKeyVaultSecretSpec struct {
 	OutputSecret AzureKeyVaultSecretOutputSecretSpec `json:"outputSecret"`
 }
 
+// AzureKeyVaultSecretVaultSpec contains information needed to get the
+// Azure Key Vault secret from Azure Key Vault
 type AzureKeyVaultSecretVaultSpec struct {
 	Name       string `json:"name"`
 	ObjectType string `json:"objectType"`
 	ObjectName string `json:"objectName"`
 }
 
+// AzureKeyVaultSecretOutputSecretSpec has information needed to output
+// a secret from Azure Key Vault to Kubertnetes as a Secret resource
 type AzureKeyVaultSecretOutputSecretSpec struct {
 	Name    string `json:"name"`
 	KeyName string `json:"keyName"`
+	// +optional
+	Type corev1.SecretType `json:"type,omitempty" protobuf:"bytes,3,opt,name=type,casttype=SecretType"`
 }
 
 // AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource

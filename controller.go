@@ -523,7 +523,7 @@ func createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVa
 				}),
 			},
 		},
-		Type:       corev1.SecretTypeOpaque,
+		Type:       azureKeyVaultSecret.Spec.OutputSecret.Type,
 		StringData: stringData,
 	}, nil
 }
