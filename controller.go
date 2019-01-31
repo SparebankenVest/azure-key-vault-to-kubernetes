@@ -438,7 +438,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureK
 	secretValue := string(secret.Data[azureKeyVaultSecret.Spec.OutputSecret.KeyName])
 	secretHash := getMD5Hash(secretValue)
 	azureKeyVaultSecretCopy.Status.SecretHash = secretHash
-	azureKeyVaultSecretCopy.Status.LastAzureUpdate = time.Now()
+	// azureKeyVaultSecretCopy.Status.LastAzureUpdate = time.Now()
 
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the AzureKeyVaultSecret resource.
@@ -488,11 +488,11 @@ func (c *Controller) enqueueDeleteAzureKeyVaultSecret(obj interface{}) {
 	c.workqueue.AddRateLimited(key)
 
 	// Getting default key to remove from Azure work queue
-	// if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-	// 	utilruntime.HandleError(err)
-	// 	return
-	// }
-	// c.workqueueAzure.Forget(key)
+	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+	c.workqueueAzure.Forget(key)
 }
 
 // handleObject will take any resource implementing metav1.Object and attempt
