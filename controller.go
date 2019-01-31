@@ -363,6 +363,9 @@ func (c *Controller) azureSyncHandler(key string) error {
 	log.Debugf("Checking if secret value for %s has changed in Azure", key)
 	if azureKeyVaultSecret.Status.SecretHash != secretHash {
 		log.Infof("Secret has changed in Azure Key Vault for AzureKeyvVaultSecret %s. Updating Secret now.", azureKeyVaultSecret.Name)
+		log.Debugf("Old secret hash: %s", azureKeyVaultSecret.Status.SecretHash)
+		log.Debugf("New secret hash: %s", secretHash)
+		log.Debugf("New secret value: %s", secretValue)
 		newSecret, err := createNewSecret(azureKeyVaultSecret, &secretValue)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
