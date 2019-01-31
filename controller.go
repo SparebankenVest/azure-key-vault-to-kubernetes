@@ -326,10 +326,10 @@ func (c *Controller) syncHandler(key string) error {
 		return fmt.Errorf(msg)
 	}
 
-	log.Infof("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
-	if err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
-		return err
-	}
+	// log.Infof("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
+	// if err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
+	// 	return err
+	// }
 
 	// log.Info(MessageResourceSynced)
 	c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
@@ -422,7 +422,15 @@ func (c *Controller) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVa
 				return nil, fmt.Errorf(msg)
 			}
 
-			secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(newSecret)
+			if secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(newSecret); err != nil {
+				return nil, err
+			}
+
+			log.Infof("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
+			if err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
+				return nil, err
+			}
+
 			return secret, nil
 		}
 	}
@@ -444,7 +452,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureK
 	// we must use Update instead of UpdateStatus to update the Status block of the AzureKeyVaultSecret resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.azureKeyvaultClientset.AzurekeyvaultcontrollerV1alpha1().AzureKeyVaultSecrets(azureKeyVaultSecret.Namespace).UpdateStatus(azureKeyVaultSecretCopy)
+	_, err := c.azureKeyvaultClientset.AzurekeyvaultcontrollerV1alpha1().AzureKeyVaultSecrets(azureKeyVaultSecret.Namespace).Update(azureKeyVaultSecretCopy)
 	return err
 }
 
