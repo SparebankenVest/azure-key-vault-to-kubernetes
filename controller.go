@@ -525,7 +525,7 @@ func (c *Controller) handleObject(obj interface{}) {
 		log.Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
 
-	log.Infof("Processing object: %s", object.GetName())
+	log.Debugf("Processing object: %s", object.GetName())
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
 		// If this object is not owned by a AzureKeyVaultSecret, we should not do anything more
 		// with it.
