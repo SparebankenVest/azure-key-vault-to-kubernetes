@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/SparebankenVest/azure-keyvault-controller/controller"
 	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
 	informers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions"
 	"github.com/SparebankenVest/azure-keyvault-controller/pkg/signals"
@@ -92,10 +93,16 @@ func main() {
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	azureKeyVaultSecretInformerFactory := informers.NewSharedInformerFactory(azureKeyVaultSecretClient, time.Second*30)
+	azurePollFrequency := controller.AzurePollFrequency{
+		Normal:                       azureVaultFastRate,
+		Slow:                         azureVaultSlowRate,
+		MaxFailuresBeforeSlowingDown: azureVaultMaxFastAttempts,
+	}
 
-	controller := NewController(kubeClient, azureKeyVaultSecretClient,
+	controller := controller.NewController(kubeClient, azureKeyVaultSecretClient,
 		kubeInformerFactory.Core().V1().Secrets(),
-		azureKeyVaultSecretInformerFactory.Azurekeyvaultcontroller().V1alpha1().AzureKeyVaultSecrets())
+		azureKeyVaultSecretInformerFactory.Azurekeyvaultcontroller().V1alpha1().AzureKeyVaultSecrets(),
+		azurePollFrequency)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package controller
 
 import (
 	"crypto/md5"
@@ -102,8 +102,20 @@ type Controller struct {
 	recorder record.EventRecorder
 }
 
+// AzureWorkqueueFrequency controls time durations to wait between polls to Azure Key Vault for changes
+type AzurePollFrequency struct {
+	// Normal is the time duration to wait between polls to Azure Key Vault for changes
+	Normal time.Duration
+
+	// MaxFailuresBeforeSlowingDown controls how many failures are accepted before reducing the frequency to Slow
+	MaxFailuresBeforeSlowingDown int
+
+	// Slow is the time duration to wait between polls to Azure Key Vault for changes, after MaxFailuresBeforeSlowingDown is reached
+	Slow time.Duration
+}
+
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretInformer coreinformers.SecretInformer, azureKeyVaultSecretsInformer informers.AzureKeyVaultSecretInformer) *Controller {
+func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretInformer coreinformers.SecretInformer, azureKeyVaultSecretsInformer informers.AzureKeyVaultSecretInformer, azureFrequency AzurePollFrequency) *Controller {
 	// Create event broadcaster
 	// Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// logged for azure-keyvault-controller types.
@@ -122,7 +134,7 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 		azureKeyVaultSecretsLister: azureKeyVaultSecretsInformer.Lister(),
 		azureKeyVaultSecretsSynced: azureKeyVaultSecretsInformer.Informer().HasSynced,
 		workqueue:                  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "AzureKeyVaultSecrets"),
-		workqueueAzure:             workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(azureVaultFastRate, azureVaultSlowRate, azureVaultMaxFastAttempts), "AzureKeyVault"),
+		workqueueAzure:             workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown), "AzureKeyVault"),
 		recorder:                   recorder,
 	}
 

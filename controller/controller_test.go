@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package controller
 
 import (
 	"fmt"
@@ -95,9 +95,14 @@ func (f *fixture) newController() (*Controller, informers.SharedInformerFactory,
 
 	i := informers.NewSharedInformerFactory(f.client, noResyncPeriodFunc())
 	k8sI := kubeinformers.NewSharedInformerFactory(f.kubeclient, noResyncPeriodFunc())
+	azurePollFrequencies := AzurePollFrequency{
+		Normal:                       time.Minute * 2,
+		Slow:                         time.Minute * 5,
+		MaxFailuresBeforeSlowingDown: 5,
+	}
 
 	c := NewController(f.kubeclient, f.client,
-		k8sI.Core().V1().Secrets(), i.Azurekeyvaultcontroller().V1alpha1().AzureKeyVaultSecrets())
+		k8sI.Core().V1().Secrets(), i.Azurekeyvaultcontroller().V1alpha1().AzureKeyVaultSecrets(), azurePollFrequencies)
 
 	c.azureKeyVaultSecretsSynced = alwaysReady
 	c.secretsSynced = alwaysReady
