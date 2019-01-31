@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -58,7 +60,8 @@ type AzureKeyVaultSecretOutputSecretSpec struct {
 
 // AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource
 type AzureKeyVaultSecretStatus struct {
-	SecretHash string `json:"secretHash"`
+	SecretHash      string    `json:"secretHash"`
+	LastAzureUpdate time.Time `json:"lastAzureUpdate"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
