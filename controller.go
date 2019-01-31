@@ -446,13 +446,13 @@ func (c *Controller) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureK
 	secretValue := string(secret.Data[azureKeyVaultSecret.Spec.OutputSecret.KeyName])
 	secretHash := getMD5Hash(secretValue)
 	azureKeyVaultSecretCopy.Status.SecretHash = secretHash
-	// azureKeyVaultSecretCopy.Status.LastAzureUpdate = time.Now()
+	azureKeyVaultSecretCopy.Status.LastAzureUpdate = time.Now()
 
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the AzureKeyVaultSecret resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.azureKeyvaultClientset.AzurekeyvaultcontrollerV1alpha1().AzureKeyVaultSecrets(azureKeyVaultSecret.Namespace).Update(azureKeyVaultSecretCopy)
+	_, err := c.azureKeyvaultClientset.AzurekeyvaultcontrollerV1alpha1().AzureKeyVaultSecrets(azureKeyVaultSecret.Namespace).UpdateStatus(azureKeyVaultSecretCopy)
 	return err
 }
 
