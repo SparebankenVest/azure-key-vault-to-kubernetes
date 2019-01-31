@@ -306,7 +306,7 @@ func (c *Controller) syncHandler(key string) error {
 	var secret *corev1.Secret
 	var err error
 
-	log.Infof("Checking state for %s", key)
+	// log.Infof("Checking state for %s", key)
 
 	if azureKeyVaultSecret, err = c.getAzureKeyVaultSecret(key); err != nil {
 		if exit := handleKeyVaultError(err, key); exit {
@@ -331,7 +331,7 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	log.Info(MessageResourceSynced)
+	// log.Info(MessageResourceSynced)
 	c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
@@ -488,11 +488,11 @@ func (c *Controller) enqueueDeleteAzureKeyVaultSecret(obj interface{}) {
 	c.workqueue.AddRateLimited(key)
 
 	// Getting default key to remove from Azure work queue
-	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
-	c.workqueueAzure.Forget(key)
+	// if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
+	// 	utilruntime.HandleError(err)
+	// 	return
+	// }
+	// c.workqueueAzure.Forget(key)
 }
 
 // handleObject will take any resource implementing metav1.Object and attempt
