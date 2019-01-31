@@ -250,6 +250,7 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 		defer queue.Done(obj)
 		var key string
 		var ok bool
+		var successMsg string
 
 		if key, ok = obj.(string); !ok {
 			queue.Forget(obj)
@@ -260,9 +261,11 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 		var err error
 		if syncAzure {
 			log.Debugf("Handling '%s' in Azure queue...", key)
+			successMsg = "Successfully synced AzureKeyVaultSecret '%s' with Azure Key Vault"
 			err = c.azureSyncHandler(key)
 		} else {
 			log.Debugf("Handling '%s' in default queue...", key)
+			successMsg = "Successfully synced AzureKeyVaultSecret '%s' with Kubernetes Secret"
 			err = c.syncHandler(key)
 		}
 
@@ -272,7 +275,7 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 		}
 
 		queue.Forget(obj)
-		log.Infof("Successfully synced '%s'", key)
+		log.Infof(successMsg, key)
 		return nil
 	}(obj)
 
@@ -326,11 +329,6 @@ func (c *Controller) syncHandler(key string) error {
 		return fmt.Errorf(msg)
 	}
 
-	// log.Infof("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
-	// if err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
-	// 	return err
-	// }
-
 	// log.Info(MessageResourceSynced)
 	c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
@@ -363,9 +361,7 @@ func (c *Controller) azureSyncHandler(key string) error {
 	log.Debugf("Checking if secret value for %s has changed in Azure", key)
 	if azureKeyVaultSecret.Status.SecretHash != secretHash {
 		log.Infof("Secret has changed in Azure Key Vault for AzureKeyvVaultSecret %s. Updating Secret now.", azureKeyVaultSecret.Name)
-		log.Debugf("Old secret hash: %s", azureKeyVaultSecret.Status.SecretHash)
-		log.Debugf("New secret hash: %s", secretHash)
-		log.Debugf("New secret value: %s", secretValue)
+
 		newSecret, err := createNewSecret(azureKeyVaultSecret, &secretValue)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
@@ -383,6 +379,7 @@ func (c *Controller) azureSyncHandler(key string) error {
 			return err
 		}
 
+		log.Warningf("Secret value will now change for Secret '%s'. Any resources (like Pods) using this Secrets must be restarted to pick up the new value. Details: https://github.com/kubernetes/kubernetes/issues/22368", azureKeyVaultSecret.Name)
 		c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSyncedWithAzure)
 	}
 
