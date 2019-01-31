@@ -129,18 +129,30 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 	log.Info("Setting up event handlers")
 	// Set up an event handler for when AzureKeyVaultSecret resources change
 	azureKeyVaultSecretsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueueAzureKeyVaultSecret,
+		AddFunc: func(obj interface{}) {
+			secret := obj.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
+			log.Debugf("AzureKeyVaultSecret '%s' added. Adding to queue.", secret.Name)
+			controller.enqueueAzureKeyVaultSecret(obj)
+		},
 		UpdateFunc: func(old, new interface{}) {
 			newSecret := new.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
 			oldSecret := old.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
+
 			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
+				log.Debugf("AzureKeyVaultSecret '%s' added to Azure queue to check if changed in Azure.", newSecret.Name)
 				// Check if secret has changed in Azure
 				controller.enqueueAzurePoll(new)
 				return
 			}
+
+			log.Debugf("AzureKeyVaultSecret '%s' changed. Adding to queue.", newSecret.Name)
 			controller.enqueueAzureKeyVaultSecret(new)
 		},
-		DeleteFunc: controller.enqueueDeleteAzureKeyVaultSecret,
+		DeleteFunc: func(obj interface{}) {
+			secret := obj.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
+			log.Debugf("AzureKeyVaultSecret '%s' deleted. Adding to delete queue.", secret.Name)
+			controller.enqueueDeleteAzureKeyVaultSecret(obj)
+		},
 	})
 
 	// Set up an event handler for when Secret resources change. This
@@ -150,20 +162,27 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 	// handling AzureKeyVaultSecret resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handleObject,
+		AddFunc: func(obj interface{}) {
+			secret := obj.(*corev1.Secret)
+			log.Debugf("Secret '%s' added. Handling.", secret.Name)
+			controller.handleObject(obj)
+		},
 		UpdateFunc: func(old, new interface{}) {
 			newSecret := new.(*corev1.Secret)
 			oldSecret := old.(*corev1.Secret)
+
 			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
 				// Periodic resync will send update events for all known Secrets.
 				// Two different versions of the same Secret will always have different RVs.
 				return
 			}
-			log.Warning("Secret controlled by AzureKeyVaultSecret changed. Adding to queue.")
+			secret := new.(*corev1.Secret)
+			log.Debugf("Secret '%s' controlled by AzureKeyVaultSecret changed. Handling.", secret.Name)
 			controller.handleObject(new)
 		},
 		DeleteFunc: func(obj interface{}) {
-			log.Info("Secret deleted. Handling.")
+			secret := obj.(*corev1.Secret)
+			log.Debugf("Secret '%s' deleted. Handling.", secret.Name)
 			controller.handleObject(obj)
 		},
 	})
@@ -219,6 +238,7 @@ func (c *Controller) runAzureWorker() {
 // processNextWorkItem will read a single work item off the workqueue and
 // attempt to process it, by calling the syncHandler.
 func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, syncAzure bool) bool {
+	log.Debug("Processing next work item in queue...")
 	obj, shutdown := queue.Get()
 
 	if shutdown {
@@ -239,8 +259,10 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 
 		var err error
 		if syncAzure {
+			log.Debugf("Handling '%s' in Azure queue...", key)
 			err = c.azureSyncHandler(key)
 		} else {
+			log.Debugf("Handling '%s' in default queue...", key)
 			err = c.syncHandler(key)
 		}
 
@@ -263,10 +285,13 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 }
 
 func handleKeyVaultError(err error, key string) bool {
+	log.Debugf("Handling error for '%s' in AzureKeyVaultSecret: %s", key, err.Error())
 	if err != nil {
 		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop processing.
 		if errors.IsNotFound(err) {
-			utilruntime.HandleError(fmt.Errorf("foo '%s' in work queue no longer exists", key))
+			log.Debugf("Error for '%s' was 'Not Found'", key)
+
+			utilruntime.HandleError(fmt.Errorf("AzureKeyVaultSecret '%s' in work queue no longer exists", key))
 			return true
 		}
 	}
@@ -296,14 +321,17 @@ func (c *Controller) syncHandler(key string) error {
 
 	if !metav1.IsControlledBy(secret, azureKeyVaultSecret) { // checks if the object has a controllerRef set to the given owner
 		msg := fmt.Sprintf(MessageResourceExists, secret.Name)
+		log.Warning(msg)
 		c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf(msg)
 	}
 
+	log.Debugf("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
 	if err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
 		return err
 	}
 
+	log.Info(MessageResourceSynced)
 	c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
@@ -314,6 +342,7 @@ func (c *Controller) azureSyncHandler(key string) error {
 	var secretValue string
 	var err error
 
+	log.Debugf("Checking state for %s in Azure", key)
 	if azureKeyVaultSecret, err = c.getAzureKeyVaultSecret(key); err != nil {
 		if exit := handleKeyVaultError(err, key); exit {
 			return nil
@@ -321,27 +350,32 @@ func (c *Controller) azureSyncHandler(key string) error {
 		return err
 	}
 
+	log.Debugf("Getting secret value for %s in Azure", key)
 	if secretValue, err = vault.GetSecret(azureKeyVaultSecret); err != nil {
 		msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
+		log.Warning(msg)
 		c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
 		return fmt.Errorf(msg)
 	}
 
 	secretHash := getMD5Hash(secretValue)
 
+	log.Debugf("Checking if secret value for %s has changed in Azure", key)
 	if azureKeyVaultSecret.Status.SecretHash != secretHash {
 		log.Infof("Secret has changed in Azure Key Vault for AzureKeyvVaultSecret %s. Updating Secret now.", azureKeyVaultSecret.Name)
 		newSecret, err := createNewSecret(azureKeyVaultSecret, &secretValue)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
+			log.Error(msg)
 			return fmt.Errorf(msg)
 		}
 
 		if secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Update(newSecret); err != nil {
-			log.Warningf("failed to create Secret, Error: %+v", err)
+			log.Warningf("Failed to create Secret, Error: %+v", err)
 			return err
 		}
 
+		log.Debugf("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
 		if err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
 			return err
 		}
