@@ -479,11 +479,18 @@ func (c *Controller) enqueueAzurePoll(obj interface{}) {
 func (c *Controller) enqueueDeleteAzureKeyVaultSecret(obj interface{}) {
 	var key string
 	var err error
+
 	if key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj); err != nil {
 		utilruntime.HandleError(err)
 		return
 	}
 	c.workqueue.AddRateLimited(key)
+
+	// Getting default key to remove from Azure work queue
+	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
 	c.workqueueAzure.Forget(key)
 }
 
