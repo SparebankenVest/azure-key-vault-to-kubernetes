@@ -110,7 +110,7 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 	utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
 	log.Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(log.Debugf)
+	eventBroadcaster.StartLogging(log.Tracef)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
