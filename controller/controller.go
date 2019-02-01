@@ -122,7 +122,7 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
-	handler := NewHandler(kubeclientset, azureKeyvaultClientset, secretInformer, azureKeyVaultSecretsInformer, azureFrequency)
+	handler := NewHandler(kubeclientset, azureKeyvaultClientset, secretInformer.Lister(), azureKeyVaultSecretsInformer.Lister(), recorder, azureFrequency)
 
 	controller := &Controller{
 		handler:                    handler,

@@ -13,16 +13,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
 	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
-	informers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions/azurekeyvaultcontroller/v1alpha1"
 	listers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/listers/azurekeyvaultcontroller/v1alpha1"
 	"github.com/SparebankenVest/azure-keyvault-controller/vault"
 )
@@ -37,21 +34,20 @@ type Handler struct {
 	secretsLister              corelisters.SecretLister
 	azureKeyVaultSecretsLister listers.AzureKeyVaultSecretLister
 
-	// workqueue is a rate limited work queue. This is used to queue work to be
-	// processed instead of performing it as soon as a change happens. This
-	// means we can ensure we only process a fixed amount of resources at a
-	// time, and makes it easy to ensure we are never processing the same item
-	// simultaneously in two different workers.
-	workqueue      workqueue.RateLimitingInterface
-	workqueueAzure workqueue.RateLimitingInterface
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
 }
 
 //NewHandler returns a new Handler
-func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretInformer coreinformers.SecretInformer, azureKeyVaultSecretsInformer informers.AzureKeyVaultSecretInformer, azureFrequency AzurePollFrequency) *Handler {
-	return &Handler{}
+func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretLister corelisters.SecretLister, azureKeyVaultSecretsLister listers.AzureKeyVaultSecretLister, recorder record.EventRecorder, azureFrequency AzurePollFrequency) *Handler {
+	return &Handler{
+		kubeclientset:              kubeclientset,
+		azureKeyvaultClientset:     azureKeyvaultClientset,
+		secretsLister:              secretLister,
+		azureKeyVaultSecretsLister: azureKeyVaultSecretsLister,
+		recorder:                   recorder,
+	}
 }
 
 // syncHandler compares the actual state with the desired, and attempts to
