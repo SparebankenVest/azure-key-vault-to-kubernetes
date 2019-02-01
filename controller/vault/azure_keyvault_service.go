@@ -46,14 +46,19 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 		// 	return "", err
 		// }
 
-		privateKey, err := x509.ParsePKCS1PrivateKey(*secretBundle.Cer)
+		privateKey, err := x509.ParsePKCS8PrivateKey(*secretBundle.Cer)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to parse pkcs8 private key, error: %+v", err)
+		}
+
+		privBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal pkcs8 private key, error: %+v", err)
 		}
 
 		pemdata := pem.EncodeToMemory(&pem.Block{
 			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+			Bytes: privBytes,
 		},
 		)
 
