@@ -1,8 +1,8 @@
 package vault
 
 import (
-	"bytes"
 	"context"
+	"crypto/x509"
 	"fmt"
 	"strings"
 
@@ -39,7 +39,14 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 		if err != nil {
 			return "", err
 		}
-		vaultSecret = bytes.NewBuffer(*secretBundle.Cer).String() //string(*secretBundle.Cer)
+
+		cert, err := x509.ParseCertificate(*secretBundle.Cer)
+		if err != nil {
+			return "", err
+		}
+		vaultSecret = cert.Subject.String()
+		// vaultClient.GetKey(context.Background(), baseURL, secretBundle.Kid, keyVersion)
+		// vaultSecret = bytes.NewBuffer(*secretBundle.Cer).String() //string(*secretBundle.Cer)
 		// decSecret, err := base64.StdEncoding.DecodeString(vaultSecret)
 		// if err != nil {
 		// 	return "", fmt.Errorf("failed to base64 decode Azure Key Vault certificate for %s / %s, error: %+v", secret.Namespace, secret.Name, err)
