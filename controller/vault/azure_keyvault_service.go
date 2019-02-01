@@ -3,13 +3,10 @@ package vault
 import (
 	"context"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"strings"
-
-	log "github.com/sirupsen/logrus"
-
-	"golang.org/x/crypto/pkcs12"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -50,29 +47,18 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 			return "", fmt.Errorf("failed to parse certificate from Azure Key Vault, error: %+v", err)
 		}
 
-		log.Infof("bundle cert: %s", *secretBundle.Cer)
-		log.Infof("raw cert: %s", cert.Raw)
+		pubKey := string(CertToPEM(cert))
 
-		var pemCert []byte
-
-		log.Info("trying to convert cert bundle from vault to pem")
-		pemTmp, err := pkcs12.ToPEM(*secretBundle.Cer, "")
-
+		keyBundle, err := vaultClient.GetKey(context.Background(), baseURL, secret.Spec.Vault.ObjectName, "")
 		if err != nil {
-			log.Info("trying to convert x509 cert to pem")
-			pemTmp, err = pkcs12.ToPEM(cert.Raw, "")
-			if err != nil {
-				log.Info("trying to convert x509 cert to pem home grown")
-				pemCert = CertToPEM(cert)
-				// log.Info("giving up!!!")
-				// return "", err
-			} else {
-				pemCert = pem.EncodeToMemory(pemTmp[0])
-			}
-		} else {
-			pemCert = pem.EncodeToMemory(pemTmp[0])
+			return "", fmt.Errorf("failed to get certificate key from azure key vault, error: %+v", err)
 		}
 
+		privateKeyByte, err := base64.RawURLEncoding.DecodeString(*keyBundle.Key.N)
+		if err != nil {
+			return "", fmt.Errorf("failed to decode base64 string from Azure Key Vault key bundle, error: %+v", err)
+		}
+		privateKey := string(privateKeyByte)
 		// privateKey, err := x509.ParsePKCS8PrivateKey(cert.RawTBSCertificate)
 		// if err != nil {
 		// 	return "", fmt.Errorf("failed to parse pkcs8 private key, error: %+v", err)
@@ -89,7 +75,7 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 		// },
 		// )
 
-		return string(pemCert), nil
+		return string(privateKey + "\n" + pubKey), nil
 
 		// return fmt.Printf(privateKey), nil
 
