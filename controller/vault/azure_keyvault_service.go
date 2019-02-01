@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
@@ -46,7 +48,9 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 			return "", fmt.Errorf("failed to parse certificate from Azure Key Vault, error: %+v", err)
 		}
 
-		privateKey, err := x509.ParsePKCS8PrivateKey(cert.Raw)
+		log.Infof("raw tbs cert: %s", cert.RawTBSCertificate)
+
+		privateKey, err := x509.ParsePKCS8PrivateKey(cert.RawTBSCertificate)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse pkcs8 private key, error: %+v", err)
 		}
