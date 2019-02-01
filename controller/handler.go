@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -298,7 +299,14 @@ func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alph
 	}
 
 	stringData := make(map[string]string)
-	stringData[azureKeyVaultSecret.Spec.OutputSecret.KeyName] = secretValue
+	switch strings.ToLower(azureKeyVaultSecret.Spec.Vault.ObjectType) {
+	case "certificate":
+		stringData["tls.crt"] = secretValue
+		// stringData["tls.key"] =
+
+	default: // Opague
+		stringData[azureKeyVaultSecret.Spec.OutputSecret.KeyName] = secretValue
+	}
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

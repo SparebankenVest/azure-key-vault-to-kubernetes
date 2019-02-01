@@ -3,6 +3,7 @@ package vault
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -21,21 +22,71 @@ func NewAzureKeyVaultService() *AzureKeyVaultService {
 // GetSecret returns a secret from Azure Key Vault
 func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (string, error) {
 	//Get secret value from Azure Key Vault
-	vaultClient, err := a.getKeysClient("https://vault.azure.net")
+	vaultClient, err := a.getClient("https://vault.azure.net")
+	if err != nil {
+		return "", err
+	}
+
+	var vaultSecret string
+
+	baseURL := fmt.Sprintf("https://%s.vault.azure.net", secret.Spec.Vault.Name)
+
+	switch strings.ToLower(secret.Spec.Vault.ObjectType) {
+	case "certificate":
+		secretBundle, err := vaultClient.GetCertificate(context.Background(), baseURL, secret.Spec.Vault.ObjectName, "")
+
+		if err != nil {
+			return "", err
+		}
+		vaultSecret = string(*secretBundle.Cer)
+	default:
+		secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, secret.Spec.Vault.ObjectName, "")
+
+		if err != nil {
+			return "", err
+		}
+		vaultSecret = *secretBundle.Value
+	}
+
+	return vaultSecret, nil
+}
+
+// GetCertificate returns a certificate from Azure Key Vault
+func (a *AzureKeyVaultService) getCertificate(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (string, error) {
+	//Get secret value from Azure Key Vault
+	vaultClient, err := a.getClient("https://vault.azure.net")
 	if err != nil {
 		return "", err
 	}
 
 	baseURL := fmt.Sprintf("https://%s.vault.azure.net", secret.Spec.Vault.Name)
-	secretPack, err := vaultClient.GetSecret(context.Background(), baseURL, secret.Spec.Vault.ObjectName, "")
+	certBundle, err := vaultClient.GetCertificate(context.Background(), baseURL, secret.Spec.Vault.ObjectName, "")
 
 	if err != nil {
 		return "", err
 	}
-	return *secretPack.Value, nil
+
+	return string(*certBundle.Cer), nil
 }
 
-func (a *AzureKeyVaultService) getKeysClient(resource string) (*keyvault.BaseClient, error) {
+// // GetSecret returns a secret from Azure Key Vault
+// func (a *AzureKeyVaultService) GetKey(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (string, error) {
+// 	//Get secret value from Azure Key Vault
+// 	vaultClient, err := a.getClient("https://vault.azure.net")
+// 	if err != nil {
+// 		return "", err
+// 	}
+//
+// 	baseURL := fmt.Sprintf("https://%s.vault.azure.net", secret.Spec.Vault.Name)
+// 	secretPack, err := vaultClient.GetKey(context.Background(), baseURL, secret.Spec.Vault.ObjectName, "")
+//
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	return *secretPack.Value, nil
+// }
+
+func (a *AzureKeyVaultService) getClient(resource string) (*keyvault.BaseClient, error) {
 	authorizer, err := auth.NewAuthorizerFromEnvironmentWithResource(resource)
 	if err != nil {
 		return nil, err
