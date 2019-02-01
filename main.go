@@ -52,28 +52,24 @@ func main() {
 		FullTimestamp: true,
 	})
 
-	logrusLevel, err := log.ParseLevel(logLevel)
-	if err != nil {
-		log.Fatalf("Error setting log level: %s", err.Error())
-	}
-	log.SetLevel(logrusLevel)
-
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
+	setLogLevel()
 
+	var err error
 	azureVaultFastRate, err = getEnvDuration("AZURE_VAULT_NORMAL_POLL_INTERVALS", time.Minute*1)
 	if err != nil {
-		log.Fatalf("Error parsing env var AZURE_VAULT_FAST_RATE: %s", err.Error())
+		log.Fatalf("Error parsing env var AZURE_VAULT_NORMAL_POLL_INTERVALS: %s", err.Error())
 	}
 
 	azureVaultSlowRate, err = getEnvDuration("AZURE_VAULT_EXCEPTION_POLL_INTERVALS", time.Minute*5)
 	if err != nil {
-		log.Fatalf("Error parsing env var AZURE_VAULT_SLOW_RATE: %s", err.Error())
+		log.Fatalf("Error parsing env var AZURE_VAULT_EXCEPTION_POLL_INTERVALS: %s", err.Error())
 	}
 
 	azureVaultMaxFastAttempts, err = getEnvInt("AZURE_VAULT_MAX_FAILURE_ATTEMPTS", 5)
 	if err != nil {
-		log.Fatalf("Error parsing env var AZURE_VAULT_MAX_FAST_ATTEMPTS: %s", err.Error())
+		log.Fatalf("Error parsing env var AZURE_VAULT_MAX_FAILURE_ATTEMPTS: %s", err.Error())
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
@@ -117,7 +113,22 @@ func main() {
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&logLevel, "log-level", log.InfoLevel.String(), "log level")
+	flag.StringVar(&logLevel, "log-level", "", "log level")
+}
+
+func setLogLevel() {
+	if logLevel == "" {
+		var ok bool
+		if logLevel, ok = os.LookupEnv("LOG_LEVEL"); !ok {
+			logLevel = log.InfoLevel.String()
+		}
+	}
+
+	logrusLevel, err := log.ParseLevel(logLevel)
+	if err != nil {
+		log.Fatalf("Error setting log level: %s", err.Error())
+	}
+	log.SetLevel(logrusLevel)
 }
 
 func getEnvDuration(key string, fallback time.Duration) (time.Duration, error) {
