@@ -29,6 +29,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/SparebankenVest/azure-keyvault-controller/controller"
+	"github.com/SparebankenVest/azure-keyvault-controller/controller/vault"
 	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
 	informers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions"
 	"github.com/SparebankenVest/azure-keyvault-controller/pkg/signals"
@@ -38,6 +39,9 @@ var (
 	masterURL  string
 	kubeconfig string
 	logLevel   string
+
+	servicePrincipalID     string
+	servicePrincipalSecret string
 
 	azureVaultFastRate        time.Duration
 	azureVaultSlowRate        time.Duration
@@ -95,9 +99,19 @@ func main() {
 		MaxFailuresBeforeSlowingDown: azureVaultMaxFastAttempts,
 	}
 
+	var servicePrincipal *vault.AzureServicePrincipal
+
+	if servicePrincipalID != "" && servicePrincipalSecret != "" {
+		servicePrincipal = &vault.AzureServicePrincipal{
+			ServicePrincipalID:     servicePrincipalID,
+			ServicePrincipalSecret: servicePrincipalSecret,
+		}
+	}
+
 	controller := controller.NewController(kubeClient, azureKeyVaultSecretClient,
 		kubeInformerFactory.Core().V1().Secrets(),
 		azureKeyVaultSecretInformerFactory.Azurekeyvaultcontroller().V1alpha1().AzureKeyVaultSecrets(),
+		servicePrincipal,
 		azurePollFrequency)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
@@ -113,6 +127,8 @@ func main() {
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&servicePrincipalID, "service-principal-id", "", "Azure Service Principal ID")
+	flag.StringVar(&servicePrincipalSecret, "service-principal-secret", "", "Azure Service Principal Secret")
 	flag.StringVar(&logLevel, "log-level", "", "log level")
 }
 

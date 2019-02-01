@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/SparebankenVest/azure-keyvault-controller/controller/vault"
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
 	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
 	keyvaultScheme "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned/scheme"
@@ -86,13 +87,13 @@ type Controller struct {
 }
 
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretInformer coreinformers.SecretInformer, azureKeyVaultSecretsInformer informers.AzureKeyVaultSecretInformer, azureFrequency AzurePollFrequency) *Controller {
+func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretInformer coreinformers.SecretInformer, azureKeyVaultSecretsInformer informers.AzureKeyVaultSecretInformer, servicePrincipal *vault.AzureServicePrincipal, azureFrequency AzurePollFrequency) *Controller {
 	// Create event broadcaster
 	// Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// logged for azure-keyvault-controller types.
 	utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
 
-	handler := NewHandler(kubeclientset, azureKeyvaultClientset, secretInformer.Lister(), azureKeyVaultSecretsInformer.Lister(), azureFrequency)
+	handler := NewHandler(kubeclientset, azureKeyvaultClientset, secretInformer.Lister(), azureKeyVaultSecretsInformer.Lister(), servicePrincipal, azureFrequency)
 
 	controller := &Controller{
 		handler:                    handler,
