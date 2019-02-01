@@ -41,12 +41,12 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 			return "", err
 		}
 
-		// cert, err := x509.ParseCertificate(*secretBundle.Cer)
-		// if err != nil {
-		// 	return "", err
-		// }
+		cert, err := x509.ParseCertificate(*secretBundle.Cer)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse certificate from Azure Key Vault, error: %+v", err)
+		}
 
-		privateKey, err := x509.ParsePKCS8PrivateKey(*secretBundle.Cer)
+		privateKey, err := x509.ParsePKCS8PrivateKey(cert.Raw)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse pkcs8 private key, error: %+v", err)
 		}
