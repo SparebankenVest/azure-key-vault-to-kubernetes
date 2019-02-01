@@ -37,6 +37,22 @@ The `azure-keyvault-controller` use environment-based authentication as document
 
 Note: If you plan to use Managed Service Identity (MSI) you will need to have the [`azure-pod-identity`](https://github.com/Azure/aad-pod-identity) running and configured in the cluster. You will need the `azure-pod-identity` controller, define a `AzureIdentity` AND use the `aadpodidbinding` label with the right selector for your Pod/Deployment.
 
+At the time of writing the following options was available:
+
+| Authentication type |	Environment variable |	Description |
+| ------------------- | -------------------- | ------------ |
+| Client credentials 	| AZURE_TENANT_ID 	   | The ID for the Active Directory tenant that the service principal belongs to. |
+|                     |	AZURE_CLIENT_ID 	   | The name or ID of the service principal. |
+|                     |	AZURE_CLIENT_SECRET  | The secret associated with the service principal. |
+| Certificate 	      | AZURE_TENANT_ID      | The ID for the Active Directory tenant that the certificate is registered with. |
+|                     | AZURE_CLIENT_ID      | The application client ID associated with the certificate. |
+|                     | AZURE_CERTIFICATE_PATH | The path to the client certificate file. |
+|                     | AZURE_CERTIFICATE_PASSWORD | The password for the client certificate. |
+| Username/Password   | AZURE_TENANT_ID | The ID for the Active Directory tenant that the user belongs to. |
+|                     | AZURE_CLIENT_ID | The application client ID. |
+|                     | AZURE_USERNAME  | The username to sign in with.
+|                     | AZURE_PASSWORD  | The password to sign in with. |
+
 ## Azure Key Vault Authorization
 
 The account which the controller is running under must also have Azure Key Vault `get` permissions to the different object types that will be synchronized to Kubernetes. This is controlled through Azure Key Vault policies and can be configured through Azure CLI like this:
@@ -76,23 +92,7 @@ Optional environment variables:
 | AZURE_VAULT_MAX_FAILURE_ATTEMPTS     | How many failures are accepted before reducing the frequency to Slow | "5" |
 | LOG_LEVEL                            | Log level to use for output logs. Options are `trace`, `debug`, `info`, `warning`, `error`, `fatal` or `panic`. | info |
 
-In addition there are environment variables for controlling **Azure authentication** which is documented by Microsoft here: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization#use-environment-based-authentication
-
-At the time of writing the following options was available:
-
-| Authentication type |	Environment variable |	Description |
-| ------------------- | -------------------- | ------------ |
-| Client credentials 	| AZURE_TENANT_ID 	   | The ID for the Active Directory tenant that the service principal belongs to. |
-|                     |	AZURE_CLIENT_ID 	   | The name or ID of the service principal. |
-|                     |	AZURE_CLIENT_SECRET  | The secret associated with the service principal. |
-| Certificate 	      | AZURE_TENANT_ID      | The ID for the Active Directory tenant that the certificate is registered with. |
-|                     | AZURE_CLIENT_ID      | The application client ID associated with the certificate. |
-|                     | AZURE_CERTIFICATE_PATH | The path to the client certificate file. |
-|                     | AZURE_CERTIFICATE_PASSWORD | The password for the client certificate. |
-| Username/Password   | AZURE_TENANT_ID | The ID for the Active Directory tenant that the user belongs to. |
-|                     | AZURE_CLIENT_ID | The application client ID. |
-|                     | AZURE_USERNAME  | The username to sign in with.
-|                     | AZURE_PASSWORD  | The password to sign in with. |
+In addition there are environment variables for controlling **Azure authentication** which is documented by Microsoft here: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization#use-environment-based-authentication and describe above in the Authentication section.
 
 ## Usage
 
