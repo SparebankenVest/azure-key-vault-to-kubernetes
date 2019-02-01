@@ -123,7 +123,7 @@ func (h *Handler) azureSyncHandler(key string) error {
 	log.Debugf("Getting secret value for %s in Azure", key)
 	if secretValue, err = h.keyVaultService.GetSecret(azureKeyVaultSecret); err != nil {
 		msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
-		log.Warning(msg)
+		log.Errorf("failed to get secret value for '%s' from Azure Key vault '%s' using object name '%s', error: %+v", key, azureKeyVaultSecret.Spec.Vault.Name, azureKeyVaultSecret.Spec.Vault.ObjectName, err)
 		h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
 		return fmt.Errorf(msg)
 	}
@@ -290,6 +290,7 @@ func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alph
 		secretValue, err = h.keyVaultService.GetSecret(azureKeyVaultSecret)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
+			log.Errorf("failed to get secret value for '%s' from Azure Key vault '%s' using object name '%s', error: %+v", azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name, azureKeyVaultSecret.Spec.Vault.ObjectName, err)
 			return nil, fmt.Errorf(msg)
 		}
 	} else {
