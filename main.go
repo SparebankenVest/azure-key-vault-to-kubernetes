@@ -129,6 +129,7 @@ func setLogLevel() {
 		log.Fatalf("Error setting log level: %s", err.Error())
 	}
 	log.SetLevel(logrusLevel)
+	log.Printf("Log level set to '%s'", logrusLevel.String())
 }
 
 func getEnvDuration(key string, fallback time.Duration) (time.Duration, error) {
