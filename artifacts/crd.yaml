@@ -35,3 +35,5 @@ spec:
                   type: string
                 keyName:
                   type: string
+                type:
+                  type: string
