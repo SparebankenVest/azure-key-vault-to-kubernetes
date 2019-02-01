@@ -14,14 +14,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 
+	"github.com/SparebankenVest/azure-keyvault-controller/controller/vault"
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
 	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
 	listers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/listers/azurekeyvaultcontroller/v1alpha1"
-	"github.com/SparebankenVest/azure-keyvault-controller/vault"
 )
 
 // Handler process work on workqueues
@@ -39,8 +41,26 @@ type Handler struct {
 	recorder record.EventRecorder
 }
 
+// AzurePollFrequency controls time durations to wait between polls to Azure Key Vault for changes
+type AzurePollFrequency struct {
+	// Normal is the time duration to wait between polls to Azure Key Vault for changes
+	Normal time.Duration
+
+	// MaxFailuresBeforeSlowingDown controls how many failures are accepted before reducing the frequency to Slow
+	MaxFailuresBeforeSlowingDown int
+
+	// Slow is the time duration to wait between polls to Azure Key Vault for changes, after MaxFailuresBeforeSlowingDown is reached
+	Slow time.Duration
+}
+
 //NewHandler returns a new Handler
-func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretLister corelisters.SecretLister, azureKeyVaultSecretsLister listers.AzureKeyVaultSecretLister, recorder record.EventRecorder, azureFrequency AzurePollFrequency) *Handler {
+func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretLister corelisters.SecretLister, azureKeyVaultSecretsLister listers.AzureKeyVaultSecretLister, azureFrequency AzurePollFrequency) *Handler {
+	log.Info("Creating event broadcaster")
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(log.Tracef)
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
+
 	return &Handler{
 		kubeclientset:              kubeclientset,
 		azureKeyvaultClientset:     azureKeyvaultClientset,

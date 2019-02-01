@@ -28,17 +28,13 @@ import (
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
 	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
 	keyvaultScheme "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned/scheme"
 	informers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions/azurekeyvaultcontroller/v1alpha1"
-	listers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/listers/azurekeyvaultcontroller/v1alpha1"
 )
 
 const controllerAgentName = "azure-keyvault-controller"
@@ -76,14 +72,8 @@ const (
 type Controller struct {
 	// Handler process work on workqueues
 	handler *Handler
-	// kubeclientset is a standard kubernetes clientset
-	kubeclientset kubernetes.Interface
-	// azureKeyvaultClientset is a clientset for our own API group
-	azureKeyvaultClientset clientset.Interface
 
-	secretsLister              corelisters.SecretLister
 	secretsSynced              cache.InformerSynced
-	azureKeyVaultSecretsLister listers.AzureKeyVaultSecretLister
 	azureKeyVaultSecretsSynced cache.InformerSynced
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
@@ -93,21 +83,6 @@ type Controller struct {
 	// simultaneously in two different workers.
 	workqueue      workqueue.RateLimitingInterface
 	workqueueAzure workqueue.RateLimitingInterface
-	// recorder is an event recorder for recording Event resources to the
-	// Kubernetes API.
-	recorder record.EventRecorder
-}
-
-// AzurePollFrequency controls time durations to wait between polls to Azure Key Vault for changes
-type AzurePollFrequency struct {
-	// Normal is the time duration to wait between polls to Azure Key Vault for changes
-	Normal time.Duration
-
-	// MaxFailuresBeforeSlowingDown controls how many failures are accepted before reducing the frequency to Slow
-	MaxFailuresBeforeSlowingDown int
-
-	// Slow is the time duration to wait between polls to Azure Key Vault for changes, after MaxFailuresBeforeSlowingDown is reached
-	Slow time.Duration
 }
 
 // NewController returns a new AzureKeyVaultSecret controller
@@ -116,25 +91,15 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 	// Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// logged for azure-keyvault-controller types.
 	utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
-	log.Info("Creating event broadcaster")
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(log.Tracef)
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
-	handler := NewHandler(kubeclientset, azureKeyvaultClientset, secretInformer.Lister(), azureKeyVaultSecretsInformer.Lister(), recorder, azureFrequency)
+	handler := NewHandler(kubeclientset, azureKeyvaultClientset, secretInformer.Lister(), azureKeyVaultSecretsInformer.Lister(), azureFrequency)
 
 	controller := &Controller{
 		handler:                    handler,
-		kubeclientset:              kubeclientset,
-		azureKeyvaultClientset:     azureKeyvaultClientset,
-		secretsLister:              secretInformer.Lister(),
 		secretsSynced:              secretInformer.Informer().HasSynced,
-		azureKeyVaultSecretsLister: azureKeyVaultSecretsInformer.Lister(),
 		azureKeyVaultSecretsSynced: azureKeyVaultSecretsInformer.Informer().HasSynced,
 		workqueue:                  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "AzureKeyVaultSecrets"),
 		workqueueAzure:             workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown), "AzureKeyVault"),
-		recorder:                   recorder,
 	}
 
 	log.Info("Setting up event handlers")
