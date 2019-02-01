@@ -56,20 +56,12 @@ type AzurePollFrequency struct {
 }
 
 //NewHandler returns a new Handler
-func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretLister corelisters.SecretLister, azureKeyVaultSecretsLister listers.AzureKeyVaultSecretLister, servicePrincipal *vault.AzureServicePrincipal, azureFrequency AzurePollFrequency) *Handler {
+func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretLister corelisters.SecretLister, azureKeyVaultSecretsLister listers.AzureKeyVaultSecretLister, azureFrequency AzurePollFrequency) *Handler {
 	log.Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(log.Tracef)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
-
-	var vaultService *vault.AzureKeyVaultService
-
-	if servicePrincipal != nil {
-		vaultService = vault.NewAzureKeyVaultServiceWithServicePrincipal(servicePrincipal)
-	} else {
-		vaultService = vault.NewAzureKeyVaultService()
-	}
 
 	return &Handler{
 		kubeclientset:              kubeclientset,
@@ -77,7 +69,7 @@ func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clien
 		secretsLister:              secretLister,
 		azureKeyVaultSecretsLister: azureKeyVaultSecretsLister,
 		recorder:                   recorder,
-		keyVaultService:            vaultService,
+		keyVaultService:            vault.NewAzureKeyVaultService(),
 	}
 }
 

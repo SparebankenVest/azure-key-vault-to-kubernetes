@@ -9,29 +9,16 @@ import (
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
+	log "github.com/sirupsen/logrus"
 )
 
 // AzureKeyVaultService provide interaction with Azure Key Vault
 type AzureKeyVaultService struct {
-	servicePrincipal *AzureServicePrincipal
-}
-
-// AzureServicePrincipal contains Azure Service Principal credentials
-type AzureServicePrincipal struct {
-	ServicePrincipalID     string
-	ServicePrincipalSecret string
 }
 
 // NewAzureKeyVaultService creates a new AzureKeyVaultService using built in Managed Service Identity for authentication
 func NewAzureKeyVaultService() *AzureKeyVaultService {
 	return &AzureKeyVaultService{}
-}
-
-// NewAzureKeyVaultServiceWithServicePrincipal creates a new AzureKeyVaultService using Service Principal for authentication
-func NewAzureKeyVaultServiceWithServicePrincipal(sp *AzureServicePrincipal) *AzureKeyVaultService {
-	return &AzureKeyVaultService{
-		servicePrincipal: sp,
-	}
 }
 
 // GetSecret returns a secret from Azure Key Vault
@@ -56,23 +43,22 @@ func (a *AzureKeyVaultService) getKeysClient(resource string) (*keyvault.BaseCli
 
 	var authorizer autorest.Authorizer
 
-	if a.servicePrincipal != nil {
-		var err error
-		if authorizer, err = auth.NewAuthorizerFromEnvironment(); err != nil {
-			return nil, fmt.Errorf("azure: failed to get authorizer from environment, %+v", err)
-		}
-	} else {
-		msiEndpoint, err := adal.GetMSIVMEndpoint()
+	var err error
+	if authorizer, err = auth.NewAuthorizerFromEnvironment(); err != nil {
 		if err != nil {
-			return nil, fmt.Errorf("azure: failed to get msiendpoint, %+v", err)
-		}
+			log.Warning("azure: failed to get authorizer from environment, will try MSI directly")
 
-		spt, err := adal.NewServicePrincipalTokenFromMSI(msiEndpoint, resource)
-		if err != nil {
-			return nil, fmt.Errorf("failed to acquire a token using the MSI VM extension, Error: %+v", err)
-		}
+			msiEndpoint, err := adal.GetMSIVMEndpoint()
+			if err != nil {
+				return nil, fmt.Errorf("azure: failed to get msiendpoint, %+v", err)
+			}
 
-		authorizer = autorest.NewBearerAuthorizer(spt)
+			spt, err := adal.NewServicePrincipalTokenFromMSI(msiEndpoint, resource)
+			if err != nil {
+				return nil, fmt.Errorf("failed to acquire a token using the MSI VM extension, Error: %+v", err)
+			}
+			authorizer = autorest.NewBearerAuthorizer(spt)
+		}
 	}
 
 	keyClient.Authorizer = authorizer
