@@ -10,8 +10,19 @@ import (
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
 )
 
+// AzureKeyVaultService provide interaction with Azure Key Vault
+type AzureKeyVaultService struct {
+	servicePrincipalID     string
+	servicePrincipalSecret string
+}
+
+// NewAzureKeyVaultService creates a new NewAzureKeyVaultService
+func NewAzureKeyVaultService() *AzureKeyVaultService {
+	return &AzureKeyVaultService{}
+}
+
 // GetSecret returns a secret from Azure Key Vault
-func GetSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (string, error) {
+func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (string, error) {
 	//Get secret value from Azure Key Vault
 	vaultClient, err := getKeysClient("https://vault.azure.net")
 	if err != nil {

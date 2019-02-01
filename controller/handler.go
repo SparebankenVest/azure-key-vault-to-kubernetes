@@ -39,6 +39,8 @@ type Handler struct {
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
+
+	keyVaultService *vault.AzureKeyVaultService
 }
 
 // AzurePollFrequency controls time durations to wait between polls to Azure Key Vault for changes
@@ -67,6 +69,7 @@ func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clien
 		secretsLister:              secretLister,
 		azureKeyVaultSecretsLister: azureKeyVaultSecretsLister,
 		recorder:                   recorder,
+		keyVaultService:            vault.NewAzureKeyVaultService(),
 	}
 }
 
@@ -118,7 +121,7 @@ func (h *Handler) azureSyncHandler(key string) error {
 	}
 
 	log.Debugf("Getting secret value for %s in Azure", key)
-	if secretValue, err = vault.GetSecret(azureKeyVaultSecret); err != nil {
+	if secretValue, err = h.keyVaultService.GetSecret(azureKeyVaultSecret); err != nil {
 		msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 		log.Warning(msg)
 		h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
@@ -131,7 +134,7 @@ func (h *Handler) azureSyncHandler(key string) error {
 	if azureKeyVaultSecret.Status.SecretHash != secretHash {
 		log.Infof("Secret has changed in Azure Key Vault for AzureKeyvVaultSecret %s. Updating Secret now.", azureKeyVaultSecret.Name)
 
-		newSecret, err := createNewSecret(azureKeyVaultSecret, &secretValue)
+		newSecret, err := h.createNewSecret(azureKeyVaultSecret, &secretValue)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 			log.Error(msg)
@@ -182,7 +185,7 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 		if errors.IsNotFound(err) {
 			var newSecret *corev1.Secret
 
-			if newSecret, err = createNewSecret(azureKeyVaultSecret, nil); err != nil {
+			if newSecret, err = h.createNewSecret(azureKeyVaultSecret, nil); err != nil {
 				msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 				h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
 				return nil, fmt.Errorf(msg)
@@ -279,12 +282,12 @@ func (h *Handler) handleObject(obj interface{}) (*azureKeyVaultSecretv1alpha1.Az
 // newSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue *string) (*corev1.Secret, error) {
+func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue *string) (*corev1.Secret, error) {
 	var secretValue string
 
 	if azureSecretValue == nil {
 		var err error
-		secretValue, err = vault.GetSecret(azureKeyVaultSecret)
+		secretValue, err = h.keyVaultService.GetSecret(azureKeyVaultSecret)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 			return nil, fmt.Errorf(msg)
