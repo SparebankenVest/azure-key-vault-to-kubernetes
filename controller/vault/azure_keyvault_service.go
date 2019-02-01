@@ -9,6 +9,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"golang.org/x/crypto/pkcs12"
+
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
@@ -48,25 +50,46 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 			return "", fmt.Errorf("failed to parse certificate from Azure Key Vault, error: %+v", err)
 		}
 
-		log.Infof("raw tbs cert: %s", cert.RawTBSCertificate)
+		log.Infof("bundle cert: %s", *secretBundle.Cer)
+		log.Infof("raw cert: %s", cert.Raw)
 
-		privateKey, err := x509.ParsePKCS8PrivateKey(cert.RawTBSCertificate)
+		var pemCert []byte
+
+		log.Info("trying to convert cert bundle from vault to pem")
+		pemTmp, err := pkcs12.ToPEM(*secretBundle.Cer, "")
+
 		if err != nil {
-			return "", fmt.Errorf("failed to parse pkcs8 private key, error: %+v", err)
+			log.Info("trying to convert x509 cert to pem")
+			pemTmp, err = pkcs12.ToPEM(cert.Raw, "")
+			if err != nil {
+				log.Info("trying to convert x509 cert to pem home grown")
+				pemCert = CertToPEM(cert)
+				// log.Info("giving up!!!")
+				// return "", err
+			} else {
+				pemCert = pem.EncodeToMemory(pemTmp[0])
+			}
+		} else {
+			pemCert = pem.EncodeToMemory(pemTmp[0])
 		}
 
-		privBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
-		if err != nil {
-			return "", fmt.Errorf("failed to marshal pkcs8 private key, error: %+v", err)
-		}
+		// privateKey, err := x509.ParsePKCS8PrivateKey(cert.RawTBSCertificate)
+		// if err != nil {
+		// 	return "", fmt.Errorf("failed to parse pkcs8 private key, error: %+v", err)
+		// }
+		//
+		// privBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+		// if err != nil {
+		// 	return "", fmt.Errorf("failed to marshal pkcs8 private key, error: %+v", err)
+		// }
+		//
+		// pemdata := pem.EncodeToMemory(&pem.Block{
+		// 	Type:  "RSA PRIVATE KEY",
+		// 	Bytes: privBytes,
+		// },
+		// )
 
-		pemdata := pem.EncodeToMemory(&pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: privBytes,
-		},
-		)
-
-		return string(pemdata), nil
+		return string(pemCert), nil
 
 		// return fmt.Printf(privateKey), nil
 
@@ -142,3 +165,24 @@ func (a *AzureKeyVaultService) getClient(resource string) (*keyvault.BaseClient,
 
 	return &keyClient, nil
 }
+
+func CertToPEM(cert *x509.Certificate) []byte {
+	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+
+	return pemCert
+}
+
+// func CertToKey(cert *x509.Certificate) data.PublicKey {
+// 	block := pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
+// 	pemdata := pem.EncodeToMemory(&block)
+//
+// 	switch cert.PublicKeyAlgorithm {
+// 	case x509.RSA:
+// 		return data.NewRSAx509PublicKey(pemdata)
+// 	case x509.ECDSA:
+// 		return data.NewECDSAx509PublicKey(pemdata)
+// 	default:
+// 		logrus.Debugf("Unknown key type parsed from certificate: %v", cert.PublicKeyAlgorithm)
+// 		return nil
+// 	}
+// }
