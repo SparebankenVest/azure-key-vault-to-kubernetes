@@ -61,17 +61,17 @@ func main() {
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
 
-	azureVaultFastRate, err = getEnvDuration("AZURE_VAULT_FAST_RATE", time.Minute*1)
+	azureVaultFastRate, err = getEnvDuration("AZURE_VAULT_NORMAL_POLL_INTERVALS", time.Minute*1)
 	if err != nil {
 		log.Fatalf("Error parsing env var AZURE_VAULT_FAST_RATE: %s", err.Error())
 	}
 
-	azureVaultSlowRate, err = getEnvDuration("AZURE_VAULT_SLOW_RATE", time.Minute*5)
+	azureVaultSlowRate, err = getEnvDuration("AZURE_VAULT_EXCEPTION_POLL_INTERVALS", time.Minute*5)
 	if err != nil {
 		log.Fatalf("Error parsing env var AZURE_VAULT_SLOW_RATE: %s", err.Error())
 	}
 
-	azureVaultMaxFastAttempts, err = getEnvInt("AZURE_VAULT_MAX_FAST_ATTEMPTS", 5)
+	azureVaultMaxFastAttempts, err = getEnvInt("AZURE_VAULT_MAX_FAILURE_ATTEMPTS", 5)
 	if err != nil {
 		log.Fatalf("Error parsing env var AZURE_VAULT_MAX_FAST_ATTEMPTS: %s", err.Error())
 	}
