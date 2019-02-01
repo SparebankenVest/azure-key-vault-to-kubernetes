@@ -3,6 +3,7 @@ package vault
 import (
 	"context"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"strings"
 
@@ -40,11 +41,33 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 			return "", err
 		}
 
-		cert, err := x509.ParseCertificate(*secretBundle.Cer)
+		// cert, err := x509.ParseCertificate(*secretBundle.Cer)
+		// if err != nil {
+		// 	return "", err
+		// }
+
+		privateKey, err := x509.ParsePKCS1PrivateKey(*secretBundle.Cer)
 		if err != nil {
 			return "", err
 		}
-		vaultSecret = cert.Subject.String()
+
+		pemdata := pem.EncodeToMemory(&pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+		},
+		)
+
+		return string(pemdata), nil
+
+		// return fmt.Printf(privateKey), nil
+
+		// pubKey := cert.PublicKey.(*rsa.PublicKey)
+
+		// switch cert.PublicKeyAlgorithm {
+		// case x509.RSA:
+		// }
+		// cert.PublicKey
+		// vaultSecret = cert.Subject.String()
 		// vaultClient.GetKey(context.Background(), baseURL, secretBundle.Kid, keyVersion)
 		// vaultSecret = bytes.NewBuffer(*secretBundle.Cer).String() //string(*secretBundle.Cer)
 		// decSecret, err := base64.StdEncoding.DecodeString(vaultSecret)
