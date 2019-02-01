@@ -44,7 +44,7 @@ func (a *AzureKeyVaultService) getKeysClient(resource string) (*keyvault.BaseCli
 	var authorizer autorest.Authorizer
 
 	var err error
-	if authorizer, err = auth.NewAuthorizerFromEnvironment(); err != nil {
+	if authorizer, err = auth.NewAuthorizerFromEnvironmentWithResource(resource); err != nil {
 		if err != nil {
 			log.Warning("azure: failed to get authorizer from environment, will try MSI directly")
 
