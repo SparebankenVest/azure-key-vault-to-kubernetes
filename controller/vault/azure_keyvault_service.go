@@ -6,6 +6,8 @@ import (
 	"encoding/pem"
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
@@ -45,7 +47,7 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 }
 
 func getSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[string][]byte, error) {
-	var secretValue map[string][]byte
+	secretValue := make(map[string][]byte, 1)
 
 	//Get secret value from Azure Key Vault
 	vaultClient, err := getClient("https://vault.azure.net")
@@ -66,7 +68,7 @@ func getSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[str
 
 // getCertificate return public/private certificate pems
 func getCertificate(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[string][]byte, error) {
-	var secretValue map[string][]byte
+	secretValue := make(map[string][]byte, 2)
 
 	//Get secret value from Azure Key Vault
 	vaultClient, err := getClient("https://vault.azure.net")
@@ -107,7 +109,9 @@ func base64EncodeString(value string) []byte {
 }
 
 func base64Encode(src []byte) []byte {
-	dst := make([]byte, base64.RawStdEncoding.EncodedLen(len(src)))
+	sliceLen := base64.RawStdEncoding.EncodedLen(len(src))
+	log.Debugf("size of value to base64 encode is %d", sliceLen)
+	dst := make([]byte, sliceLen)
 	base64.RawStdEncoding.Encode(dst, src)
 	return dst
 }
