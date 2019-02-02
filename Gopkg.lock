@@ -149,6 +149,12 @@
   version = "v1.1.5"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/knq/pemutil"
+  packages = ["."]
+  revision = "fb6fad722528d308d5fbc9f39e0a9644905ee1cb"
+
+[[projects]]
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
   revision = "5c8c8bd35d3832f5d134ae1e1e375b69a4d25242"
@@ -623,6 +629,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "cd50b477830d9d43095156f5ece3df5367d7fd2fb22d868600789bb926ef86e5"
+  inputs-digest = "208feb6b5f4b746f89835e7888f30989bace3007a96b0fc0ff3bc8956e3b62e5"
   solver-name = "gps-cdcl"
   solver-version = 1
