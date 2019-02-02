@@ -2,11 +2,8 @@ package vault
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -62,7 +59,7 @@ func getSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[str
 		return secretValue, err
 	}
 
-	secretValue[secret.Spec.OutputSecret.KeyName] = base64EncodeString(*secretBundle.Value)
+	secretValue[secret.Spec.OutputSecret.KeyName] = []byte(*secretBundle.Value)
 	return secretValue, nil
 }
 
@@ -87,8 +84,8 @@ func getCertificate(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (ma
 	privateDer, rest := pem.Decode([]byte(*secretBundle.Value))
 	publicDer, _ := pem.Decode(rest)
 
-	secretValue["tls.key"] = base64Encode(pem.EncodeToMemory(privateDer))
-	secretValue["tls.crt"] = base64Encode(pem.EncodeToMemory(publicDer))
+	secretValue["tls.key"] = pem.EncodeToMemory(privateDer)
+	secretValue["tls.crt"] = pem.EncodeToMemory(publicDer)
 	return secretValue, nil
 }
 
@@ -104,17 +101,17 @@ func getClient(resource string) (*keyvault.BaseClient, error) {
 	return &keyClient, nil
 }
 
-func base64EncodeString(value string) []byte {
-	return base64Encode([]byte(value))
-}
-
-func base64Encode(src []byte) []byte {
-	sliceLen := base64.RawStdEncoding.EncodedLen(len(src))
-	log.Debugf("size of value to base64 encode is %d", sliceLen)
-	dst := make([]byte, sliceLen)
-	base64.RawStdEncoding.Encode(dst, src)
-	return dst
-}
+// func base64EncodeString(value string) []byte {
+// 	return base64Encode([]byte(value))
+// }
+//
+// func base64Encode(src []byte) []byte {
+// 	sliceLen := base64.RawStdEncoding.EncodedLen(len(src))
+// 	log.Debugf("size of value to base64 encode is %d", sliceLen)
+// 	dst := make([]byte, sliceLen)
+// 	base64.RawStdEncoding.Encode(dst, src)
+// 	return dst
+// }
 
 // // GetCertificate returns a certificate from Azure Key Vault
 // func (a *AzureKeyVaultService) getCertificate(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (string, error) {
