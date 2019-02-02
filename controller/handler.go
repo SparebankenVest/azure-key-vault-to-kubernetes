@@ -1,10 +1,10 @@
 package controller
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -110,7 +110,7 @@ func (h *Handler) syncHandler(key string) error {
 func (h *Handler) azureSyncHandler(key string) error {
 	var azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret
 	var secret *corev1.Secret
-	var secretValue string
+	var secretValue map[string][]byte
 	var err error
 
 	log.Debugf("Checking state for %s in Azure", key)
@@ -135,7 +135,7 @@ func (h *Handler) azureSyncHandler(key string) error {
 	if azureKeyVaultSecret.Status.SecretHash != secretHash {
 		log.Infof("Secret has changed in Azure Key Vault for AzureKeyvVaultSecret %s. Updating Secret now.", azureKeyVaultSecret.Name)
 
-		newSecret, err := h.createNewSecret(azureKeyVaultSecret, &secretValue)
+		newSecret, err := h.createNewSecret(azureKeyVaultSecret, secretValue)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 			log.Error(msg)
@@ -175,6 +175,7 @@ func (h *Handler) getAzureKeyVaultSecret(key string) (*azureKeyVaultSecretv1alph
 
 func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (*corev1.Secret, error) {
 	var secret *corev1.Secret
+	var secretValues map[string][]byte
 	var err error
 
 	secretName := azureKeyVaultSecret.Spec.OutputSecret.Name
@@ -186,7 +187,12 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 		if errors.IsNotFound(err) {
 			var newSecret *corev1.Secret
 
-			if newSecret, err = h.createNewSecret(azureKeyVaultSecret, nil); err != nil {
+			secretValues, err = h.keyVaultService.GetSecret(azureKeyVaultSecret)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get secret from Azure Key Vault for secret '%s'/'%s', error: %+v", azureKeyVaultSecret.Namespace, azureKeyVaultSecret.Name, err)
+			}
+
+			if newSecret, err = h.createNewSecret(azureKeyVaultSecret, secretValues); err != nil {
 				msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 				h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
 				return nil, fmt.Errorf(msg)
@@ -213,8 +219,7 @@ func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyV
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	azureKeyVaultSecretCopy := azureKeyVaultSecret.DeepCopy()
-	secretValue := string(secret.Data[azureKeyVaultSecret.Spec.OutputSecret.KeyName])
-	secretHash := getMD5Hash(secretValue)
+	secretHash := getMD5Hash(secret.Data)
 	azureKeyVaultSecretCopy.Status.SecretHash = secretHash
 	azureKeyVaultSecretCopy.Status.LastAzureUpdate = time.Now()
 
@@ -283,30 +288,30 @@ func (h *Handler) handleObject(obj interface{}) (*azureKeyVaultSecretv1alpha1.Az
 // newSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue *string) (*corev1.Secret, error) {
-	var secretValue string
+func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue map[string][]byte) (*corev1.Secret, error) {
+	// var secretValue string
 
-	if azureSecretValue == nil {
-		var err error
-		secretValue, err = h.keyVaultService.GetSecret(azureKeyVaultSecret)
-		if err != nil {
-			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
-			log.Errorf("failed to get secret value for '%s' from Azure Key vault '%s' using object name '%s', error: %+v", azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name, azureKeyVaultSecret.Spec.Vault.ObjectName, err)
-			return nil, fmt.Errorf(msg)
-		}
-	} else {
-		secretValue = *azureSecretValue
-	}
+	// if azureSecretValue == nil {
+	// 	var err error
+	// 	secretValue, err = h.keyVaultService.GetSecret(azureKeyVaultSecret)
+	// 	if err != nil {
+	// 		msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
+	// 		log.Errorf("failed to get secret value for '%s' from Azure Key vault '%s' using object name '%s', error: %+v", azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name, azureKeyVaultSecret.Spec.Vault.ObjectName, err)
+	// 		return nil, fmt.Errorf(msg)
+	// 	}
+	// } else {
+	// 	secretValue = *azureSecretValue
+	// }
 
-	stringData := make(map[string]string)
-	switch strings.ToLower(azureKeyVaultSecret.Spec.Vault.ObjectType) {
-	case "certificate":
-		stringData["tls.crt"] = secretValue
-		// stringData["tls.key"] =
-
-	default: // Opague
-		stringData[azureKeyVaultSecret.Spec.OutputSecret.KeyName] = secretValue
-	}
+	// stringData := make(map[string]string)
+	// switch strings.ToLower(azureKeyVaultSecret.Spec.Vault.ObjectType) {
+	// case "certificate":
+	// 	stringData["tls.crt"] = secretValue
+	// 	// stringData["tls.key"] =
+	//
+	// default: // Opague
+	// 	stringData[azureKeyVaultSecret.Spec.OutputSecret.KeyName] = secretValue
+	// }
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -320,13 +325,44 @@ func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alph
 				}),
 			},
 		},
-		Type:       azureKeyVaultSecret.Spec.OutputSecret.Type,
-		StringData: stringData,
+		Type: azureKeyVaultSecret.Spec.OutputSecret.Type,
+		Data: azureSecretValue,
 	}, nil
 }
 
-func getMD5Hash(text string) string {
+// // newSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
+// // the appropriate OwnerReferences on the resource so handleObject can discover
+// // the AzureKeyVaultSecret resource that 'owns' it.
+// func (h *Handler) createNewCertificateSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, cert []string) (*corev1.Secret, error) {
+// 	stringData := make(map[string]string)
+// 	stringData["tls.key"] = cert[0]
+// 	stringData["tls.crt"] = cert[1]
+//
+// 	return &corev1.Secret{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      azureKeyVaultSecret.Spec.OutputSecret.Name,
+// 			Namespace: azureKeyVaultSecret.Namespace,
+// 			OwnerReferences: []metav1.OwnerReference{
+// 				*metav1.NewControllerRef(azureKeyVaultSecret, schema.GroupVersionKind{
+// 					Group:   azureKeyVaultSecretv1alpha1.SchemeGroupVersion.Group,
+// 					Version: azureKeyVaultSecretv1alpha1.SchemeGroupVersion.Version,
+// 					Kind:    "AzureKeyVaultSecret",
+// 				}),
+// 			},
+// 		},
+// 		Type:       azureKeyVaultSecret.Spec.OutputSecret.Type,
+// 		StringData: stringData,
+// 	}, nil
+// }
+
+func getMD5Hash(values map[string][]byte) string {
+	var mergedValues bytes.Buffer
+
+	for k, v := range values {
+		mergedValues.WriteString(k + string(v))
+	}
+
 	hasher := md5.New()
-	hasher.Write([]byte(text))
+	hasher.Write([]byte(mergedValues.String()))
 	return hex.EncodeToString(hasher.Sum(nil))
 }
