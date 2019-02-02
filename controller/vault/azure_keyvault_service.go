@@ -84,8 +84,8 @@ func getCertificate(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (ma
 	privateDer, rest := pem.Decode([]byte(*secretBundle.Value))
 	publicDer, _ := pem.Decode(rest)
 
-	secretValue["tls.key"] = pem.EncodeToMemory(privateDer)
 	secretValue["tls.crt"] = pem.EncodeToMemory(publicDer)
+	secretValue["tls.key"] = pem.EncodeToMemory(privateDer)
 	return secretValue, nil
 }
 
