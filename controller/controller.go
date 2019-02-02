@@ -109,6 +109,7 @@ func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset cl
 			secret := obj.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
 			log.Debugf("AzureKeyVaultSecret '%s' added. Adding to queue.", secret.Name)
 			controller.enqueueAzureKeyVaultSecret(obj)
+			controller.enqueueAzurePoll(obj)
 		},
 		UpdateFunc: func(old, new interface{}) {
 			newSecret := new.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
