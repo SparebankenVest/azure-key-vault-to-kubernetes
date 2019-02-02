@@ -60,10 +60,7 @@ func getSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[str
 		return secretValue, err
 	}
 
-	value := make([]byte, 0)
-	base64.RawStdEncoding.Encode(value, []byte(*secretBundle.Value))
-
-	secretValue[secret.Spec.OutputSecret.KeyName] = value
+	secretValue[secret.Spec.OutputSecret.KeyName] = base64EncodeString(*secretBundle.Value)
 	return secretValue, nil
 }
 
@@ -88,14 +85,8 @@ func getCertificate(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (ma
 	privateDer, rest := pem.Decode([]byte(*secretBundle.Value))
 	publicDer, _ := pem.Decode(rest)
 
-	privateKey := make([]byte, 0)
-	publicCrt := make([]byte, 0)
-
-	base64.RawStdEncoding.Encode(privateKey, pem.EncodeToMemory(privateDer))
-	base64.RawStdEncoding.Encode(publicCrt, pem.EncodeToMemory(publicDer))
-
-	secretValue["tls.key"] = privateKey
-	secretValue["tls.crt"] = publicCrt
+	secretValue["tls.key"] = base64Encode(pem.EncodeToMemory(privateDer))
+	secretValue["tls.crt"] = base64Encode(pem.EncodeToMemory(publicDer))
 	return secretValue, nil
 }
 
@@ -109,6 +100,16 @@ func getClient(resource string) (*keyvault.BaseClient, error) {
 	keyClient.Authorizer = authorizer
 
 	return &keyClient, nil
+}
+
+func base64EncodeString(value string) []byte {
+	return base64Encode([]byte(value))
+}
+
+func base64Encode(src []byte) []byte {
+	dst := make([]byte, base64.RawStdEncoding.EncodedLen(len(src)))
+	base64.RawStdEncoding.Encode(dst, src)
+	return dst
 }
 
 // // GetCertificate returns a certificate from Azure Key Vault
