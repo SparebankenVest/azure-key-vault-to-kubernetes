@@ -129,7 +129,9 @@ func (h *Handler) azureSyncHandler(key string) error {
 		return fmt.Errorf(msg)
 	}
 
+	log.Infof("hasing: %+v", secretValue)
 	secretHash := getMD5Hash(secretValue)
+	log.Infof("hash: %s", secretHash)
 
 	log.Debugf("Checking if secret value for %s has changed in Azure", key)
 	if azureKeyVaultSecret.Status.SecretHash != secretHash {
@@ -219,7 +221,9 @@ func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyV
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	azureKeyVaultSecretCopy := azureKeyVaultSecret.DeepCopy()
+	log.Infof("hasing: %+v", secret.Data)
 	secretHash := getMD5Hash(secret.Data)
+	log.Infof("hash: %s", secretHash)
 	azureKeyVaultSecretCopy.Status.SecretHash = secretHash
 	azureKeyVaultSecretCopy.Status.LastAzureUpdate = time.Now()
 
