@@ -2,13 +2,11 @@ package vault
 
 import (
 	"context"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"strings"
 
-	"golang.org/x/crypto/pkcs12"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -45,6 +43,10 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 		}
 
 		keyPair := *secretBundle.Value
+
+		pemBlock, derBlock := pem.Decode([]byte(keyPair))
+		log.Infof("pem block: %s", pemBlock)
+		log.Infof("der block: %s", derBlock)
 
 		return keyPair, nil
 		// cert, err := x509.ParseCertificate(*secretBundle.Cer)
@@ -194,37 +196,18 @@ func (a *AzureKeyVaultService) getClient(resource string) (*keyvault.BaseClient,
 	return &keyClient, nil
 }
 
-func CertToPEM(cert *x509.Certificate) []byte {
-	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
-
-	return pemCert
-}
-
-func decodePkcs12(pkcs []byte) (*x509.Certificate, *rsa.PrivateKey, error) {
-	privateKey, certificate, err := pkcs12.Decode(pkcs, "")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	rsaPrivateKey, isRsaKey := privateKey.(*rsa.PrivateKey)
-	if !isRsaKey {
-		return nil, nil, fmt.Errorf("PKCS#12 certificate must contain an RSA private key")
-	}
-
-	return certificate, rsaPrivateKey, nil
-}
-
-// func CertToKey(cert *x509.Certificate) data.PublicKey {
-// 	block := pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
-// 	pemdata := pem.EncodeToMemory(&block)
-//
-// 	switch cert.PublicKeyAlgorithm {
-// 	case x509.RSA:
-// 		return data.NewRSAx509PublicKey(pemdata)
-// 	case x509.ECDSA:
-// 		return data.NewECDSAx509PublicKey(pemdata)
-// 	default:
-// 		logrus.Debugf("Unknown key type parsed from certificate: %v", cert.PublicKeyAlgorithm)
-// 		return nil
+// func decodePem(certInput string) tls.Certificate {
+// 	var cert tls.Certificate
+// 	certPEMBlock := []byte(certInput)
+// 	var certDERBlock *pem.Block
+// 	for {
+// 		certDERBlock, certPEMBlock = pem.Decode(certPEMBlock)
+// 		if certDERBlock == nil {
+// 			break
+// 		}
+// 		if certDERBlock.Type == "CERTIFICATE" {
+// 			cert.Certificate = append(cert.Certificate, certDERBlock.Bytes)
+// 		}
 // 	}
+// 	return cert
 // }
