@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"strings"
@@ -60,18 +59,18 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 
 		log.Infof("private key format: %s", keyBundle.Key.Kty)
 
-		nb, err := base64.RawURLEncoding.DecodeString(*keyBundle.Key.N)
-		if err != nil {
-			log.Errorf("failed to decode base64: %+v", err)
-		}
+		// nb, err := base64.RawURLEncoding.DecodeString(*keyBundle.Key.N)
+		// if err != nil {
+		// 	log.Errorf("failed to decode base64: %+v", err)
+		// }
 
-		log.Infof("base64 decoded n: %s", nb)
+		log.Infof("n: %s", *keyBundle.Key.N)
 
 		// pk := &rsa.PublicKey{
 		// 	N: new(big.Int).SetBytes(nb),
 		// }
 
-		pk, err := x509.ParsePKCS1PrivateKey([]byte(nb))
+		pk, err := x509.ParsePKCS1PrivateKey([]byte(*keyBundle.Key.N))
 		if err != nil {
 			log.Errorf("failed to parse pkcs1 private key: %+v", err)
 		}
