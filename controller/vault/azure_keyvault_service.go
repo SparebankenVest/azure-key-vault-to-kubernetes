@@ -44,9 +44,11 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 
 		keyPair := *secretBundle.Value
 
-		pemBlock, derBlock := pem.Decode([]byte(keyPair))
-		log.Infof("pem block: %s", pemBlock)
-		log.Infof("der block: %s", derBlock)
+		privatePem, rest := pem.Decode([]byte(keyPair))
+		publicPem, _ := pem.Decode(rest)
+
+		log.Infof("private key: %s", privatePem)
+		log.Infof("public key: %s", publicPem)
 
 		return keyPair, nil
 		// cert, err := x509.ParseCertificate(*secretBundle.Cer)
