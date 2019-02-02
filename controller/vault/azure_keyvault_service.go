@@ -44,8 +44,20 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 
 		keyPair := *secretBundle.Value
 
-		privatePem, rest := pem.Decode([]byte(keyPair))
-		publicPem, _ := pem.Decode(rest)
+		privateDer, rest := pem.Decode([]byte(keyPair))
+		publicDer, _ := pem.Decode(rest)
+		privatePem := pem.EncodeToMemory(privateDer)
+		publicPem := pem.EncodeToMemory(publicDer)
+
+		// privateKey, err := x509.ParsePKCS1PrivateKey([]byte(privateDer))
+		// if err != nil {
+		// 	log.Errorf("failed to parse private der, error: %+v", err)
+		// }
+		// log.Info()
+		// publicKey, err := x509.ParsePKCS1PublicKey([]byte(publicDer))
+		// if err != nil {
+		// 	log.Errorf("failed to parse private der, error: %+v", err)
+		// }
 
 		log.Infof("private key: %s", privatePem)
 		log.Infof("public key: %s", publicPem)
