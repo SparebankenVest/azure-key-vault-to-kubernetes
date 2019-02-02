@@ -60,7 +60,7 @@ func getSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[str
 		return secretValue, err
 	}
 
-	var value []byte
+	value := make([]byte, 0)
 	base64.RawStdEncoding.Encode(value, []byte(*secretBundle.Value))
 
 	secretValue[secret.Spec.OutputSecret.KeyName] = value
@@ -88,8 +88,9 @@ func getCertificate(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (ma
 	privateDer, rest := pem.Decode([]byte(*secretBundle.Value))
 	publicDer, _ := pem.Decode(rest)
 
-	var privateKey []byte
-	var publicCrt []byte
+	privateKey := make([]byte, 0)
+	publicCrt := make([]byte, 0)
+
 	base64.RawStdEncoding.Encode(privateKey, pem.EncodeToMemory(privateDer))
 	base64.RawStdEncoding.Encode(publicCrt, pem.EncodeToMemory(publicDer))
 
