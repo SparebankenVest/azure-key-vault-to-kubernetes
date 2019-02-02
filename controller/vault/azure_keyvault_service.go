@@ -3,9 +3,12 @@ package vault
 import (
 	"context"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -53,7 +56,20 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 			return "", fmt.Errorf("failed to get certificate key from azure key vault, error: %+v", err)
 		}
 
-		privateKey := string(*keyBundle.Key.N)
+		rsaPrivateKeyBase64Decoded, err := base64.RawURLEncoding.DecodeString(*keyBundle.Key.N)
+		if err != nil {
+			return "", fmt.Errorf("failed to decode base64 private from Azure Key Vault key bundle, error: %+v", err)
+		}
+		log.Infof("base64 private key decoded: %s", rsaPrivateKeyBase64Decoded)
+
+		rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(rsaPrivateKeyBase64Decoded)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse private key, error: %+v", err)
+		}
+
+		privateKey := string(x509.MarshalPKCS1PrivateKey(rsaPrivateKey))
+		// privateKey := string(base64.RawStdEncoding.Encode(dst, src) privateKeyByte)
+
 		// privateKey, err := x509.ParsePKCS8PrivateKey(cert.RawTBSCertificate)
 		// if err != nil {
 		// 	return "", fmt.Errorf("failed to parse pkcs8 private key, error: %+v", err)
