@@ -3,7 +3,6 @@ package vault
 import (
 	"context"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"strings"
@@ -54,11 +53,7 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 			return "", fmt.Errorf("failed to get certificate key from azure key vault, error: %+v", err)
 		}
 
-		privateKeyByte, err := base64.RawURLEncoding.DecodeString(*keyBundle.Key.N)
-		if err != nil {
-			return "", fmt.Errorf("failed to decode base64 string from Azure Key Vault key bundle, error: %+v", err)
-		}
-		privateKey := string(privateKeyByte)
+		privateKey := string(*keyBundle.Key.N)
 		// privateKey, err := x509.ParsePKCS8PrivateKey(cert.RawTBSCertificate)
 		// if err != nil {
 		// 	return "", fmt.Errorf("failed to parse pkcs8 private key, error: %+v", err)
