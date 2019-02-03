@@ -124,10 +124,9 @@ func extractPemCertificate(pemCert string) map[string][]byte {
 }
 
 func extractPfxCertificate(pfx string) (map[string][]byte, error) {
-	pfxRaw := make([]byte, 0)
 	secretValue := make(map[string][]byte, 2)
 
-	_, err := base64.RawURLEncoding.Decode(pfxRaw, []byte(pfx))
+	pfxRaw, err := base64.RawURLEncoding.DecodeString(pfx)
 	if err != nil {
 		return secretValue, fmt.Errorf("failed to decode base64 encoded pfx certificate, error: %+v", err)
 	}
@@ -156,66 +155,3 @@ func getClient(resource string) (*keyvault.BaseClient, error) {
 
 	return &keyClient, nil
 }
-
-// func base64EncodeString(value string) []byte {
-// 	return base64Encode([]byte(value))
-// }
-//
-// func base64Encode(src []byte) []byte {
-// 	sliceLen := base64.RawStdEncoding.EncodedLen(len(src))
-// 	log.Debugf("size of value to base64 encode is %d", sliceLen)
-// 	dst := make([]byte, sliceLen)
-// 	base64.RawStdEncoding.Encode(dst, src)
-// 	return dst
-// }
-
-// // GetCertificate returns a certificate from Azure Key Vault
-// func (a *AzureKeyVaultService) getCertificate(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (string, error) {
-// 	//Get secret value from Azure Key Vault
-// 	vaultClient, err := a.getClient("https://vault.azure.net")
-// 	if err != nil {
-// 		return "", err
-// 	}
-//
-// 	baseURL := fmt.Sprintf("https://%s.vault.azure.net", secret.Spec.Vault.Name)
-// 	certBundle, err := vaultClient.GetCertificate(context.Background(), baseURL, secret.Spec.Vault.ObjectName, "")
-//
-// 	if err != nil {
-// 		return "", err
-// 	}
-//
-// 	return string(*certBundle.Cer), nil
-// }
-
-// // GetSecret returns a secret from Azure Key Vault
-// func (a *AzureKeyVaultService) GetKey(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (string, error) {
-// 	//Get secret value from Azure Key Vault
-// 	vaultClient, err := a.getClient("https://vault.azure.net")
-// 	if err != nil {
-// 		return "", err
-// 	}
-//
-// 	baseURL := fmt.Sprintf("https://%s.vault.azure.net", secret.Spec.Vault.Name)
-// 	secretPack, err := vaultClient.GetKey(context.Background(), baseURL, secret.Spec.Vault.ObjectName, "")
-//
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	return *secretPack.Value, nil
-// }
-
-// func decodePem(certInput string) tls.Certificate {
-// 	var cert tls.Certificate
-// 	certPEMBlock := []byte(certInput)
-// 	var certDERBlock *pem.Block
-// 	for {
-// 		certDERBlock, certPEMBlock = pem.Decode(certPEMBlock)
-// 		if certDERBlock == nil {
-// 			break
-// 		}
-// 		if certDERBlock.Type == "CERTIFICATE" {
-// 			cert.Certificate = append(cert.Certificate, certDERBlock.Bytes)
-// 		}
-// 	}
-// 	return cert
-// }
