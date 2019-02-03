@@ -289,33 +289,14 @@ func (h *Handler) handleObject(obj interface{}) (*azureKeyVaultSecretv1alpha1.Az
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
 func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue map[string][]byte) (*corev1.Secret, error) {
-	// var secretValue string
-
-	// if azureSecretValue == nil {
-	// 	var err error
-	// 	secretValue, err = h.keyVaultService.GetSecret(azureKeyVaultSecret)
-	// 	if err != nil {
-	// 		msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
-	// 		log.Errorf("failed to get secret value for '%s' from Azure Key vault '%s' using object name '%s', error: %+v", azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name, azureKeyVaultSecret.Spec.Vault.ObjectName, err)
-	// 		return nil, fmt.Errorf(msg)
-	// 	}
-	// } else {
-	// 	secretValue = *azureSecretValue
-	// }
-
-	// stringData := make(map[string]string)
-	// switch strings.ToLower(azureKeyVaultSecret.Spec.Vault.ObjectType) {
-	// case "certificate":
-	// 	stringData["tls.crt"] = secretValue
-	// 	// stringData["tls.key"] =
-	//
-	// default: // Opague
-	// 	stringData[azureKeyVaultSecret.Spec.OutputSecret.KeyName] = secretValue
-	// }
+	name := azureKeyVaultSecret.Spec.OutputSecret.Name
+	if name == "" {
+		name = azureKeyVaultSecret.Name
+	}
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      azureKeyVaultSecret.Spec.OutputSecret.Name,
+			Name:      name,
 			Namespace: azureKeyVaultSecret.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(azureKeyVaultSecret, schema.GroupVersionKind{
@@ -329,31 +310,6 @@ func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alph
 		Data: azureSecretValue,
 	}, nil
 }
-
-// // newSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
-// // the appropriate OwnerReferences on the resource so handleObject can discover
-// // the AzureKeyVaultSecret resource that 'owns' it.
-// func (h *Handler) createNewCertificateSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, cert []string) (*corev1.Secret, error) {
-// 	stringData := make(map[string]string)
-// 	stringData["tls.key"] = cert[0]
-// 	stringData["tls.crt"] = cert[1]
-//
-// 	return &corev1.Secret{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      azureKeyVaultSecret.Spec.OutputSecret.Name,
-// 			Namespace: azureKeyVaultSecret.Namespace,
-// 			OwnerReferences: []metav1.OwnerReference{
-// 				*metav1.NewControllerRef(azureKeyVaultSecret, schema.GroupVersionKind{
-// 					Group:   azureKeyVaultSecretv1alpha1.SchemeGroupVersion.Group,
-// 					Version: azureKeyVaultSecretv1alpha1.SchemeGroupVersion.Version,
-// 					Kind:    "AzureKeyVaultSecret",
-// 				}),
-// 			},
-// 		},
-// 		Type:       azureKeyVaultSecret.Spec.OutputSecret.Type,
-// 		StringData: stringData,
-// 	}, nil
-// }
 
 func getMD5Hash(values map[string][]byte) string {
 	var mergedValues bytes.Buffer
