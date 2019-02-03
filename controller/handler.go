@@ -180,6 +180,10 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 
 	secretName := azureKeyVaultSecret.Spec.OutputSecret.Name
 	if secretName == "" {
+		secretName = azureKeyVaultSecret.Name
+	}
+
+	if secretName == "" {
 		return nil, fmt.Errorf("%s: secret name must be specified", azureKeyVaultSecret.Name)
 	}
 
