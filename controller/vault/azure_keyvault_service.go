@@ -1,9 +1,14 @@
 package vault
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+
+	"golang.org/x/crypto/pkcs12"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -24,6 +29,11 @@ const (
 	AzureKeyVaultObjectTypeStorage = "storage"
 )
 
+const (
+	AzureKeyVaultCertificateTypePem string = "application/x-pem-file"
+	AzureKeyVaultCertificateTypePfx        = "application/x-pkcs12"
+)
+
 // AzureKeyVaultService provide interaction with Azure Key Vault
 type AzureKeyVaultService struct {
 }
@@ -35,7 +45,7 @@ func NewAzureKeyVaultService() *AzureKeyVaultService {
 
 // GetSecret returns a secret from Azure Key Vault
 func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[string][]byte, error) {
-	switch secret.Spec.Vault.ObjectType {
+	switch secret.Spec.Vault.Object.Type {
 	case AzureKeyVaultObjectTypeCertificate:
 		return getCertificate(secret)
 	default:
@@ -53,13 +63,16 @@ func getSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[str
 	}
 
 	baseURL := fmt.Sprintf("https://%s.vault.azure.net", secret.Spec.Vault.Name)
-	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, secret.Spec.Vault.ObjectName, "")
+	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, secret.Spec.Vault.Object.Name, "")
 
 	if err != nil {
 		return secretValue, err
 	}
 
-	secretValue[secret.Spec.OutputSecret.KeyName] = []byte(*secretBundle.Value)
+	for _, key := range secret.Spec.OutputSecret.Keys {
+		secretValue[key.DstName] = []byte(*secretBundle.Value)
+	}
+
 	return secretValue, nil
 }
 
@@ -75,18 +88,61 @@ func getCertificate(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (ma
 
 	baseURL := fmt.Sprintf("https://%s.vault.azure.net", secret.Spec.Vault.Name)
 
-	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, secret.Spec.Vault.ObjectName, "")
+	certBundle, err := vaultClient.GetCertificate(context.Background(), baseURL, secret.Spec.Vault.Object.Name, secret.Spec.Vault.Object.Version)
+	if err != nil {
+		return secretValue, fmt.Errorf("failed to get certificate from azure key vault, error: %+v", err)
+	}
 
+	if !*certBundle.Policy.KeyProperties.Exportable {
+		return nil, fmt.Errorf("unable to get certificate since it's not exportable")
+	}
+
+	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, secret.Spec.Vault.Object.Name, secret.Spec.Vault.Object.Version)
 	if err != nil {
 		return secretValue, fmt.Errorf("failed to get secret from azure key vault, error: %+v", err)
 	}
 
-	privateDer, rest := pem.Decode([]byte(*secretBundle.Value))
+	switch *secretBundle.ContentType {
+	case AzureKeyVaultCertificateTypePem:
+		return extractPemCertificate(*secretBundle.Value), nil
+	case AzureKeyVaultCertificateTypePfx:
+		return extractPfxCertificate(*secretBundle.Value)
+	default:
+		return secretValue, fmt.Errorf("azure key vault secret with content-type '%s' not supported", *secretBundle.ContentType)
+	}
+}
+
+func extractPemCertificate(pemCert string) map[string][]byte {
+	// TODO: Support cert chains
+	secretValue := make(map[string][]byte, 2)
+	privateDer, rest := pem.Decode([]byte(pemCert))
 	publicDer, _ := pem.Decode(rest)
 
-	secretValue["tls.crt"] = pem.EncodeToMemory(publicDer)
-	secretValue["tls.key"] = pem.EncodeToMemory(privateDer)
-	return secretValue, nil
+	secretValue[corev1.TLSCertKey] = pem.EncodeToMemory(publicDer)
+	secretValue[corev1.TLSPrivateKeyKey] = pem.EncodeToMemory(privateDer)
+	return secretValue
+}
+
+func extractPfxCertificate(pfx string) (map[string][]byte, error) {
+	pfxRaw := make([]byte, 0)
+	secretValue := make(map[string][]byte, 2)
+
+	_, err := base64.RawURLEncoding.Decode(pfxRaw, []byte(pfx))
+	if err != nil {
+		return secretValue, fmt.Errorf("failed to decode base64 encoded pfx certificate, error: %+v", err)
+	}
+
+	pemList, err := pkcs12.ToPEM(pfxRaw, "")
+	if err != nil {
+		return secretValue, fmt.Errorf("failed to convert pfx certificate to pem, error: %+v", err)
+	}
+
+	var mergedPems bytes.Buffer
+	for _, pemCert := range pemList {
+		mergedPems.WriteString(string(pem.EncodeToMemory(pemCert)))
+	}
+
+	return extractPemCertificate(mergedPems.String()), nil
 }
 
 func getClient(resource string) (*keyvault.BaseClient, error) {

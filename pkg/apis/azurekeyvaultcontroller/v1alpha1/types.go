@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"time"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -37,31 +35,47 @@ type AzureKeyVaultSecret struct {
 
 // AzureKeyVaultSecretSpec is the spec for a AzureKeyVaultSecret resource
 type AzureKeyVaultSecretSpec struct {
-	Vault        AzureKeyVaultSecretVaultSpec        `json:"vault"`
-	OutputSecret AzureKeyVaultSecretOutputSecretSpec `json:"outputSecret"`
+	Vault        AzureKeyVault             `json:"vault"`
+	OutputSecret AzureKeyVaultOutputSecret `json:"outputSecret,omitempty"`
 }
 
-// AzureKeyVaultSecretVaultSpec contains information needed to get the
+// AzureKeyVault contains information needed to get the
 // Azure Key Vault secret from Azure Key Vault
-type AzureKeyVaultSecretVaultSpec struct {
-	Name       string `json:"name"`
-	ObjectType string `json:"objectType"`
-	ObjectName string `json:"objectName"`
+type AzureKeyVault struct {
+	Name   string              `json:"name"`
+	Object AzureKeyVaultObject `json:"object"`
 }
 
-// AzureKeyVaultSecretOutputSecretSpec has information needed to output
-// a secret from Azure Key Vault to Kubertnetes as a Secret resource
-type AzureKeyVaultSecretOutputSecretSpec struct {
+// AzureKeyVaultObject has information about the Azure Key Vault
+// object to get from Azure Key Vault
+type AzureKeyVaultObject struct {
 	Name    string `json:"name"`
-	KeyName string `json:"keyName"`
+	Type    string `json:"type"`
+	Version string `json:"version"`
+	Poll    bool   `json:"bool"`
+}
+
+// AzureKeyVaultOutputSecret has information needed to output
+// a secret from Azure Key Vault to Kubertnetes as a Secret resource
+type AzureKeyVaultOutputSecret struct {
+	Name string `json:"name"`
 	// +optional
-	Type corev1.SecretType `json:"type,omitempty" protobuf:"bytes,3,opt,name=type,casttype=SecretType"`
+	Type   corev1.SecretType `json:"type,omitempty"`
+	Raw    bool              `json:"raw"`
+	Format string            `json:"format"`
+	Keys   []AzureKeyVaultOutputSecretKey
+}
+
+// AzureKeyVaultOutputSecretKey has source and destination key names
+type AzureKeyVaultOutputSecretKey struct {
+	SrcName string `json:"srcName"`
+	DstName string `json:"dstName"`
 }
 
 // AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource
 type AzureKeyVaultSecretStatus struct {
-	SecretHash      string    `json:"secretHash"`
-	LastAzureUpdate time.Time `json:"lastAzureUpdate"`
+	SecretHash      string      `json:"secretHash"`
+	LastAzureUpdate metav1.Time `json:"lastAzureUpdate,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

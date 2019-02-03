@@ -124,7 +124,7 @@ func (h *Handler) azureSyncHandler(key string) error {
 	log.Debugf("Getting secret value for %s in Azure", key)
 	if secretValue, err = h.keyVaultService.GetSecret(azureKeyVaultSecret); err != nil {
 		msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
-		log.Errorf("failed to get secret value for '%s' from Azure Key vault '%s' using object name '%s', error: %+v", key, azureKeyVaultSecret.Spec.Vault.Name, azureKeyVaultSecret.Spec.Vault.ObjectName, err)
+		log.Errorf("failed to get secret value for '%s' from Azure Key vault '%s' using object name '%s', error: %+v", key, azureKeyVaultSecret.Spec.Vault.Name, azureKeyVaultSecret.Spec.Vault.Object.Name, err)
 		h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
 		return fmt.Errorf(msg)
 	}
@@ -221,7 +221,7 @@ func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyV
 	azureKeyVaultSecretCopy := azureKeyVaultSecret.DeepCopy()
 	secretHash := getMD5Hash(secret.Data)
 	azureKeyVaultSecretCopy.Status.SecretHash = secretHash
-	azureKeyVaultSecretCopy.Status.LastAzureUpdate = time.Now()
+	azureKeyVaultSecretCopy.Status.LastAzureUpdate = metav1.Time{Time: time.Now()}
 
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the AzureKeyVaultSecret resource.
