@@ -54,6 +54,10 @@ func (a *AzureKeyVaultService) GetSecret(secret *azureKeyVaultSecretv1alpha1.Azu
 }
 
 func getSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[string][]byte, error) {
+	if secret.Spec.Vault.Object.Name == "" {
+		return nil, fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
+	}
+
 	secretValue := make(map[string][]byte, 1)
 
 	//Get secret value from Azure Key Vault
@@ -63,7 +67,7 @@ func getSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[str
 	}
 
 	baseURL := fmt.Sprintf("https://%s.vault.azure.net", secret.Spec.Vault.Name)
-	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, secret.Spec.Vault.Object.Name, "")
+	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, secret.Spec.Vault.Object.Name, secret.Spec.Vault.Object.Version)
 
 	if err != nil {
 		return secretValue, err
