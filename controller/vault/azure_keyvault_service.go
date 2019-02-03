@@ -3,6 +3,7 @@ package vault
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 
@@ -127,12 +128,12 @@ func extractPfxCertificate(pfx string) (map[string][]byte, error) {
 
 	// log.Infof("Trying to decode base64 string: %s", pfx)
 	//
-	// pfxRaw, err := base64.RawStdEncoding.DecodeString(pfx)
-	// if err != nil {
-	// 	return secretValue, fmt.Errorf("failed to decode base64 encoded pfx certificate, error: %+v", err)
-	// }
+	pfxRaw, err := base64.StdEncoding.DecodeString(pfx)
+	if err != nil {
+		return secretValue, fmt.Errorf("failed to decode base64 encoded pfx certificate, error: %+v", err)
+	}
 
-	pemList, err := pkcs12.ToPEM([]byte(pfx), "")
+	pemList, err := pkcs12.ToPEM([]byte(pfxRaw), "")
 	if err != nil {
 		return secretValue, fmt.Errorf("failed to convert pfx certificate to pem, error: %+v", err)
 	}
