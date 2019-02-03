@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -332,11 +333,22 @@ func determineSecretType(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureK
 func getMD5Hash(values map[string][]byte) string {
 	var mergedValues bytes.Buffer
 
-	for k, v := range values {
-		mergedValues.WriteString(k + string(v))
+	keys := sortValueKeys(values)
+
+	for _, k := range keys {
+		mergedValues.WriteString(k + string(values[k]))
 	}
 
 	hasher := md5.New()
 	hasher.Write([]byte(mergedValues.String()))
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func sortValueKeys(values map[string][]byte) []string {
+	var keys []string
+	for k := range values {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
