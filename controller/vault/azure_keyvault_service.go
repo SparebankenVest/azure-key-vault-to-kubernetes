@@ -7,6 +7,8 @@ import (
 	"encoding/pem"
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
+
 	"golang.org/x/crypto/pkcs12"
 	corev1 "k8s.io/api/core/v1"
 
@@ -125,6 +127,8 @@ func extractPemCertificate(pemCert string) map[string][]byte {
 
 func extractPfxCertificate(pfx string) (map[string][]byte, error) {
 	secretValue := make(map[string][]byte, 2)
+
+	log.Infof("Trying to decode base64 string: %s", pfx)
 
 	pfxRaw, err := base64.RawStdEncoding.DecodeString(pfx)
 	if err != nil {
