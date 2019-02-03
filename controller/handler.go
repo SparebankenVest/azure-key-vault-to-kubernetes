@@ -293,8 +293,8 @@ func (h *Handler) handleObject(obj interface{}) (*azureKeyVaultSecretv1alpha1.Az
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
 func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue map[string][]byte) (*corev1.Secret, error) {
-	secretName := determaneSecretName(azureKeyVaultSecret)
-	secretType := determaneSecretType(azureKeyVaultSecret, azureSecretValue)
+	secretName := determineSecretName(azureKeyVaultSecret)
+	secretType := determineSecretType(azureKeyVaultSecret, azureSecretValue)
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -313,7 +313,7 @@ func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alph
 	}, nil
 }
 
-func determaneSecretName(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) string {
+func determineSecretName(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) string {
 	name := azureKeyVaultSecret.Spec.OutputSecret.Name
 	if name == "" {
 		name = azureKeyVaultSecret.Name
@@ -321,7 +321,7 @@ func determaneSecretName(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureK
 	return name
 }
 
-func determaneSecretType(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue map[string][]byte) corev1.SecretType {
+func determineSecretType(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue map[string][]byte) corev1.SecretType {
 	if azureKeyVaultSecret.Spec.Vault.Object.Type == vault.AzureKeyVaultObjectTypeCertificate && len(azureSecretValue) == 2 {
 		return corev1.SecretTypeTLS
 	}

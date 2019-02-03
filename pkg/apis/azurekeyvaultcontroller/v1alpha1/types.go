@@ -63,6 +63,7 @@ type AzureKeyVaultOutputSecret struct {
 	Type   corev1.SecretType `json:"type,omitempty"`
 	Raw    bool              `json:"raw"`
 	Format string            `json:"format"`
+	Key    string            `json:"key"`
 	Keys   []AzureKeyVaultOutputSecretKey
 }
 
