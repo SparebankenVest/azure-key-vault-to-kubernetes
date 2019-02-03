@@ -3,11 +3,8 @@ package vault
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-
-	log "github.com/sirupsen/logrus"
 
 	"golang.org/x/crypto/pkcs12"
 	corev1 "k8s.io/api/core/v1"
@@ -128,14 +125,14 @@ func extractPemCertificate(pemCert string) map[string][]byte {
 func extractPfxCertificate(pfx string) (map[string][]byte, error) {
 	secretValue := make(map[string][]byte, 2)
 
-	log.Infof("Trying to decode base64 string: %s", pfx)
+	// log.Infof("Trying to decode base64 string: %s", pfx)
+	//
+	// pfxRaw, err := base64.RawStdEncoding.DecodeString(pfx)
+	// if err != nil {
+	// 	return secretValue, fmt.Errorf("failed to decode base64 encoded pfx certificate, error: %+v", err)
+	// }
 
-	pfxRaw, err := base64.RawStdEncoding.DecodeString(pfx)
-	if err != nil {
-		return secretValue, fmt.Errorf("failed to decode base64 encoded pfx certificate, error: %+v", err)
-	}
-
-	pemList, err := pkcs12.ToPEM(pfxRaw, "")
+	pemList, err := pkcs12.ToPEM([]byte(pfx), "")
 	if err != nil {
 		return secretValue, fmt.Errorf("failed to convert pfx certificate to pem, error: %+v", err)
 	}
