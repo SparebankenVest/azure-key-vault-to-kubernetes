@@ -126,7 +126,7 @@ func extractPemCertificate(pemCert string) map[string][]byte {
 func extractPfxCertificate(pfx string) (map[string][]byte, error) {
 	secretValue := make(map[string][]byte, 2)
 
-	pfxRaw, err := base64.RawURLEncoding.DecodeString(pfx)
+	pfxRaw, err := base64.RawStdEncoding.DecodeString(pfx)
 	if err != nil {
 		return secretValue, fmt.Errorf("failed to decode base64 encoded pfx certificate, error: %+v", err)
 	}
