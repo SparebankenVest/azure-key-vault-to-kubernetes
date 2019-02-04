@@ -123,7 +123,7 @@ func (h *Handler) azureSyncHandler(key string) error {
 	}
 
 	log.Debugf("Getting secret value for %s in Azure", key)
-	if secretValue, err = h.keyVaultService.GetSecret(azureKeyVaultSecret); err != nil {
+	if secretValue, err = h.keyVaultService.GetObject(azureKeyVaultSecret); err != nil {
 		msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 		log.Errorf("failed to get secret value for '%s' from Azure Key vault '%s' using object name '%s', error: %+v", key, azureKeyVaultSecret.Spec.Vault.Name, azureKeyVaultSecret.Spec.Vault.Object.Name, err)
 		h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
@@ -192,7 +192,7 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 		if errors.IsNotFound(err) {
 			var newSecret *corev1.Secret
 
-			secretValues, err = h.keyVaultService.GetSecret(azureKeyVaultSecret)
+			secretValues, err = h.keyVaultService.GetObject(azureKeyVaultSecret)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get secret from Azure Key Vault for secret '%s'/'%s', error: %+v", azureKeyVaultSecret.Namespace, azureKeyVaultSecret.Name, err)
 			}
@@ -323,7 +323,7 @@ func determineSecretName(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureK
 }
 
 func determineSecretType(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue map[string][]byte) corev1.SecretType {
-	if azureKeyVaultSecret.Spec.Vault.Object.Type == vault.AzureKeyVaultObjectTypeCertificate && len(azureSecretValue) == 2 {
+	if azureKeyVaultSecret.Spec.Vault.Object.Type == azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeCertificate && len(azureSecretValue) == 2 {
 		return corev1.SecretTypeTLS
 	}
 

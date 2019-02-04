@@ -22,9 +22,11 @@ spec:
         image: dokken.azurecr.io/azure-keyvault-controller:0.0.32
         imagePullPolicy: Always
         env:
-        - name: AZURE_VAULT_FAST_RATE # Optional - How often we check Vault for changes in secrets
-          value: 2m
-        - name: AZURE_VAULT_SLOW_RATE # Optional - How often we check Vault for changes in secrets, given AZURE_VAULT_MAX_FAST_ATTEMPTS has previously failed
+        - name: AZURE_VAULT_NORMAL_POLL_INTERVALS
           value: 10m
-        - name: AZURE_VAULT_MAX_FAST_ATTEMPTS # Optional - How many fast attempts can fail before we start using slow rate
+        - name: AZURE_VAULT_EXCEPTION_POLL_INTERVALS
+          value: 30m
+        - name: AZURE_VAULT_MAX_FAILURE_ATTEMPTS
           value: "5"
+        # - name: LOG_LEVEL
+        #   value: debug
