@@ -73,7 +73,7 @@ func getSecret(secret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[str
 		return secretValue, err
 	}
 
-	secretValue[secret.Spec.OutputSecret.Key] = []byte(*secretBundle.Value)
+	secretValue[secret.Spec.Output.Secret.DataKey] = []byte(*secretBundle.Value)
 
 	// TODO: Add support for using Keys
 

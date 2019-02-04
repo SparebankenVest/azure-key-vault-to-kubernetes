@@ -179,7 +179,7 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 	var secretValues map[string][]byte
 	var err error
 
-	secretName := azureKeyVaultSecret.Spec.OutputSecret.Name
+	secretName := azureKeyVaultSecret.Spec.Output.Secret.Name
 	if secretName == "" {
 		secretName = azureKeyVaultSecret.Name
 	}
@@ -315,7 +315,7 @@ func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alph
 }
 
 func determineSecretName(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) string {
-	name := azureKeyVaultSecret.Spec.OutputSecret.Name
+	name := azureKeyVaultSecret.Spec.Output.Secret.Name
 	if name == "" {
 		name = azureKeyVaultSecret.Name
 	}
@@ -327,7 +327,7 @@ func determineSecretType(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureK
 		return corev1.SecretTypeTLS
 	}
 
-	return azureKeyVaultSecret.Spec.OutputSecret.Type
+	return azureKeyVaultSecret.Spec.Output.Secret.Type
 }
 
 func getMD5Hash(values map[string][]byte) string {

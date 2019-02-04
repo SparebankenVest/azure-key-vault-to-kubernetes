@@ -35,8 +35,8 @@ type AzureKeyVaultSecret struct {
 
 // AzureKeyVaultSecretSpec is the spec for a AzureKeyVaultSecret resource
 type AzureKeyVaultSecretSpec struct {
-	Vault        AzureKeyVault             `json:"vault"`
-	OutputSecret AzureKeyVaultOutputSecret `json:"outputSecret,omitempty"`
+	Vault  AzureKeyVault       `json:"vault"`
+	Output AzureKeyVaultOutput `json:"output,omitempty"`
 }
 
 // AzureKeyVault contains information needed to get the
@@ -55,22 +55,18 @@ type AzureKeyVaultObject struct {
 	Poll    bool   `json:"bool"`
 }
 
+// AzureKeyVaultOutput defines output sources, currently only support Secret
+type AzureKeyVaultOutput struct {
+	Secret AzureKeyVaultOutputSecret `json:"secret"`
+}
+
 // AzureKeyVaultOutputSecret has information needed to output
 // a secret from Azure Key Vault to Kubertnetes as a Secret resource
 type AzureKeyVaultOutputSecret struct {
 	Name string `json:"name"`
 	// +optional
-	Type   corev1.SecretType `json:"type,omitempty"`
-	Raw    bool              `json:"raw"`
-	Format string            `json:"format"`
-	Key    string            `json:"key"`
-	Keys   []AzureKeyVaultOutputSecretKey
-}
-
-// AzureKeyVaultOutputSecretKey has source and destination key names
-type AzureKeyVaultOutputSecretKey struct {
-	SrcName string `json:"srcName"`
-	DstName string `json:"dstName"`
+	Type    corev1.SecretType `json:"type,omitempty"`
+	DataKey string            `json:"dataKey"`
 }
 
 // AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource
