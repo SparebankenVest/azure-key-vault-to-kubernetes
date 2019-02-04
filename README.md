@@ -6,19 +6,21 @@ A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure 
 
 **Solution:** "Install the `azure-keyvault-controller` and automatically synchronize objects from Azure Key Vault as secrets in Kubernetes."
 
+#### Contents
+
 <!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
 
 - [Understand this!](#understand-this)
 - [How it works](#how-it-works)
 - [Authentication](#authentication)
-- [Azure Key Vault Authorization](#azure-key-vault-authorization)
+- [Authorization](#authorization)
 - [Installation](#installation)
 - [Usage](#usage)
 	- [Vault object types](#vault-object-types)
 	- [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)
 - [Examples](#examples)
-	- [Getting a plain secret from Azure Key Vault](#getting-a-plain-secret-from-azure-key-vault)
-	- [Getting a certificate with exportable key from Azure Key Vault](#getting-a-certificate-with-exportable-key-from-azure-key-vault)
+	- [Plain secret](#plain-secret)
+	- [Certificate with exportable key](#certificate-with-exportable-key)
 
 <!-- /TOC -->
 
@@ -36,9 +38,13 @@ Make sure you fully understand these risks before synchronizing any Azure Key Va
 
 Using the custom `AzureKeyVaultSecret` Kubernetes resource the `azure-keyvault-controller` will synchronize Azure Key Vault objects (secrets, certificates and keys) into Kubernetes `Secret`'s.
 
-After the resource is applied to Kubernetes, the controller will try to retreive the specified object from Azure Key Vault and apply it as a Kubernetes `secret`. Later the controller will periodically poll Azure Key Vault to check if the object has changed, and if so apply the change to the Kubernetes `secret`.
+After the resource is applied to Kubernetes, the controller will try to retreive the specified object from Azure Key Vault and apply it as a Kubernetes `secret`.
 
-See [Usage](#usage) for more information.
+Periodically the controller will poll Azure Key Vault to check if the object has changed, and if so apply the change to the Kubernetes `secret`.
+
+**Note: By default this is every 10 minutes ([artifacts/example-controller-deployment.yaml](artifacts/example-controller-deployment.yaml)) and depending on how many secrets are synchronized can cause extra usage costs of Azure Key Vault.**
+
+See the [Usage](#usage) section for more information on how to use the controller together with the `AzureKeyVaultSecret` resource.
 
 ## Authentication
 
@@ -64,7 +70,7 @@ At the time of writing the following authentication options was available (extra
 |                     | AZURE_USERNAME  | The username to sign in with.
 |                     | AZURE_PASSWORD  | The password to sign in with. |
 
-## Azure Key Vault Authorization
+## Authorization
 
 The account which the controller is running in context of must have Azure Key Vault `get` permissions to the object types (secret, certificate and key) that is going to be synchronized with Kubernetes.
 
@@ -191,7 +197,7 @@ This must be a properly formatted **Private** SSH Key stored in a Secret object.
 
 ## Examples
 
-### Getting a plain secret from Azure Key Vault
+### Plain secret
 
 ```yaml
 apiVersion: azure-keyvault-controller.spv.no/v1alpha1
@@ -223,7 +229,7 @@ metadata:
 type: opaque
 ```
 
-### Getting a certificate with exportable key from Azure Key Vault
+### Certificate with exportable key
 
 ```yaml
 apiVersion: azure-keyvault-controller.spv.no/v1alpha1
