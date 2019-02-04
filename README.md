@@ -154,11 +154,11 @@ For a complete list: https://github.com/kubernetes/api/blob/49be0e3344fe443eb3d2
 
 With the exception of the `opaque` secret type, the controller will make a best effort to export the Azure Key Vault object into the secret type defined.
 
-__**kubernetes/tls**__
+__kubernetes/tls__
 
 By pointing to an exportable Certificate object in Azure Key Vault AND setting the Kubernetes output secret type to `kubernetes/tls`, the controller will automatically format the Kubernetes secret accordingly both for pem and pfx certificates.
 
-__**kubernetes.io/dockerconfigjson**__
+__kubernetes.io/dockerconfigjson__
 
 Requires a well formatted docker config stored in a Secret object like this:
 
@@ -177,11 +177,11 @@ Requires a well formatted docker config stored in a Secret object like this:
 
 If the `"auth"` property is not included, the controller will generate it.
 
-__**kubernetes.io/basic-auth**__
+__kubernetes.io/basic-auth__
 
 The controller support two formats. Either `username:password` or pre-encoded with base64: `dXNlcm5hbWU6cGFzc3dvcmQ=` stored in a Secret object.
 
-__**kubernetes.io/ssh-auth**__
+__kubernetes.io/ssh-auth__
 
 This must be a properly formatted **Private** SSH Key stored in a Secret object.
 
