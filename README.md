@@ -42,6 +42,8 @@ spec:
       type: <kubernetes secret type> # optional - default Opaque - see Kubernetes Secret docs for options
 ```
 
+After this resource is applied to Kubernetes, the controller will try to retreive the specified object from Azure Key Vault and apply it as a Kubernetes `secret`. Later the controller will periodically poll Azure Key Vault to check if the object has changed, and if so apply the change to the Kubernetes `secret`.
+
 ## Authentication
 
 The `azure-keyvault-controller` use environment-based authentication as documented here: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization#use-environment-based-authentication
