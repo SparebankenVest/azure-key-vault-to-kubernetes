@@ -6,6 +6,22 @@ A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure 
 
 **Solution:** "Install the `azure-keyvault-controller` and automatically synchronize objects from Azure Key Vault as secrets in Kubernetes."
 
+<!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
+
+- [Understand this!](#understand-this)
+- [How it works](#how-it-works)
+- [Authentication](#authentication)
+- [Azure Key Vault Authorization](#azure-key-vault-authorization)
+- [Installation](#installation)
+- [Usage](#usage)
+	- [Vault object types](#vault-object-types)
+	- [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)
+- [Examples](#examples)
+	- [Getting a plain secret from Azure Key Vault](#getting-a-plain-secret-from-azure-key-vault)
+	- [Getting a certificate with exportable key from Azure Key Vault](#getting-a-certificate-with-exportable-key-from-azure-key-vault)
+
+<!-- /TOC -->
+
 ## Understand this!
 
 The same [risks as documented with `Secret`'s in Kubernetes](https://kubernetes.io/docs/concepts/configuration/secret/#risks) also apply for the `azure-keyvault-controller`, with the exception of:
@@ -20,29 +36,9 @@ Make sure you fully understand these risks before synchronizing any Azure Key Va
 
 Using the custom `AzureKeyVaultSecret` Kubernetes resource the `azure-keyvault-controller` will synchronize Azure Key Vault objects (secrets, certificates and keys) into Kubernetes `Secret`'s.
 
-The `AzureKeyVaultSecret` is defined using this schema:
+After the resource is applied to Kubernetes, the controller will try to retreive the specified object from Azure Key Vault and apply it as a Kubernetes `secret`. Later the controller will periodically poll Azure Key Vault to check if the object has changed, and if so apply the change to the Kubernetes `secret`.
 
-```yaml
-apiVersion: azure-keyvault-controller.spv.no/v1alpha1
-kind: AzureKeyVaultSecret
-metadata:
-  name: <name for azure key vault secret>
-  namespace: <namespace for azure key vault secret>
-spec:
-  vault:
-    name: <name of azure key vault>
-    object:
-      name: <name of azure key vault object to sync>
-      type: <object type in azure key vault to sync> # options are secret, certificate or key
-      version: <version of object to sync> # optional
-  output:
-    secret:
-      name: <name of the kubernetes secret to create> # optional - if not set, name of this resource will be used (metadata.name)
-      dataKey: <name of the kubernetes secret data key to assign value to>
-      type: <kubernetes secret type> # optional - default Opaque - see Kubernetes Secret docs for options
-```
-
-After this resource is applied to Kubernetes, the controller will try to retreive the specified object from Azure Key Vault and apply it as a Kubernetes `secret`. Later the controller will periodically poll Azure Key Vault to check if the object has changed, and if so apply the change to the Kubernetes `secret`.
+See [Usage](#usage) for more information.
 
 ## Authentication
 
@@ -86,11 +82,11 @@ Azure Key Vault Keys:
 
 ## Installation
 
-#### 1. Deploy the Custom Resource Definition for AzureKeyVaultSecret
+**1. Deploy the Custom Resource Definition for AzureKeyVaultSecret**
 
 The CRD can be found here: [artifacts/crd.yaml](artifacts/crd.yaml)
 
-#### 2. Deploy controller
+**2. Deploy controller**
 
 An example deployment definition can be found here: [artifacts/example-controller-deployment.yaml](artifacts/example-controller-deployment.yaml)
 
@@ -106,8 +102,88 @@ Optional environment variables:
 In addition there are environment variables for controlling **Azure authentication** which is documented by Microsoft here: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization#use-environment-based-authentication and describe above in the Authentication section.
 
 ## Usage
+After you have installed the `azure-keyvault-controller`, you can create `AzureKeyVaultSecret` resources.
 
-After you have installed the `azure-keyvault-controller`, you can create `AzureKeyVaultSecret` resources. Example:
+The `AzureKeyVaultSecret` is defined using this schema:
+
+```yaml
+apiVersion: azure-keyvault-controller.spv.no/v1alpha1
+kind: AzureKeyVaultSecret
+metadata:
+  name: <name for azure key vault secret>
+  namespace: <namespace for azure key vault secret>
+spec:
+  vault:
+    name: <name of azure key vault>
+    object:
+      name: <name of azure key vault object to sync>
+      type: <object type in azure key vault to sync>
+      version: <optional - version of object to sync>
+      contentType: <only applicable when type is the special multi-key-value-secret - either application/x-json or application/x-yaml>
+  output:
+    secret:
+      name: <optional - name of the kubernetes secret to create - defaults to this resource metadata.name>
+      dataKey: <required when type is opaque - name of the kubernetes secret data key to assign value to - ignored for all other types>
+      type: <optional - kubernetes secret type - defaults to opaque>
+```
+
+See [Examples](#examples) for different usages.
+
+### Vault object types
+
+| Object type   | Description |
+| ------------- | ----------- |
+| `secret`      | Azure Key Vault Secret - can contain any secret data |
+| `certificate` | Azure Key Vault Certificate - A TLS certificate with just the pulic key or both public and private key if exportable |
+| `key`         | Azure Key Vault Key - A RSA or EC key used for signing |
+
+In addition the controller accepts the special `multi-key-value-secret` type that will allow a Azure Key Vault Secret object to contain `json` or `yaml` key/value items that will be directly exported as key/value items in the Kubernetes secret. When `multi-key-value-secret` type is used, the `contentType` property MUST also be set with either `application/x-json` or `application/x-yaml`.
+
+### Commonly used Kubernetes secret types
+
+For a complete list: https://github.com/kubernetes/api/blob/49be0e3344fe443eb3d23105225ed2f1ab1e6cab/core/v1/types.go#L4950
+
+| Secret type                      | Keys |
+| -------------------------------- | ---- |
+| `opaque`                         | defined in `spec.output.secret.dataKey` |
+| `kubernetes/tls`                 | `tls.key`, `tls.crt` |
+| `kubernetes.io/dockerconfigjson` | `.dockerconfigjson` |
+| `kubernetes.io/basic-auth`       | `username`, `password` |
+| `kubernetes.io/ssh-auth`         | `ssh-privatekey` |
+
+
+With the exception of the `opaque` secret type, the controller will make a best effort to export the Azure Key Vault object into the secret type defined.
+
+**kubernetes/tls**
+By pointing to an exportable Certificate object in Azure Key Vault AND setting the Kubernetes output secret type to `kubernetes/tls`, the controller will automatically format the Kubernetes secret accordingly both for pem and pfx certificates.
+
+**kubernetes.io/dockerconfigjson**
+Requires a well formatted docker config stored in a Secret object like this:
+
+```json
+{
+  "auths": {
+    "some.azurecr.io": {
+      "username": "someuser",
+      "password": "somepassword",
+      "email": "someuser@spv.no",
+      "auth": "c29tZXVzZXI6c29tZXBhc3N3b3JkCg=="
+    }
+  }
+}
+```
+
+If the `"auth"` property is not included, the controller will generate it.
+
+**kubernetes.io/basic-auth**
+The controller support two formats. Either `username:password` or pre-encoded with base64: `dXNlcm5hbWU6cGFzc3dvcmQ=` stored in a Secret object.
+
+**kubernetes.io/ssh-auth**
+This must be a properly formatted **Private** SSH Key stored in a Secret object.
+
+## Examples
+
+### Getting a plain secret from Azure Key Vault
 
 ```yaml
 apiVersion: azure-keyvault-controller.spv.no/v1alpha1
@@ -117,14 +193,56 @@ metadata:
   namespace: default
 spec:
   vault:
-    name: my-kv
+    name: my-kv # name of key vault
     object:
-      type: secret
-      name: test
-      version: c1f64e6a55224ccc88f85d4162a7a66b # optional - will use latest object version by default
+      type: secret # object type
+      name: test-secret # name of the object
   output:
     secret:
-      name: my-kubernetes-azure-secret # optional - defaults to name of this resource (metadata.name)
-      dataKey: value
-      type: opaque # optional - default opaque - for options, see kubernetes secrets docs
+      dataKey: azuresecret # key to store object value in kubernetes secret
+
+```
+
+Controller creates:
+```yaml
+apiVersion: v1
+data:
+  azuresecret: YXNkZmFzZGZhc2Rm
+kind: Secret
+metadata:
+  name: my-first-azure-keyvault-secret
+  namespace: default
+type: opaque
+```
+
+### Getting a certificate with exportable key from Azure Key Vault
+
+```yaml
+apiVersion: azure-keyvault-controller.spv.no/v1alpha1
+kind: AzureKeyVaultSecret
+metadata:
+  name: my-first-azure-keyvault-certificate
+  namespace: default
+spec:
+  vault:
+    name: my-kv
+    object:
+      type: certificate
+      name: test-cert
+    output:
+      secret:
+        type: kubernetes/tls
+```
+
+Controller creates:
+```yaml
+apiVersion: v1
+data:
+  tls.crt: ...
+  tls.key: ...
+kind: Secret
+metadata:
+  name: my-first-azure-keyvault-certificate
+  namespace: default
+type: kubernetes/tls
 ```
