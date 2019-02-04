@@ -1,6 +1,10 @@
-# azure-keyvault-controller
+# Azure Key Vault Secrets for Kubernetes
 
-A Kubernetes controller and a Custom Resource that together will allow you to sync objects from Azure Key Vault to `Secret`'s in Kubernetes.
+A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure Key Vault to `Secret`'s in Kubernetes.
+
+**Problem:** "I have to manually extract secrets from Azure Key Vault and apply them as Secrets in Kubernetes."
+
+**Solution:** "Install the `azure-keyvault-controller` and automatically synchronize objects from Azure Key Vault as secrets in Kubernetes."
 
 ## Understand this!
 
@@ -8,36 +12,45 @@ The same [risks as documented with `Secret`'s in Kubernetes](https://kubernetes.
 
 _... If you configure the secret through a manifest (JSON or YAML) file which has the secret data encoded as base64, sharing this file or checking it in to a source repository means the secret is compromised. Base64 encoding is not an encryption method and is considered the same as plain text. ..._
 
-**One of the main reasons for creating this controller was to mitigate the risk above. Using the `azure-keyvault-controller` and the `AzureKeyVaultSecret` resource is a nice way of preventing secrets from being checked into source control or unintentionally be exposed by other means.**
+**One of the main reasons for creating this controller was to mitigate the risk above. Using the `azure-keyvault-controller` and the `AzureKeyVaultSecret` prevent secrets from being checked into source control or unintentionally be exposed by other means.**
 
 Make sure you fully understand these risks before synchronizing any Azure Key Vault secrets to Kubernetes.
 
 ## How it works
 
-When the `azure-keyvault-controller` is running in your Kubernetes cluster, you can define one or more `AzureKeyVaultSecret` resources that will be picked up by the controller and synchronized into Kubernetes `Secret`'s.
+Using the custom `AzureKeyVaultSecret` Kubernetes resource the `azure-keyvault-controller` will synchronize Azure Key Vault objects (secrets, certificates and keys) into Kubernetes `Secret`'s.
 
-Note: this on only possible if the Azure credentials which `azure-keyvault-controller` is running under has access to the Azure Key Vault defined in the `AzureKeyVaultSecret`.
-
-The `AzureKeyVaultSecret` has one section for Azure Key Vault and another for the Kubernetes `Secret` to output (see complete example under Usage below):
+The `AzureKeyVaultSecret` is defined using this schema:
 
 ```yaml
-vault:
-  name: <name of azure key vault>
-  objectType: <object type in azure key vault to sync> # options are secret, certificate or key
-  objectName: <name of azure key vault object to sync>
-outputSecret:
-  name: <name of the kubernetes secret to create>
-  keyName: <name of kubernetes secret key to assing secret value to> # currently limited to just one key
-  type: <kubernetes secret type> # Optional. Default Opaque. See Kubernetes Secret docs for options.
+apiVersion: azure-keyvault-controller.spv.no/v1alpha1
+kind: AzureKeyVaultSecret
+metadata:
+  name: <name for azure key vault secret>
+  namespace: <namespace for azure key vault secret>
+spec:
+  vault:
+    name: <name of azure key vault>
+    object:
+      name: <name of azure key vault object to sync>
+      type: <object type in azure key vault to sync> # options are secret, certificate or key
+      version: <version of object to sync> # optional
+  output:
+    secret:
+      name: <name of the kubernetes secret to create> # optional - if not set, name of this resource will be used (metadata.name)
+      dataKey: <name of the kubernetes secret data key to assign value to>
+      type: <kubernetes secret type> # optional - default Opaque - see Kubernetes Secret docs for options
 ```
 
 ## Authentication
 
 The `azure-keyvault-controller` use environment-based authentication as documented here: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization#use-environment-based-authentication
 
-Note: If you plan to use Managed Service Identity (MSI) you will need to have the [`azure-pod-identity`](https://github.com/Azure/aad-pod-identity) running and configured in the cluster. You will need the `azure-pod-identity` controller, define a `AzureIdentity` AND use the `aadpodidbinding` label with the right selector for your Pod/Deployment.
+Note: Using Managed Service Identity (MSI) requires the [`azure-pod-identity`](https://github.com/Azure/aad-pod-identity) controller running and configured in the cluster.
 
-At the time of writing the following options was available:
+The two most common authentication methods are MSI and Client Credentials (Service Principal).
+
+At the time of writing the following authentication options was available (extracted from the Microsoft doc about environment-based authentication above):
 
 | Authentication type |	Environment variable |	Description |
 | ------------------- | -------------------- | ------------ |
@@ -55,7 +68,7 @@ At the time of writing the following options was available:
 
 ## Azure Key Vault Authorization
 
-The account which the controller is running under must also have Azure Key Vault `get` permissions to the different object types that will be synchronized to Kubernetes. This is controlled through Azure Key Vault policies and can be configured through Azure CLI like this:
+The account which the controller is running under must have Azure Key Vault `get` permissions to the object types (secret, certificate and key) that is going to be synchronized with Kubernetes. This is controlled through Azure Key Vault policies and can be configured through Azure CLI like this:
 
 Azure Key Vault Secrets:
 
@@ -68,10 +81,6 @@ Azure Key Vault Certificates:
 Azure Key Vault Keys:
 
 `az keyvault set-policy -n <azure key vault name> --key-permissions get --spn <service principal id> --subscription <azure subscription>`
-
-Azure Key Vault Storage (beta):
-
-`az keyvault set-policy -n <azure key vault name> --storage-permissions get --spn <service principal id> --subscription <azure subscription>`
 
 ## Installation
 
@@ -107,10 +116,13 @@ metadata:
 spec:
   vault:
     name: my-kv
-    objectType: secret
-    objectName: test
-  outputSecret:
-    name: my-kubernetes-azure-secret
-    keyName: value
-    type: Opaque # Optional. Default Opaque. For options, see Kubernetes Secrets docs
+    object:
+      type: secret
+      name: test
+      version: c1f64e6a55224ccc88f85d4162a7a66b # optional - will use latest object version by default
+  output:
+    secret:
+      name: my-kubernetes-azure-secret # optional - defaults to name of this resource (metadata.name)
+      dataKey: value
+      type: opaque # optional - default opaque - for options, see kubernetes secrets docs
 ```

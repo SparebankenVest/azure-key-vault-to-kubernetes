@@ -9,6 +9,23 @@ spec:
     listKind: AzureKeyVaultSecretList
     plural: azurekeyvaultsecrets
     singular: azurekeyvaultsecret
+    shortNames:
+    - akvs
+    categories:
+    - all
+  additionalPrinterColumns:
+    - name: Vault
+      type: string
+      description: Which Azure Key Vault this resource is synched with
+      JSONPath: .spec.vault.name
+    - name: Vault Object
+      type: string
+      description: Which Azure Key Vault object this resource is synched with
+      JSONPath: .spec.vault.object.name
+    - name: Updated
+      type: string
+      description: When this resource was last synched with Azure Key Vault
+      JSONPath: .status.lastAzureUpdate
   scope: Namespaced
   version: v1alpha1
   subresources:
@@ -17,23 +34,40 @@ spec:
     openAPIV3Schema:
       properties:
         spec:
-          required: ['vault', 'outputSecret']
+          required: ['vault']
           properties:
             vault:
-              required: ['name', 'objectType', 'objectName']
+              required: ['name', 'object']
               properties:
                 name:
                   type: string
-                objectType:
-                  type: string
-                objectName:
-                  type: string
-            outputSecret:
-              required: ['name', 'keyName']
+                  description: Name of the Azure Key Vault
+                object:
+                  required: ['name', 'type']
+                  properties:
+                    name:
+                      type: string
+                      description: The object name in Azure Key Vault
+                    type:
+                      type: string
+                      description: The type of object in Azure Key Vault
+                      enum:
+                      - secret
+                      - certificate
+                      - key
+                    version:
+                      type: string
+                      description: The object version in Azure Key Vault
+            output:
               properties:
-                name:
-                  type: string
-                keyName:
-                  type: string
-                type:
-                  type: string
+                secret:
+                  properties:
+                    name:
+                      type: string
+                      description: Name for Kubernetes secret - default is name of this resource (metadata.name)
+                    type:
+                      type: string
+                      description: Type of Secret in Kubernetes
+                    dataKey:
+                      type: string
+                      description: The key to use in Kubernetes secret when setting the value from Azure Keyv Vault object data
