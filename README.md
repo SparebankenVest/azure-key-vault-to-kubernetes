@@ -66,7 +66,11 @@ At the time of writing the following authentication options was available (extra
 
 ## Azure Key Vault Authorization
 
-The account which the controller is running under must have Azure Key Vault `get` permissions to the object types (secret, certificate and key) that is going to be synchronized with Kubernetes. This is controlled through Azure Key Vault policies and can be configured through Azure CLI like this:
+The account which the controller is running in context of must have Azure Key Vault `get` permissions to the object types (secret, certificate and key) that is going to be synchronized with Kubernetes.
+
+**Note: It's only possible to control access on the top level of Azure Key Vault, not per object/resource. The recommedation is therefore to have a dedicated Key Vault per azure-keyvault-controller.**
+
+Access is controlled through Azure Key Vault policies and can be configured through Azure CLI like this:
 
 Azure Key Vault Secrets:
 
