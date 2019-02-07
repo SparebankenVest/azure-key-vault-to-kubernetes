@@ -17,5 +17,5 @@ limitations under the License.
 package azurekeyvaultcontroller
 
 const (
-	GroupName = "azurekeyvaultcontroller.spv.no"
+	GroupName = "spv.no"
 )
