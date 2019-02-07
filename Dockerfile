@@ -21,8 +21,7 @@ COPY ./ ./
 # Build the executable to `/app`. Mark the build as statically linked.
 RUN CGO_ENABLED=0 go build \
     -installsuffix 'static' \
--o ./bin/azure-keyvault-controller .
-
+-o ./bin/azure-keyvault-controller . 
 
 FROM alpine:3.8
 MAINTAINER Jon Arild Tørresddal <jon.torresdal@spv.no>

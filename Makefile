@@ -6,7 +6,7 @@ build:
 	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
 test:
-	@go test -v $(GOPACKAGES)
+	CGO_ENABLED=0 go test -v $(go list ./... | grep -v /pkg/)
 
 push:
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
