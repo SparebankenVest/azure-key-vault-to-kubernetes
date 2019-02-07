@@ -24,11 +24,16 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/record"
 
 	"github.com/SparebankenVest/azure-keyvault-controller/controller"
+	"github.com/SparebankenVest/azure-keyvault-controller/controller/vault"
 	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
 	informers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions"
 	"github.com/SparebankenVest/azure-keyvault-controller/pkg/signals"
@@ -43,6 +48,8 @@ var (
 	azureVaultSlowRate        time.Duration
 	azureVaultMaxFastAttempts int
 )
+
+const controllerAgentName = "azurekeyvaultcontroller"
 
 func main() {
 	flag.Parse()
@@ -95,7 +102,17 @@ func main() {
 		MaxFailuresBeforeSlowingDown: azureVaultMaxFastAttempts,
 	}
 
-	controller := controller.NewController(kubeClient, azureKeyVaultSecretClient,
+	log.Info("Creating event broadcaster")
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(log.Tracef)
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+
+	vaultService := vault.NewService()
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
+
+	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvaultcontroller().V1alpha1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
+
+	controller := controller.NewController(handler,
 		kubeInformerFactory.Core().V1().Secrets(),
 		azureKeyVaultSecretInformerFactory.Azurekeyvaultcontroller().V1alpha1().AzureKeyVaultSecrets(),
 		azurePollFrequency)

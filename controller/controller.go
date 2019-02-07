@@ -26,18 +26,14 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	coreinformers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
-	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
 	keyvaultScheme "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned/scheme"
 	informers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions/azurekeyvaultcontroller/v1alpha1"
 )
-
-const controllerAgentName = "azure-keyvault-controller"
 
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a AzureKeyVaultSecret is synced
@@ -86,13 +82,11 @@ type Controller struct {
 }
 
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretInformer coreinformers.SecretInformer, azureKeyVaultSecretsInformer informers.AzureKeyVaultSecretInformer, azureFrequency AzurePollFrequency) *Controller {
+func NewController(handler *Handler, secretInformer coreinformers.SecretInformer, azureKeyVaultSecretsInformer informers.AzureKeyVaultSecretInformer, azureFrequency AzurePollFrequency) *Controller {
 	// Create event broadcaster
 	// Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// logged for azure-keyvault-controller types.
 	utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
-
-	handler := NewHandler(kubeclientset, azureKeyvaultClientset, secretInformer.Lister(), azureKeyVaultSecretsInformer.Lister(), azureFrequency)
 
 	controller := &Controller{
 		handler:                    handler,
@@ -243,7 +237,7 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 		} else {
 			log.Debugf("Handling '%s' in default queue...", key)
 			successMsg = "Successfully synced AzureKeyVaultSecret '%s' with Kubernetes Secret"
-			err = c.handler.syncHandler(key)
+			err = c.handler.kubernetesSyncHandler(key)
 		}
 
 		if err != nil {

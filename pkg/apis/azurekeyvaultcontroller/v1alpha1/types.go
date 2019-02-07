@@ -49,14 +49,18 @@ type AzureKeyVault struct {
 // AzureKeyVaultObject has information about the Azure Key Vault
 // object to get from Azure Key Vault
 type AzureKeyVaultObject struct {
-	Name    string                  `json:"name"`
-	Type    AzureKeyVaultObjectType `json:"type"`
-	Version string                  `json:"version"`
-	Poll    bool                    `json:"bool"`
+	Name        string                         `json:"name"`
+	Type        AzureKeyVaultObjectType        `json:"type"`
+	Version     string                         `json:"version"`
+	Poll        bool                           `json:"bool"`
+	ContentType AzureKeyVaultObjectContentType `jons:"contentType"`
 }
 
 // AzureKeyVaultObjectType defines which Object type to get from Azure Key Vault
 type AzureKeyVaultObjectType string
+
+// AzureKeyVaultObjectContentType defines what content type a secret contains
+type AzureKeyVaultObjectContentType string
 
 const (
 	// AzureKeyVaultObjectTypeSecret - get Secret object type from Azure Key Vault
@@ -68,11 +72,14 @@ const (
 	// AzureKeyVaultObjectTypeCertificate - get Certificate object type from Azure Key Vault
 	AzureKeyVaultObjectTypeCertificate = "certificate"
 
-	// AzureKeyVaultObjectTypeExportableCertificate - get Certificate and Secret objects from Azure Key Vault and export it as a Kubernetes TLS Secret
-	AzureKeyVaultObjectTypeExportableCertificate = "exportable-certificate"
-
 	// AzureKeyVaultObjectTypeKey - get Key object type from Azure Key Vault
 	AzureKeyVaultObjectTypeKey = "key"
+
+	// AzureKeyVaultObjectContentTypeJSON - object content is of type application/x-json
+	AzureKeyVaultObjectContentTypeJSON AzureKeyVaultObjectContentType = "application/x-json"
+
+	// AzureKeyVaultObjectContentTypeYaml - object content is of type application/x-yaml
+	AzureKeyVaultObjectContentTypeYaml = "application/x-yaml"
 )
 
 // AzureKeyVaultOutput defines output sources, currently only support Secret

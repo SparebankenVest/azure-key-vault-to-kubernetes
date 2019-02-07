@@ -16,8 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -42,7 +40,8 @@ type Handler struct {
 	// Kubernetes API.
 	recorder record.EventRecorder
 
-	keyVaultService *vault.AzureKeyVaultService
+	vaultService vault.Service
+	clock        Timer
 }
 
 // AzurePollFrequency controls time durations to wait between polls to Azure Key Vault for changes
@@ -58,27 +57,22 @@ type AzurePollFrequency struct {
 }
 
 //NewHandler returns a new Handler
-func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretLister corelisters.SecretLister, azureKeyVaultSecretsLister listers.AzureKeyVaultSecretLister, azureFrequency AzurePollFrequency) *Handler {
-	log.Info("Creating event broadcaster")
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(log.Tracef)
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
-
+func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretLister corelisters.SecretLister, azureKeyVaultSecretsLister listers.AzureKeyVaultSecretLister, recorder record.EventRecorder, vaultService vault.Service, azureFrequency AzurePollFrequency) *Handler {
 	return &Handler{
 		kubeclientset:              kubeclientset,
 		azureKeyvaultClientset:     azureKeyvaultClientset,
 		secretsLister:              secretLister,
 		azureKeyVaultSecretsLister: azureKeyVaultSecretsLister,
 		recorder:                   recorder,
-		keyVaultService:            vault.NewAzureKeyVaultService(),
+		vaultService:               vaultService,
+		clock:                      &Clock{},
 	}
 }
 
-// syncHandler compares the actual state with the desired, and attempts to
+// kubernetesSyncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the AzureKeyVaultSecret resource
 // with the current status of the resource.
-func (h *Handler) syncHandler(key string) error {
+func (h *Handler) kubernetesSyncHandler(key string) error {
 	var azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret
 	var secret *corev1.Secret
 	var err error
@@ -123,7 +117,7 @@ func (h *Handler) azureSyncHandler(key string) error {
 	}
 
 	log.Debugf("Getting secret value for %s in Azure", key)
-	if secretValue, err = h.keyVaultService.GetObject(azureKeyVaultSecret); err != nil {
+	if secretValue, err = h.getSecretFromKeyVault(azureKeyVaultSecret); err != nil {
 		msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
 		log.Errorf("failed to get secret value for '%s' from Azure Key vault '%s' using object name '%s', error: %+v", key, azureKeyVaultSecret.Spec.Vault.Name, azureKeyVaultSecret.Spec.Vault.Object.Name, err)
 		h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
@@ -136,14 +130,7 @@ func (h *Handler) azureSyncHandler(key string) error {
 	if azureKeyVaultSecret.Status.SecretHash != secretHash {
 		log.Infof("Secret has changed in Azure Key Vault for AzureKeyvVaultSecret %s. Updating Secret now.", azureKeyVaultSecret.Name)
 
-		newSecret, err := h.createNewSecret(azureKeyVaultSecret, secretValue)
-		if err != nil {
-			msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
-			log.Error(msg)
-			return fmt.Errorf(msg)
-		}
-
-		if secret, err = h.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Update(newSecret); err != nil {
+		if secret, err = h.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Update(createNewSecret(azureKeyVaultSecret, secretValue)); err != nil {
 			log.Warningf("Failed to create Secret, Error: %+v", err)
 			return err
 		}
@@ -158,6 +145,24 @@ func (h *Handler) azureSyncHandler(key string) error {
 	}
 
 	return nil
+}
+
+func (h *Handler) getSecretFromKeyVault(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) (map[string][]byte, error) {
+	var secretHandler KubernetesSecretHandler
+
+	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
+	case azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeSecret:
+		secretHandler = NewAzureSecretHandler(azureKeyVaultSecret, h.vaultService)
+	case azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeCertificate:
+		secretHandler = NewAzureCertificateHandler(azureKeyVaultSecret, h.vaultService)
+	case azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeKey:
+		secretHandler = NewAzureKeyHandler(azureKeyVaultSecret, h.vaultService)
+	case azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret:
+		secretHandler = NewAzureMultiKeySecretHandler(azureKeyVaultSecret, h.vaultService)
+	default:
+		return nil, fmt.Errorf("azure key vault object type '%s' not currently supported", azureKeyVaultSecret.Spec.Vault.Object.Type)
+	}
+	return secretHandler.Handle()
 }
 
 func (h *Handler) getAzureKeyVaultSecret(key string) (*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, error) {
@@ -190,20 +195,12 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 
 	if secret, err = h.secretsLister.Secrets(azureKeyVaultSecret.Namespace).Get(secretName); err != nil {
 		if errors.IsNotFound(err) {
-			var newSecret *corev1.Secret
-
-			secretValues, err = h.keyVaultService.GetObject(azureKeyVaultSecret)
+			secretValues, err = h.getSecretFromKeyVault(azureKeyVaultSecret)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get secret from Azure Key Vault for secret '%s'/'%s', error: %+v", azureKeyVaultSecret.Namespace, azureKeyVaultSecret.Name, err)
 			}
 
-			if newSecret, err = h.createNewSecret(azureKeyVaultSecret, secretValues); err != nil {
-				msg := fmt.Sprintf(FailedAzureKeyVault, azureKeyVaultSecret.Name, azureKeyVaultSecret.Spec.Vault.Name)
-				h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeWarning, ErrAzureVault, msg)
-				return nil, fmt.Errorf(msg)
-			}
-
-			if secret, err = h.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(newSecret); err != nil {
+			if secret, err = h.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(createNewSecret(azureKeyVaultSecret, secretValues)); err != nil {
 				return nil, err
 			}
 
@@ -216,7 +213,40 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 		}
 	}
 
+	if secretName != secret.Name {
+		// Name of secret has changed in AzureKeyVaultSecret, so we need to delete current Secret and recreate
+		// under new name
+
+		// Delete secret
+		if err = h.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Delete(secret.Name, nil); err != nil {
+			return nil, err
+		}
+
+		// Recreate secret under new Name
+		if secret, err = h.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(createNewSecret(azureKeyVaultSecret, secretValues)); err != nil {
+			return nil, err
+		}
+		return secret, nil
+	}
+
+	if hasAzureKeyVaultSecretChanged(azureKeyVaultSecret, secret) {
+		log.Infof("AzureKeyVaultDeployment %s/%s output.secret values has changed and requires update to Secret %s", azureKeyVaultSecret.Namespace, azureKeyVaultSecret.Name, secretName)
+		secret, err = h.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Update(createNewSecret(azureKeyVaultSecret, secret.Data))
+	}
+
 	return secret, err
+}
+
+func hasAzureKeyVaultSecretChanged(vaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, secret *corev1.Secret) bool {
+	if vaultSecret.Spec.Output.Secret.Type != secret.Type {
+		return true
+	}
+
+	// Check if dataKey has changed by trying to lookup key
+	if _, ok := secret.Data[vaultSecret.Spec.Output.Secret.DataKey]; !ok {
+		return true
+	}
+	return false
 }
 
 func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, secret *corev1.Secret) error {
@@ -226,7 +256,7 @@ func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyV
 	azureKeyVaultSecretCopy := azureKeyVaultSecret.DeepCopy()
 	secretHash := getMD5Hash(secret.Data)
 	azureKeyVaultSecretCopy.Status.SecretHash = secretHash
-	azureKeyVaultSecretCopy.Status.LastAzureUpdate = metav1.Time{Time: time.Now()}
+	azureKeyVaultSecretCopy.Status.LastAzureUpdate = h.clock.Now()
 
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the AzureKeyVaultSecret resource.
@@ -293,7 +323,7 @@ func (h *Handler) handleObject(obj interface{}) (*azureKeyVaultSecretv1alpha1.Az
 // newSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue map[string][]byte) (*corev1.Secret, error) {
+func createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue map[string][]byte) *corev1.Secret {
 	secretName := determineSecretName(azureKeyVaultSecret)
 	secretType := determineSecretType(azureKeyVaultSecret, azureSecretValue)
 
@@ -311,7 +341,7 @@ func (h *Handler) createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alph
 		},
 		Type: secretType,
 		Data: azureSecretValue,
-	}, nil
+	}
 }
 
 func determineSecretName(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) string {
