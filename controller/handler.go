@@ -135,12 +135,12 @@ func (h *Handler) azureSyncHandler(key string) error {
 			return err
 		}
 
-		log.Warningf("Secret value will now change for Secret '%s'. Any resources (like Pods) using this Secrets must be restarted to pick up the new value. Details: https://github.com/kubernetes/kubernetes/issues/22368", azureKeyVaultSecret.Name)
+		log.Warningf("Secret value will now change for Secret '%s'. Any resources (like Pods) using this Secrets must be restarted to pick up the new value. Details: https://github.com/kubernetes/kubernetes/issues/22368", secret.Name)
 		h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSyncedWithAzure)
 	}
 
 	log.Debugf("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
-	if err = h.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
+	if err = h.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secretHash); err != nil {
 		return err
 	}
 
@@ -205,7 +205,7 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 			}
 
 			log.Infof("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
-			if err = h.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
+			if err = h.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, getMD5Hash(secretValues)); err != nil {
 				return nil, err
 			}
 
@@ -249,14 +249,13 @@ func hasAzureKeyVaultSecretChanged(vaultSecret *azureKeyVaultSecretv1alpha1.Azur
 	return false
 }
 
-func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, secret *corev1.Secret) error {
+func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, secretHash string) error {
 	secretName := determineSecretName(azureKeyVaultSecret)
 
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	azureKeyVaultSecretCopy := azureKeyVaultSecret.DeepCopy()
-	secretHash := getMD5Hash(secret.Data)
 	azureKeyVaultSecretCopy.Status.SecretHash = secretHash
 	azureKeyVaultSecretCopy.Status.LastAzureUpdate = h.clock.Now()
 	azureKeyVaultSecretCopy.Status.SecretName = secretName
