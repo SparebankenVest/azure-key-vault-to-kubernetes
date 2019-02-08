@@ -230,7 +230,7 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 	}
 
 	if hasAzureKeyVaultSecretChanged(azureKeyVaultSecret, secret) {
-		log.Infof("AzureKeyVaultDeployment %s/%s output.secret values has changed and requires update to Secret %s", azureKeyVaultSecret.Namespace, azureKeyVaultSecret.Name, secretName)
+		log.Infof("AzureKeyVaultSecret %s/%s output.secret values has changed and requires update to Secret %s", azureKeyVaultSecret.Namespace, azureKeyVaultSecret.Name, secretName)
 		secret, err = h.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Update(createNewSecret(azureKeyVaultSecret, secret.Data))
 	}
 
@@ -238,7 +238,8 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 }
 
 func hasAzureKeyVaultSecretChanged(vaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, secret *corev1.Secret) bool {
-	if vaultSecret.Spec.Output.Secret.Type != secret.Type {
+	secretType := determineSecretType(vaultSecret)
+	if secretType != secret.Type {
 		return true
 	}
 
@@ -327,7 +328,7 @@ func (h *Handler) handleObject(obj interface{}) (*azureKeyVaultSecretv1alpha1.Az
 // the AzureKeyVaultSecret resource that 'owns' it.
 func createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue map[string][]byte) *corev1.Secret {
 	secretName := determineSecretName(azureKeyVaultSecret)
-	secretType := determineSecretType(azureKeyVaultSecret, azureSecretValue)
+	secretType := determineSecretType(azureKeyVaultSecret)
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -354,9 +355,9 @@ func determineSecretName(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureK
 	return name
 }
 
-func determineSecretType(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, azureSecretValue map[string][]byte) corev1.SecretType {
-	if azureKeyVaultSecret.Spec.Vault.Object.Type == azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeCertificate && len(azureSecretValue) == 2 {
-		return corev1.SecretTypeTLS
+func determineSecretType(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret) corev1.SecretType {
+	if azureKeyVaultSecret.Spec.Output.Secret.Type == "" {
+		return corev1.SecretTypeOpaque
 	}
 
 	return azureKeyVaultSecret.Spec.Output.Secret.Type
