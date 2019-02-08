@@ -135,13 +135,13 @@ func (h *Handler) azureSyncHandler(key string) error {
 			return err
 		}
 
-		log.Debugf("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
-		if err = h.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
-			return err
-		}
-
 		log.Warningf("Secret value will now change for Secret '%s'. Any resources (like Pods) using this Secrets must be restarted to pick up the new value. Details: https://github.com/kubernetes/kubernetes/issues/22368", azureKeyVaultSecret.Name)
 		h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSyncedWithAzure)
+	}
+
+	log.Debugf("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
+	if err = h.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, secret); err != nil {
+		return err
 	}
 
 	return nil
