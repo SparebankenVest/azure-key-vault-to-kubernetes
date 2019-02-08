@@ -117,7 +117,7 @@ After you have installed the `azure-keyvault-controller`, you can create `AzureK
 The `AzureKeyVaultSecret` is defined using this schema:
 
 ```yaml
-apiVersion: azure-keyvault-controller.spv.no/v1alpha1
+apiVersion: spv.no/v1alpha1
 kind: AzureKeyVaultSecret
 metadata:
   name: <name for azure key vault secret>
@@ -156,7 +156,7 @@ For a complete list: https://github.com/kubernetes/api/blob/49be0e3344fe443eb3d2
 | Secret type                      | Keys |
 | -------------------------------- | ---- |
 | `opaque`                         | defined in `spec.output.secret.dataKey` |
-| `kubernetes/tls`                 | `tls.key`, `tls.crt` |
+| `kubernetes.io/tls`              | `tls.key`, `tls.crt` |
 | `kubernetes.io/dockerconfigjson` | `.dockerconfigjson` |
 | `kubernetes.io/basic-auth`       | `username`, `password` |
 | `kubernetes.io/ssh-auth`         | `ssh-privatekey` |
@@ -200,7 +200,7 @@ This must be a properly formatted **Private** SSH Key stored in a Secret object.
 ### Plain secret
 
 ```yaml
-apiVersion: azure-keyvault-controller.spv.no/v1alpha1
+apiVersion: spv.no/v1alpha1
 kind: AzureKeyVaultSecret
 metadata:
   name: my-first-azure-keyvault-secret
@@ -232,7 +232,7 @@ type: opaque
 ### Certificate with exportable key
 
 ```yaml
-apiVersion: azure-keyvault-controller.spv.no/v1alpha1
+apiVersion: spv.no/v1alpha1
 kind: AzureKeyVaultSecret
 metadata:
   name: my-first-azure-keyvault-certificate
