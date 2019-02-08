@@ -244,8 +244,10 @@ func hasAzureKeyVaultSecretChanged(vaultSecret *azureKeyVaultSecretv1alpha1.Azur
 	}
 
 	// Check if dataKey has changed by trying to lookup key
-	if _, ok := secret.Data[vaultSecret.Spec.Output.Secret.DataKey]; !ok {
-		return true
+	if vaultSecret.Spec.Output.Secret.DataKey != "" {
+		if _, ok := secret.Data[vaultSecret.Spec.Output.Secret.DataKey]; !ok {
+			return true
+		}
 	}
 	return false
 }
