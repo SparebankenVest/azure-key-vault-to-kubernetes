@@ -160,3 +160,106 @@ func TestHandleCertificateWithOutputDataKey(t *testing.T) {
 		t.Errorf("there should be a value stored for key %s", secret.Spec.Output.Secret.DataKey)
 	}
 }
+
+func TestHandleSecretWithBasicAuthOutput(t *testing.T) {
+	fakeVault := &fakeVaultService{
+		fakeSecretValue: "myuser:mypassword",
+	}
+
+	secret := secret()
+	secret.Spec.Vault.Object.Type = "secret"
+	secret.Spec.Output.Secret.Type = corev1.SecretTypeBasicAuth
+
+	handler := NewAzureSecretHandler(secret, fakeVault)
+	values, err := handler.Handle()
+	if err != nil {
+		t.Error(err)
+	}
+	if values == nil {
+		t.Error("handler should have returned values")
+	}
+	if len(values) != 2 {
+		t.Error("there should be two key/values present")
+	}
+	if values[corev1.BasicAuthUsernameKey] == nil {
+		t.Errorf("there should be a value stored for key '%s'", corev1.BasicAuthUsernameKey)
+	}
+	if values[corev1.BasicAuthPasswordKey] == nil {
+		t.Errorf("there should be a value stored for key '%s'", corev1.BasicAuthPasswordKey)
+	}
+}
+
+func TestHandleSecretWithDockerConfigJsonAsOutput(t *testing.T) {
+	fakeVault := &fakeVaultService{
+		fakeSecretValue: "lkajslfjalsdj",
+	}
+
+	secret := secret()
+	secret.Spec.Vault.Object.Type = "secret"
+	secret.Spec.Output.Secret.Type = corev1.SecretTypeDockerConfigJson
+
+	handler := NewAzureSecretHandler(secret, fakeVault)
+	values, err := handler.Handle()
+	if err != nil {
+		t.Error(err)
+	}
+	if values == nil {
+		t.Error("handler should have returned values")
+	}
+	if len(values) != 1 {
+		t.Error("there should be only one key/value present")
+	}
+	if values[corev1.DockerConfigJsonKey] == nil {
+		t.Errorf("there should be a value stored for key '%s'", corev1.DockerConfigJsonKey)
+	}
+}
+
+func TestHandleSecretWithDockerConfigAsOutput(t *testing.T) {
+	fakeVault := &fakeVaultService{
+		fakeSecretValue: "lkajslfjalsdj",
+	}
+
+	secret := secret()
+	secret.Spec.Vault.Object.Type = "secret"
+	secret.Spec.Output.Secret.Type = corev1.SecretTypeDockercfg
+
+	handler := NewAzureSecretHandler(secret, fakeVault)
+	values, err := handler.Handle()
+	if err != nil {
+		t.Error(err)
+	}
+	if values == nil {
+		t.Error("handler should have returned values")
+	}
+	if len(values) != 1 {
+		t.Error("there should be only one key/value present")
+	}
+	if values[corev1.DockerConfigKey] == nil {
+		t.Errorf("there should be a value stored for key '%s'", corev1.DockerConfigKey)
+	}
+}
+
+func TestHandleSecretWithSSHAuthAsOutput(t *testing.T) {
+	fakeVault := &fakeVaultService{
+		fakeSecretValue: "lkajslfjalsdj",
+	}
+
+	secret := secret()
+	secret.Spec.Vault.Object.Type = "secret"
+	secret.Spec.Output.Secret.Type = corev1.SecretTypeSSHAuth
+
+	handler := NewAzureSecretHandler(secret, fakeVault)
+	values, err := handler.Handle()
+	if err != nil {
+		t.Error(err)
+	}
+	if values == nil {
+		t.Error("handler should have returned values")
+	}
+	if len(values) != 1 {
+		t.Error("there should be only one key/value present")
+	}
+	if values[corev1.SSHAuthPrivateKey] == nil {
+		t.Errorf("there should be a value stored for key '%s'", corev1.SSHAuthPrivateKey)
+	}
+}

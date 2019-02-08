@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/SparebankenVest/azure-keyvault-controller/controller/vault"
 	akvsv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
@@ -76,12 +77,13 @@ func NewAzureMultiKeySecretHandler(secretSpec *akvsv1alpha1.AzureKeyVaultSecret,
 // Handle getting and formating Azure Key Vault Secret from Azure Key Vault to Kubernetes
 func (h *AzureSecretHandler) Handle() (map[string][]byte, error) {
 	if h.secretSpec.Spec.Vault.Object.Type == akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret && h.secretSpec.Spec.Output.Secret.DataKey != "" {
-		log.Warnf("output data key for %s/%s ignored, since vault object type is %s", h.secretSpec.Namespace, h.secretSpec.Name, akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret)
+		log.Warnf("output data key for %s/%s ignored, since vault object type is '%s' it will use its own keys", h.secretSpec.Namespace, h.secretSpec.Name, akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret)
 	}
-	if h.secretSpec.Spec.Output.Secret.DataKey == "" &&
-		h.secretSpec.Spec.Vault.Object.Type != akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret {
-		return nil, fmt.Errorf("no datakey spesified for output secret")
-	}
+
+	// if h.secretSpec.Spec.Output.Secret.DataKey == "" &&
+	// 	h.secretSpec.Spec.Vault.Object.Type != akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret {
+	// 	return nil, fmt.Errorf("no datakey spesified for output secret")
+	// }
 
 	secret, err := h.vaultService.GetSecret(&h.secretSpec.Spec.Vault)
 	if err != nil {
@@ -89,7 +91,28 @@ func (h *AzureSecretHandler) Handle() (map[string][]byte, error) {
 	}
 
 	values := make(map[string][]byte)
-	values[h.secretSpec.Spec.Output.Secret.DataKey] = []byte(secret)
+	switch h.secretSpec.Spec.Output.Secret.Type {
+	case corev1.SecretTypeBasicAuth:
+		creds := strings.Split(secret, ":")
+		if len(creds) != 2 {
+			return nil, fmt.Errorf("unable to handle azure key vault secret as basic auth - check that formatting is correct 'username:password'")
+		}
+		values[corev1.BasicAuthUsernameKey] = []byte(creds[0])
+		values[corev1.BasicAuthPasswordKey] = []byte(creds[1])
+	case corev1.SecretTypeDockerConfigJson:
+		values[corev1.DockerConfigJsonKey] = []byte(secret)
+	case corev1.SecretTypeDockercfg:
+		values[corev1.DockerConfigKey] = []byte(secret)
+	case corev1.SecretTypeSSHAuth:
+		values[corev1.SSHAuthPrivateKey] = []byte(secret)
+	default:
+		if h.secretSpec.Spec.Vault.Object.Type != akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret &&
+			h.secretSpec.Spec.Output.Secret.DataKey == "" {
+			return nil, fmt.Errorf("no datakey spesified for output secret")
+		}
+		values[h.secretSpec.Spec.Output.Secret.DataKey] = []byte(secret)
+	}
+
 	return values, nil
 }
 
