@@ -53,7 +53,7 @@ type AzureKeyVaultObject struct {
 	Type        AzureKeyVaultObjectType        `json:"type"`
 	Version     string                         `json:"version"`
 	Poll        bool                           `json:"bool"`
-	ContentType AzureKeyVaultObjectContentType `jons:"contentType"`
+	ContentType AzureKeyVaultObjectContentType `json:"contentType"`
 }
 
 // AzureKeyVaultObjectType defines which Object type to get from Azure Key Vault
