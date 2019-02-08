@@ -1,5 +1,7 @@
 # Azure Key Vault Secrets for Kubernetes
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-keyvault-secret?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-keyvault-secret)
+
 A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure Key Vault to `Secret`'s in Kubernetes.
 
 **Problem:** "I have to manually extract secrets from Azure Key Vault and apply them as Secrets in Kubernetes."
@@ -138,7 +140,7 @@ spec:
       name: <name of azure key vault object to sync>
       type: <object type in azure key vault to sync>
       version: <optional - version of object to sync>
-      contentType: <only applicable when type is the special multi-key-value-secret - either application/x-json or application/x-yaml>
+      contentType: <only applicable when type is the special multi-key-value-secret - either application/x-json or application/x-yaml - >
   output:
     secret:
       name: <optional - name of the kubernetes secret to create - defaults to this resource metadata.name>
