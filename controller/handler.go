@@ -250,6 +250,8 @@ func hasAzureKeyVaultSecretChanged(vaultSecret *azureKeyVaultSecretv1alpha1.Azur
 }
 
 func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret, secret *corev1.Secret) error {
+	secretName := determineSecretName(azureKeyVaultSecret)
+
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
@@ -257,6 +259,7 @@ func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyV
 	secretHash := getMD5Hash(secret.Data)
 	azureKeyVaultSecretCopy.Status.SecretHash = secretHash
 	azureKeyVaultSecretCopy.Status.LastAzureUpdate = h.clock.Now()
+	azureKeyVaultSecretCopy.Status.SecretName = secretName
 
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the AzureKeyVaultSecret resource.

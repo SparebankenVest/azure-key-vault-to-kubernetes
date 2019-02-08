@@ -100,6 +100,7 @@ type AzureKeyVaultOutputSecret struct {
 type AzureKeyVaultSecretStatus struct {
 	SecretHash      string      `json:"secretHash"`
 	LastAzureUpdate metav1.Time `json:"lastAzureUpdate,omitempty"`
+	SecretName      string      `json:"secretName"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
