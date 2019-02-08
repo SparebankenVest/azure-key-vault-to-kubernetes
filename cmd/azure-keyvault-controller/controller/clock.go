@@ -20,13 +20,3 @@ func (t *Clock) Now() metav1.Time {
 	now := time.Now()
 	return metav1.Time{Time: now}
 }
-
-// FakeClock is a timer used for unit testing
-type FakeClock struct {
-}
-
-// Now returns a fake time
-func (t *FakeClock) Now() metav1.Time {
-	now := time.Date(2019, time.February, 4, 12, 0, 0, 0, time.Local)
-	return metav1.Time{Time: now}
-}

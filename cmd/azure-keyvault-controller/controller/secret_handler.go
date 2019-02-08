@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SparebankenVest/azure-keyvault-controller/controller/vault"
+	"github.com/SparebankenVest/azure-keyvault-controller/cmd/azure-keyvault-controller/vault"
 	akvsv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
 	log "github.com/sirupsen/logrus"
@@ -80,17 +80,13 @@ func (h *AzureSecretHandler) Handle() (map[string][]byte, error) {
 		log.Warnf("output data key for %s/%s ignored, since vault object type is '%s' it will use its own keys", h.secretSpec.Namespace, h.secretSpec.Name, akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret)
 	}
 
-	// if h.secretSpec.Spec.Output.Secret.DataKey == "" &&
-	// 	h.secretSpec.Spec.Vault.Object.Type != akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret {
-	// 	return nil, fmt.Errorf("no datakey spesified for output secret")
-	// }
+	values := make(map[string][]byte)
 
 	secret, err := h.vaultService.GetSecret(&h.secretSpec.Spec.Vault)
 	if err != nil {
 		return nil, err
 	}
 
-	values := make(map[string][]byte)
 	switch h.secretSpec.Spec.Output.Secret.Type {
 	case corev1.SecretTypeBasicAuth:
 		creds := strings.Split(secret, ":")
@@ -99,12 +95,16 @@ func (h *AzureSecretHandler) Handle() (map[string][]byte, error) {
 		}
 		values[corev1.BasicAuthUsernameKey] = []byte(creds[0])
 		values[corev1.BasicAuthPasswordKey] = []byte(creds[1])
+
 	case corev1.SecretTypeDockerConfigJson:
 		values[corev1.DockerConfigJsonKey] = []byte(secret)
+
 	case corev1.SecretTypeDockercfg:
 		values[corev1.DockerConfigKey] = []byte(secret)
+
 	case corev1.SecretTypeSSHAuth:
 		values[corev1.SSHAuthPrivateKey] = []byte(secret)
+
 	default:
 		if h.secretSpec.Spec.Vault.Object.Type != akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret &&
 			h.secretSpec.Spec.Output.Secret.DataKey == "" {

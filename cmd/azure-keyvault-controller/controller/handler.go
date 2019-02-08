@@ -20,7 +20,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/SparebankenVest/azure-keyvault-controller/controller/vault"
+	"github.com/SparebankenVest/azure-keyvault-controller/cmd/azure-keyvault-controller/vault"
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
 	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
 	listers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/listers/azurekeyvaultcontroller/v1alpha1"
@@ -77,8 +77,6 @@ func (h *Handler) kubernetesSyncHandler(key string) error {
 	var secret *corev1.Secret
 	var err error
 
-	// log.Infof("Checking state for %s", key)
-
 	if azureKeyVaultSecret, err = h.getAzureKeyVaultSecret(key); err != nil {
 		if exit := handleKeyVaultError(err, key); exit {
 			return nil
@@ -97,7 +95,6 @@ func (h *Handler) kubernetesSyncHandler(key string) error {
 		return fmt.Errorf(msg)
 	}
 
-	// log.Info(MessageResourceSynced)
 	h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
@@ -258,6 +255,7 @@ func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyV
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
+
 	azureKeyVaultSecretCopy := azureKeyVaultSecret.DeepCopy()
 	azureKeyVaultSecretCopy.Status.SecretHash = secretHash
 	azureKeyVaultSecretCopy.Status.LastAzureUpdate = h.clock.Now()

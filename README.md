@@ -48,6 +48,15 @@ See the [Usage](#usage) section for more information on how to use the controlle
 
 ## Authentication
 
+There are two main options for authentication:
+* Controller authentication - the controller has a set of credentials used by all AzureKeyVaultResources to acces Azure Key Vault
+* Resource authentication - each AzureKeyVaultSecret resource gets a set of credentials which will be used to access Azure Key Vault
+* A combination of the two
+
+### Controller Authentication
+
+Using controller authentication means that anyone with access to the cluster can create a AzureKeyVaultSecret and sync secrets from Azure Key Vaults where these credentials are valid. In practise 
+
 The `azure-keyvault-controller` use environment-based authentication as documented here: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization#use-environment-based-authentication
 
 Note: Using Managed Service Identity (MSI) requires the [`azure-pod-identity`](https://github.com/Azure/aad-pod-identity) controller running and configured in the cluster.
