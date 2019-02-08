@@ -146,8 +146,7 @@ See [Examples](#examples) for different usages.
 | `secret`      | Azure Key Vault Secret - can contain any secret data |
 | `certificate` | Azure Key Vault Certificate - A TLS certificate with just the pulic key or both public and private key if exportable |
 | `key`         | Azure Key Vault Key - A RSA or EC key used for signing |
-
-In addition the controller accepts the special `multi-key-value-secret` type that will allow a Azure Key Vault Secret object to contain `json` or `yaml` key/value items that will be directly exported as key/value items in the Kubernetes secret. When `multi-key-value-secret` type is used, the `contentType` property MUST also be set with either `application/x-json` or `application/x-yaml`.
+| `multi-key-value-secret`  | A special kind of Azure Key Vault Secret only understood by the controller - For cases where the Secret contains `json` or `yaml` key/value items that will be directly exported as key/value items in the Kubernetes secret. When `multi-key-value-secret` type is used, the `contentType` property MUST also be set to either `application/x-json` or `application/x-yaml`. |
 
 ### Commonly used Kubernetes secret types
 
