@@ -14,6 +14,10 @@ spec:
     categories:
     - all
   additionalPrinterColumns:
+    - name: Secret Name
+      type: string
+      description: Which Kubernetes Secret this resource is synched with
+      JSONPath: .status.secretName
     - name: Vault
       type: string
       description: Which Azure Key Vault this resource is synched with
@@ -22,7 +26,7 @@ spec:
       type: string
       description: Which Azure Key Vault object this resource is synched with
       JSONPath: .spec.vault.object.name
-    - name: Updated
+    - name: Synched
       type: string
       description: When this resource was last synched with Azure Key Vault
       JSONPath: .status.lastAzureUpdate
@@ -53,8 +57,10 @@ spec:
                       description: The type of object in Azure Key Vault
                       enum:
                       - secret
+                      - multi-key-value-secret # not implemented
                       - certificate
-                      - key
+                      - exportable-certificate
+                      - key # not implemented
                     version:
                       type: string
                       description: The object version in Azure Key Vault
