@@ -154,18 +154,19 @@ For a complete list: https://github.com/kubernetes/api/blob/49be0e3344fe443eb3d2
 
 | Secret type                      | Keys |
 | -------------------------------- | ---- |
-| `opaque`                         | defined in `spec.output.secret.dataKey` |
+| `opaque` (default)               | defined in `spec.output.secret.dataKey` |
 | `kubernetes.io/tls`              | `tls.key`, `tls.crt` |
 | `kubernetes.io/dockerconfigjson` | `.dockerconfigjson` |
+| `kubernetes.io/dockercfg`        | `.dockercfg` |
 | `kubernetes.io/basic-auth`       | `username`, `password` |
 | `kubernetes.io/ssh-auth`         | `ssh-privatekey` |
 
 
 With the exception of the `opaque` secret type, the controller will make a best effort to export the Azure Key Vault object into the secret type defined.
 
-__kubernetes/tls__
+**kubernetes/tls**
 
-By pointing to an exportable Certificate object in Azure Key Vault AND setting the Kubernetes output secret type to `kubernetes/tls`, the controller will automatically format the Kubernetes secret accordingly both for pem and pfx certificates.
+By pointing to a **exportable** Certificate object in Azure Key Vault AND setting the Kubernetes output secret type to `kubernetes/tls`, the controller will automatically format the Kubernetes secret accordingly both for pem and pfx certificates.
 
 __kubernetes.io/dockerconfigjson__
 
