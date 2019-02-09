@@ -55,9 +55,7 @@ workflows:
       - release:
           filters:
             tags:
-              only: /^([0-9]\d*)\.([0-9]\d*)\.([0-9]\d*).*$/
-            branches:
-              ignore: /.*/
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(((0|[1-9]\d*|\d*[A-Z-a-z-][\dA-Za-z-]*))(\.(0|[1-9]\d*|\d*[A-Za-z-][\dA-Za-z-]*))*))?(\+([\dA-Za-z-]+(\.[\dA-Za-z-]*)*))?$/
 
 
       
