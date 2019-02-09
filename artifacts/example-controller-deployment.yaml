@@ -19,7 +19,7 @@ spec:
       serviceAccountName: azure-keyvault-controller
       containers:
       - name: azure-keyvault-controller
-        image: dokken.azurecr.io/azure-keyvault-controller:0.0.32
+        image: spvest/azure-keyvault-controller:0.1.0-alpha.1
         imagePullPolicy: Always
         env:
         - name: AZURE_VAULT_NORMAL_POLL_INTERVALS
