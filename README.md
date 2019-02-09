@@ -1,6 +1,7 @@
 # Azure Key Vault Secrets for Kubernetes
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-keyvault-controller?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-keyvault-controller)
+[![CircleCI](https://circleci.com/gh/SparebankenVest/azure-keyvault-controller.svg?style=svg)](https://circleci.com/gh/SparebankenVest/azure-keyvault-controller)
 
 A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure Key Vault to `Secret`'s in Kubernetes.
 
