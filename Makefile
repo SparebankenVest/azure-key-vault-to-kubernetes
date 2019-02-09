@@ -18,6 +18,8 @@ pull-release:
 
 tag-release:
 	docker tag $(DOCKER_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_IMAGE):$(DOCKER_RELEASE_TAG)
+	docker tag $(DOCKER_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_IMAGE):latest
 
 push-release:
 	docker push $(DOCKER_RELEASE_IMAGE):$(DOCKER_RELEASE_TAG)
+	docker push $(DOCKER_RELEASE_IMAGE):latest
