@@ -1,5 +1,8 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright Sparebanken Vest
+
+Based on the Kubernetes controller example at
+https://github.com/kubernetes/sample-controller
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,7 +112,6 @@ func main() {
 
 	vaultService := vault.NewService()
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
-
 	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvaultcontroller().V1alpha1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
 
 	controller := controller.NewController(handler,
