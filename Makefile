@@ -13,6 +13,9 @@ test:
 push:
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
 
+pull-release:
+	docker pull $(DOCKER_IMAGE):$(DOCKER_TAG) 
+
 tag-release:
 	docker tag $(DOCKER_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_IMAGE):$(DOCKER_RELEASE_TAG)
 
