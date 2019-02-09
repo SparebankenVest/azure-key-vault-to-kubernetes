@@ -45,10 +45,10 @@ workflows:
       - build
   release:
     jobs:
-      release:
-        filters:
-          tags:
-            only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
+      - release:
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
 
 
       
