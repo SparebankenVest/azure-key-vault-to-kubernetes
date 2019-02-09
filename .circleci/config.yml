@@ -40,15 +40,15 @@ jobs:
 
 workflows:
   version: 2
-  commit:
+  build-deploy:
     jobs:
-      - build
+      - build:
           filters:
             branches:
               only: master
             tags:
               ignore: /.*/
-      - release
+      - release:
           requires:
             - build
           filters:
