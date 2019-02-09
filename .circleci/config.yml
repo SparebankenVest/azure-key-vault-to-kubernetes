@@ -53,7 +53,7 @@ workflows:
             - build
           filters:
             tags:
-              only: /^v.*/
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
             branches:
               ignore: /.*/
 
