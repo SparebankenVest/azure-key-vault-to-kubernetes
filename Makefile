@@ -1,5 +1,7 @@
 DOCKER_IMAGE = dokken.azurecr.io/azure-keyvault-controller
 DOCKER_TAG 	 = $(shell git rev-parse --short HEAD)
+DOCKER_RELEASE_IMAGE = spvest/azure-keyvault-controller
+DOCKER_RELEASE_TAG 	 = $(shell git describe)
 GOPACKAGES = $(shell go list ./... | grep -v /pkg/)
 
 build:
@@ -10,3 +12,9 @@ test:
 
 push:
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
+
+tag-release:
+	docker tag $(DOCKER_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_IMAGE):$(DOCKER_RELEASE_TAG)
+
+push-release:
+	docker push $(DOCKER_RELEASE_IMAGE):$(DOCKER_RELEASE_TAG)

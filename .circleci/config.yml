@@ -2,27 +2,60 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.11.5
+    - image: circleci/golang:1.11.5
     working_directory: /go/src/github.com/SparebankenVest/azure-keyvault-controller
     steps:
-      - checkout
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run:
-          name: Test
-          command: make test
-      - run:
-          name: Logg into Docker registry
-          command: docker login -u $docker_user -p $docker_password dokken.azurecr.io
-      - run:
-          name: Create docker image
-          command: make build
-      - run:
-          name: Publish docker image
-          command: make push
+    - checkout
+    - setup_remote_docker:
+        docker_layer_caching: true
+    - run:
+        name: Test
+        command: make test
+    - run:
+        name: Logg into Docker registry
+        command: docker login -u $docker_user -p $docker_password dokken.azurecr.io
+    - run:
+        name: Create docker image
+        command: make build
+    - run:
+        name: Publish docker image
+        command: make push
+
+  release:
+    docker:
+    - image: circleci/golang:1.11.5
+    working_directory: /go/src/github.com/SparebankenVest/azure-keyvault-controller
+    steps:
+    - setup_remote_docker:
+        docker_layer_caching: true
+    - run:
+        name: Logg into Docker registry
+        command: docker login -u $docker_release_user -p $docker_release_password
+    - run:
+        name: Tag release
+        command: make tag-release
+    - run:
+        name: Publish release
+        command: make push-release
 
 workflows:
   version: 2
   commit:
     jobs:
       - build
+          filters:
+            branches:
+              only: master
+            tags:
+              ignore: /.*/
+      - release
+          requires:
+            - build
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+
+
+      
