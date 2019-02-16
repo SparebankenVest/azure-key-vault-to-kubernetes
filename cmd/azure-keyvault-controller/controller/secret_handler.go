@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SparebankenVest/azure-keyvault-controller/cmd/azure-keyvault-controller/vault"
 	akvsv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
+	vault "github.com/SparebankenVest/azure-keyvault-controller/pkg/azurekeyvault"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"

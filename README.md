@@ -1,4 +1,4 @@
-# Azure Key Vault Secrets for Kubernetes
+# Azure Key Vault To Kubernetes
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-keyvault-controller?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-keyvault-controller)
 [![CircleCI](https://circleci.com/gh/SparebankenVest/azure-keyvault-controller.svg?style=shield)](https://circleci.com/gh/SparebankenVest/azure-keyvault-controller)
@@ -9,21 +9,21 @@ A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure 
 
 **Solution:** "Install the `azure-keyvault-controller` and automatically synchronize objects from Azure Key Vault as secrets in Kubernetes."
 
-#### Contents
-
-<!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
+<!-- TOC depthFrom:2 -->
 
 - [Understand this!](#understand-this)
 - [How it works](#how-it-works)
+  - [Simple mode](#simple-mode)
+  - [Transparant mode](#transparant-mode)
 - [Authentication](#authentication)
 - [Authorization](#authorization)
 - [Installation](#installation)
 - [Usage](#usage)
-	- [Vault object types](#vault-object-types)
-	- [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)
+  - [Vault object types](#vault-object-types)
+  - [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)
 - [Examples](#examples)
-	- [Plain secret](#plain-secret)
-	- [Certificate with exportable key](#certificate-with-exportable-key)
+  - [Plain secret](#plain-secret)
+  - [Certificate with exportable key](#certificate-with-exportable-key)
 
 <!-- /TOC -->
 
@@ -39,23 +39,38 @@ Make sure you fully understand these risks before synchronizing any Azure Key Va
 
 ## How it works
 
-Using the custom `AzureKeyVaultSecret` Kubernetes resource the `azure-keyvault-controller` will synchronize Azure Key Vault objects (secrets, certificates and keys) into Kubernetes `Secret`'s.
+Azure Key Vault To Kubernetes works in two different modes:
 
-After the resource is applied to Kubernetes, the controller will try to retreive the specified object from Azure Key Vault and apply it as a Kubernetes `secret`.
-
-Periodically the controller will poll Azure Key Vault to check if the object has changed, and if so apply the change to the Kubernetes `secret`.
-
-**Note: By default this is every 10 minutes ([artifacts/example-controller-deployment.yaml](artifacts/example-controller-deployment.yaml)) and depending on how many secrets are synchronized can cause extra usage costs of Azure Key Vault.**
+1) Simple - Synch objects from Azure Key Vault as Secret resources in Kubernetes
+2) Transparant - Synch objects from Azure Key Vault and inject them as environment variables transparantly into containers 
 
 See the [Usage](#usage) section for more information on how to use the controller together with the `AzureKeyVaultSecret` resource.
+
+### Simple mode
+
+The Simple mode is the most straight forward option, but also the least secure as it stores Azure Key Vault objects as Secrets in Kubernetes which is base64 encoded plain text.
+
+1. Apply a custom `AzureKeyVaultSecret` resource 
+2. The `azure-keyvault-controller` controller will synchronize all Azure Key Vault objects (secrets, certificates and keys) defined in `AzureKeyVaultSecret` resources into Kubernetes `Secret`'s.
+3. The `azure-keyvault-controller` controller will periodically poll Azure Key Vault for changes and apply the changes to the Kubernetes `Secret`s.
+
+**Note: By default the `azure-keyvault-controller` controller auto synch Secrets every 10 minutes ([artifacts/example-controller-deployment.yaml](artifacts/example-controller-deployment.yaml)) and depending on how many secrets are synchronized can cause extra usage costs of Azure Key Vault.**
+
+### Transparant mode
+
+The Transparant mode is the most secure option, as it transparantly injects Azure Key Vault objects as environment variables into containers, without touching disk or making values visible in container specs.
+
+1. Apply a custom `AzureKeyVaultSecret` resource pointing to a Azure Key Vault and object
+2. In a Deployment, Daemonset, Pod, ReplicaSet or StatefulSet resource define the environment variables needed by the container using the convention `azurekeyvaultsecret#name_of_azure_key_vault_secret_resource`
+3. Explicitly set the container `command` (or else Azure Key Vault To Kubernetes will not be able to inject environment variables transparently into the executing process)
 
 ## Authentication
 
 The `azure-keyvault-controller` use environment-based authentication as documented here: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization#use-environment-based-authentication
 
-Note: Using Managed Service Identity (MSI) requires the [`azure-pod-identity`](https://github.com/Azure/aad-pod-identity) controller running and configured in the cluster.
+Note: Using Managed Service Identity (MSI) in a Azure AKS cluster requires the [`azure-pod-identity`](https://github.com/Azure/aad-pod-identity) controller running and configured in the cluster.
 
-The two most common authentication methods are MSI and Client Credentials (Service Principal).
+The two most common authentication methods are Client Credentials (Service Principal) and MSI.
 
 At the time of writing the following authentication options was available (extracted from the Microsoft doc about environment-based authentication above):
 

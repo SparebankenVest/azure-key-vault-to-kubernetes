@@ -1,4 +1,6 @@
 DOCKER_IMAGE = dokken.azurecr.io/azure-keyvault-controller
+DOCKER_WEBHOOK_IMAGE = dokken.azurecr.io/azure-keyvault-secrets-webhook
+DOCKER_VAULTENV_IMAGE = dokken.azurecr.io/azure-keyvault-env
 DOCKER_TAG 	 = $(shell git rev-parse --short HEAD)
 DOCKER_RELEASE_IMAGE = spvest/azure-keyvault-controller
 DOCKER_RELEASE_TAG 	 = $(shell git describe)
@@ -9,11 +11,23 @@ VCS_URL = https://github.com/SparebankenVest/azure-keyvault-controller
 build:
 	docker build --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL) -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
+build-webhook:
+	docker build --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL) -t $(DOCKER_WEBHOOK_IMAGE):$(DOCKER_TAG) -f Dockerfile.webhook .
+
+build-vaultenv:
+	docker build --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL) -t $(DOCKER_VAULTENV_IMAGE):$(DOCKER_TAG) -f Dockerfile.vaultenv .
+
 test:
 	CGO_ENABLED=0 go test -v $(GOPACKAGES)
 
 push:
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
+
+push-webhook:
+	docker push $(DOCKER_WEBHOOK_IMAGE):$(DOCKER_TAG)
+
+push-vaultenv:
+	docker push $(DOCKER_VAULTENV_IMAGE):$(DOCKER_TAG)
 
 pull-release:
 	docker pull $(DOCKER_IMAGE):$(DOCKER_TAG) 

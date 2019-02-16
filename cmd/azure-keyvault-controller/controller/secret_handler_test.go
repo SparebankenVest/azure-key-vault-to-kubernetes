@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/SparebankenVest/azure-keyvault-controller/cmd/azure-keyvault-controller/vault"
 	akvsv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
+	vault "github.com/SparebankenVest/azure-keyvault-controller/pkg/azurekeyvault"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -45,9 +45,9 @@ func (f *fakeVaultService) GetSecret(secret *akvsv1alpha1.AzureKeyVault) (string
 func (f *fakeVaultService) GetKey(secret *akvsv1alpha1.AzureKeyVault) (*[]byte, error) {
 	return nil, nil
 }
-func (f *fakeVaultService) GetCertificate(secret *akvsv1alpha1.AzureKeyVault, exportPrivateKey bool) (*vault.AzureKeyVaultCertificate, error) {
+func (f *fakeVaultService) GetCertificate(secret *akvsv1alpha1.AzureKeyVault, exportPrivateKey bool) (*vault.Certificate, error) {
 	if f.fakeCertValue != "" {
-		return vault.NewAzureKeyVaultCertificateFromPem(f.fakeCertValue)
+		return vault.NewCertificateFromPem(f.fakeCertValue)
 	}
 	return nil, nil
 }

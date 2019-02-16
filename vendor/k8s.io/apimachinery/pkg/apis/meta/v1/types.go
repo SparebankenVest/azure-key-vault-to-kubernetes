@@ -235,8 +235,6 @@ type ObjectMeta struct {
 	// When an object is created, the system will populate this list with the current set of initializers.
 	// Only privileged users may set or modify this list. Once it is empty, it may not be modified further
 	// by any user.
-	//
-	// DEPRECATED - initializers are an alpha field and will be removed in v1.15.
 	Initializers *Initializers `json:"initializers,omitempty" protobuf:"bytes,16,opt,name=initializers"`
 
 	// Must be empty before the object is deleted from the registry. Each entry
@@ -288,8 +286,8 @@ const (
 )
 
 // OwnerReference contains enough information to let you identify an owning
-// object. An owning object must be in the same namespace as the dependent, or
-// be cluster-scoped, so there is no namespace field.
+// object. Currently, an owning object must be in the same namespace, so there
+// is no namespace field.
 type OwnerReference struct {
 	// API version of the referent.
 	APIVersion string `json:"apiVersion" protobuf:"bytes,5,opt,name=apiVersion"`
@@ -329,9 +327,9 @@ type ListOptions struct {
 	// Defaults to everything.
 	// +optional
 	FieldSelector string `json:"fieldSelector,omitempty" protobuf:"bytes,2,opt,name=fieldSelector"`
-
-	// +k8s:deprecated=includeUninitialized,protobuf=6
-
+	// If true, partially initialized resources are included in the response.
+	// +optional
+	IncludeUninitialized bool `json:"includeUninitialized,omitempty" protobuf:"varint,6,opt,name=includeUninitialized"`
 	// Watch for changes to the described resources and return them as a stream of
 	// add, update, and remove notifications. Specify resourceVersion.
 	// +optional
@@ -404,7 +402,9 @@ type GetOptions struct {
 	// - if it's 0, then we simply return what we currently have in cache, no guarantee;
 	// - if set to non zero, then the result is at least as fresh as given rv.
 	ResourceVersion string `json:"resourceVersion,omitempty" protobuf:"bytes,1,opt,name=resourceVersion"`
-	// +k8s:deprecated=includeUninitialized,protobuf=2
+	// If true, partially initialized resources are included in the response.
+	// +optional
+	IncludeUninitialized bool `json:"includeUninitialized,omitempty" protobuf:"varint,2,opt,name=includeUninitialized"`
 }
 
 // DeletionPropagation decides if a deletion will propagate to the dependents of
@@ -489,7 +489,10 @@ type CreateOptions struct {
 	// - All: all dry run stages will be processed
 	// +optional
 	DryRun []string `json:"dryRun,omitempty" protobuf:"bytes,1,rep,name=dryRun"`
-	// +k8s:deprecated=includeUninitialized,protobuf=2
+
+	// If IncludeUninitialized is specified, the object may be
+	// returned without completing initialization.
+	IncludeUninitialized bool `json:"includeUninitialized,omitempty" protobuf:"varint,2,opt,name=includeUninitialized"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

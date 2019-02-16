@@ -15,16 +15,19 @@ RUN mkdir /user && \
     echo 'nobody:x:65534:65534:nobody:/:' > /user/passwd && \
     echo 'nobody:x:65534:' > /user/group
 
-RUN mkdir -p /go/src/github.com/SparebankenVest/azure-keyvault-controller
-WORKDIR /go/src/github.com/SparebankenVest/azure-keyvault-controller
+ARG PACKAGE=github.com/SparebankenVest/azure-keyvault-controller
 
-# Import the code from the context.
-COPY ./ ./
+ENV DEP_RELEASE_TAG=${DEP_VERSION}
+RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
-# Build the executable to `/app`. Mark the build as statically linked.
-RUN CGO_ENABLED=0 go build \
-    -installsuffix 'static' \
--o ./bin/azure-keyvault-controller ./cmd/azure-keyvault-controller 
+RUN mkdir -p /go/src/${PACKAGE}
+WORKDIR /go/src/${PACKAGE}
+
+COPY Gopkg.* /go/src/${PACKAGE}/
+RUN dep ensure --vendor-only
+
+COPY . /go/src/${PACKAGE}
+RUN CGO_ENABLED=0 go install ./cmd/azure-keyvault-controller 
 
 FROM alpine:3.8
 
@@ -46,7 +49,7 @@ RUN apk update && apk add --no-cache \
     iptables \
     && update-ca-certificates
 
-COPY --from=build /go/src/github.com/SparebankenVest/azure-keyvault-controller/bin/azure-keyvault-controller /bin/azure-keyvault-controller
+COPY --from=build /go/bin/azure-keyvault-controller /usr/local/bin/azure-keyvault-controller
 
 USER akvcontroller
 ENTRYPOINT ["azure-keyvault-controller"]

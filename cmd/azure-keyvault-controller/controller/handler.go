@@ -39,8 +39,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/SparebankenVest/azure-keyvault-controller/cmd/azure-keyvault-controller/vault"
 	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
+	vault "github.com/SparebankenVest/azure-keyvault-controller/pkg/azurekeyvault"
 	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
 	listers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/listers/azurekeyvaultcontroller/v1alpha1"
 )
