@@ -9,6 +9,9 @@ jobs:
     - setup_remote_docker:
         docker_layer_caching: true
     - run:
+        name: Vendor
+        command: dep ensure --vendor-only
+    - run:
         name: Test
         command: make test
     - run:

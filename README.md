@@ -48,7 +48,9 @@ See the [Usage](#usage) section for more information on how to use the controlle
 
 ### Simple mode
 
-The Simple mode is the most straight forward option, but also the least secure as it stores Azure Key Vault objects as Secrets in Kubernetes which is base64 encoded plain text.
+The Simple mode is the most straight forward option, but also the least secure as it stores Azure Key Vault objects as Secrets in Kubernetes which is base64 encoded in plain text.
+
+To use Azure Key Vault To Kubernetes in Simple mode:
 
 1. Apply a custom `AzureKeyVaultSecret` resource 
 2. The `azure-keyvault-controller` controller will synchronize all Azure Key Vault objects (secrets, certificates and keys) defined in `AzureKeyVaultSecret` resources into Kubernetes `Secret`'s.
@@ -62,7 +64,7 @@ The Transparant mode is the most secure option, as it transparantly injects Azur
 
 1. Apply a custom `AzureKeyVaultSecret` resource pointing to a Azure Key Vault and object
 2. In a Deployment, Daemonset, Pod, ReplicaSet or StatefulSet resource define the environment variables needed by the container using the convention `azurekeyvaultsecret#name_of_azure_key_vault_secret_resource`
-3. Explicitly set the container `command` (or else Azure Key Vault To Kubernetes will not be able to inject environment variables transparently into the executing process)
+3. 
 
 ## Authentication
 
