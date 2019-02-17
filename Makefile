@@ -1,3 +1,4 @@
+PACKAGE = github.com/SparebankenVest/azure-keyvault-controller
 DOCKER_IMAGE = dokken.azurecr.io/azure-keyvault-controller
 DOCKER_WEBHOOK_IMAGE = dokken.azurecr.io/azure-keyvault-secrets-webhook
 DOCKER_VAULTENV_IMAGE = dokken.azurecr.io/azure-keyvault-env
@@ -7,9 +8,10 @@ DOCKER_RELEASE_TAG 	 = $(shell git describe)
 GOPACKAGES = $(shell go list ./... | grep -v /pkg/)
 BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_URL = https://github.com/SparebankenVest/azure-keyvault-controller
+VCS_PROJECT_PATH = ./cmd/azure-keyvault-controller
 
-build:
-	docker build --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL) -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+build-controller:
+	docker build --no-cache --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH=$(VCS_PROJECT_PATH) --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL) -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
 build-webhook:
 	docker build --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL) -t $(DOCKER_WEBHOOK_IMAGE):$(DOCKER_TAG) -f Dockerfile.webhook .
