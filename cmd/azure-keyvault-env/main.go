@@ -33,12 +33,6 @@ import (
 
 func main() {
 
-	// client, err := vault.NewClientWithConfig(vaultapi.DefaultConfig(), role, path)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "failed to create vault client: %s\n", err.Error())
-	// 	os.Exit(1)
-	// }
-
 	fmt.Println("Starting...")
 
 	namespace := os.Getenv("POD_NAMESPACE")
@@ -50,14 +44,6 @@ func main() {
 	fmt.Printf("Current namespace is '%s'\n", namespace)
 
 	clientID := os.Getenv("AZURE_CLIENT_ID")
-	// clientSecret, _ := os.Getenv("AZURE_CLIENT_SECRET")
-	// tenantID, _ := os.Getenv("AZURE_TENANT_ID")
-
-	// vaultService := vault.NewServiceFromCredentials(&vault.ServiceCredentials{
-	// 	ClientID:     clientID,
-	// 	ClientSecret: clientSecret,
-	// 	TenantID:     tenantID,
-	// })
 
 	vaultService := vault.NewService()
 	fmt.Fprintf(os.Stdout, "Azure client ID: '%s'\n", clientID)
@@ -130,24 +116,6 @@ func main() {
 			fmt.Fprintf(os.Stderr, "failed to exec process '%s': %s\n", binary, err.Error())
 			os.Exit(1)
 		}
-		// binary, err := exec.LookPath(os.Args[1])
-		// if err != nil {
-		// 	fmt.Fprintf(os.Stderr, "binary not found: %s\n", os.Args[1])
-		// 	os.Exit(1)
-		// }
-		// cmd := exec.Command(binary, os.Args[1:]...)
-		// cmd.Stdout = os.Stdout
-		// cmd.Stderr = os.Stderr
-		// cmd.Env = environ
-		// // cmd.Args = os.Args[1:]
-		// fmt.Fprintf(os.Stdout, "\nexecuting process '%v'\n", os.Args[1:])
-		// fmt.Fprintf(os.Stdout, "with these env vars '%v'\n", environ)
-		// err = cmd.Run()
-		// // err = os.Exec(binary, os.Args[1:], environ)
-		// if err != nil {
-		// 	fmt.Fprintf(os.Stderr, "failed to exec process '%s': %+v\n", binary, err)
-		// 	os.Exit(1)
-		// }
 	}
 }
 

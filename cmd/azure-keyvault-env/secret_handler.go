@@ -147,18 +147,28 @@ func (h *AzureKeyVaultCertificateHandler) Handle() (map[string]string, error) {
 	}
 
 	cert, err := h.vaultService.GetCertificate(&h.secretSpec.Spec.Vault, exportPrivateKey)
+
+	var pubKey []byte
+	var privKey []byte
+
 	if err != nil {
 		return nil, err
 	}
 	if exportPrivateKey {
-		if values[corev1.TLSCertKey], err = cert.ExportPublicKeyAsPem(); err != nil {
+		if pubKey, err = cert.ExportPublicKeyAsPem(); err != nil {
 			return nil, err
 		}
-		if values[corev1.TLSPrivateKeyKey], err = cert.ExportPrivateKeyAsPem(); err != nil {
+		if privKey, err = cert.ExportPrivateKeyAsPem(); err != nil {
 			return nil, err
 		}
+
+		values[corev1.TLSCertKey] = string(pubKey)
+		values[corev1.TLSPrivateKeyKey] = string(privKey)
 	} else {
-		values[h.secretSpec.Spec.Output.Secret.DataKey], err = cert.ExportPublicKeyAsPem()
+		if pubKey, err = cert.ExportPublicKeyAsPem(); err != nil {
+			return nil, err
+		}
+		values[h.secretSpec.Spec.Output.Secret.DataKey] = string(pubKey)
 	}
 
 	return values, nil
