@@ -168,7 +168,7 @@ func (h *AzureKeyHandler) Handle() (map[string][]byte, error) {
 	}
 
 	values := make(map[string][]byte)
-	values[h.secretSpec.Spec.Output.Secret.DataKey] = *key
+	values[h.secretSpec.Spec.Output.Secret.DataKey] = []byte(key)
 	return values, nil
 }
 

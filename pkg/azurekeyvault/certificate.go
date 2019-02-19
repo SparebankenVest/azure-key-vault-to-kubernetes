@@ -98,9 +98,9 @@ func NewCertificateFromDer(der []byte) (*Certificate, error) {
 }
 
 // ExportPrivateKeyAsPem returns a pem formatted certificate
-func (cert *Certificate) ExportPrivateKeyAsPem() (string, error) {
+func (cert *Certificate) ExportPrivateKeyAsPem() ([]byte, error) {
 	if !cert.HasPrivateKey {
-		return "", fmt.Errorf("certificate has no private key")
+		return nil, fmt.Errorf("certificate has no private key")
 	}
 
 	var derKey []byte
@@ -112,34 +112,34 @@ func (cert *Certificate) ExportPrivateKeyAsPem() (string, error) {
 	case CertificateKeyTypeEcdsa:
 		derKey, err = x509.MarshalECPrivateKey(cert.PrivateKeyEcdsa)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	default:
-		return "", fmt.Errorf("private key type '%s' currently not supported for pem export", cert.PrivateKeyType)
+		return nil, fmt.Errorf("private key type '%s' currently not supported for pem export", cert.PrivateKeyType)
 	}
 
 	privKeyBlock := &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: derKey,
 	}
-	return string(pem.EncodeToMemory(privKeyBlock)), nil
+	return pem.EncodeToMemory(privKeyBlock), nil
 }
 
 // ExportPublicKeyAsPem returns a pem formatted certificate
-func (cert *Certificate) ExportPublicKeyAsPem() (string, error) {
+func (cert *Certificate) ExportPublicKeyAsPem() ([]byte, error) {
 	if len(cert.Certificates) == 0 {
-		return "", fmt.Errorf("certificate has no public key")
+		return nil, fmt.Errorf("certificate has no public key")
 	}
 
 	if len(cert.Certificates) > 1 {
-		return "", fmt.Errorf("certificate has multiple public keys")
+		return nil, fmt.Errorf("certificate has multiple public keys")
 	}
 
 	privKeyBlock := &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: cert.Certificates[0].Raw,
 	}
-	return string(pem.EncodeToMemory(privKeyBlock)), nil
+	return pem.EncodeToMemory(privKeyBlock), nil
 }
 
 func importPem(pemCert string) (*Certificate, error) {
