@@ -70,8 +70,6 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvsv1alpha1.AzureKeyVault) 
 		return "", fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
 	}
 
-	fmt.Fprintln(os.Stdout, "Getting secret now 2!")
-
 	//Get secret value from Azure Key Vault
 	vaultClient, err := a.getClient("https://vault.azure.net")
 	if err != nil {
@@ -80,7 +78,7 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvsv1alpha1.AzureKeyVault) 
 
 	baseURL := fmt.Sprintf("https://%s.vault.azure.net", vaultSpec.Name)
 
-	fmt.Fprintf(os.Stdout, "Trying to get secret '%s' version '%s' from vault '%s'", vaultSpec.Object.Name, vaultSpec.Object.Version, vaultSpec.Name)
+	fmt.Fprintf(os.Stdout, "Trying to get secret '%s' version '%s' from vault '%s'\n", vaultSpec.Object.Name, vaultSpec.Object.Version, vaultSpec.Name)
 	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 
 	if err != nil {
@@ -106,11 +104,6 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvsv1alpha1.AzureKeyVault) (st
 	if err != nil {
 		return "", err
 	}
-
-	// keyRaw, err := base64.StdEncoding.DecodeString(*keyBundle.Key.N)
-	// if err != nil {
-	// 	return "", err
-	// }
 
 	return *keyBundle.Key.N, nil
 }
@@ -170,9 +163,7 @@ func (a *azureKeyVaultService) getClient(resource string) (*keyvault.BaseClient,
 		}
 	}
 
-	fmt.Fprint(os.Stdout, "Create new instance of key vault")
 	keyClient := keyvault.New()
-	fmt.Fprint(os.Stdout, "Key vault created")
 	keyClient.Authorizer = authorizer
 
 	return &keyClient, nil
