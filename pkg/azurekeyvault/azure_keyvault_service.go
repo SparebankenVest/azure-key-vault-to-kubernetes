@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"os"
 
 	"github.com/Azure/go-autorest/autorest"
 
@@ -77,8 +76,6 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvsv1alpha1.AzureKeyVault) 
 	}
 
 	baseURL := fmt.Sprintf("https://%s.vault.azure.net", vaultSpec.Name)
-
-	fmt.Fprintf(os.Stdout, "Trying to get secret '%s' version '%s' from vault '%s'\n", vaultSpec.Object.Name, vaultSpec.Object.Version, vaultSpec.Name)
 	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 
 	if err != nil {

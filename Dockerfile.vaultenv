@@ -1,26 +1,4 @@
-ARG GO_VERSION=1.11.5
-ARG VCS_REF
-ARG BUILD_DATE
-ARG VCS_URL
-
-FROM golang:${GO_VERSION}-alpine AS builder
-
-RUN apk add --update --no-cache ca-certificates make git curl
-
-ARG PACKAGE=github.com/SparebankenVest/azure-keyvault-controller
-
-ENV DEP_RELEASE_TAG=${DEP_VERSION}
-RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-
-RUN mkdir -p /go/src/${PACKAGE}
-WORKDIR /go/src/${PACKAGE}
-
-COPY Gopkg.* /go/src/${PACKAGE}/
-RUN dep ensure --vendor-only
-
-COPY . /go/src/${PACKAGE}
-RUN CGO_ENABLED=0 go install ./cmd/azure-keyvault-env
-
+FROM spvest/golang-build-stage as build
 
 FROM alpine:3.8
 
@@ -33,4 +11,4 @@ LABEL org.label-schema.description="An executable to transparantly inject Azure 
 LABEL org.label-schema.vendor="Sparebanken Vest"      
 LABEL org.label-schema.author="Jon Arild Tørresdal"
 
-COPY --from=builder /go/bin/azure-keyvault-env /usr/local/bin/azure-keyvault-env
+COPY --from=build /go/bin/azure-keyvault-env /usr/local/bin/azure-keyvault-env
