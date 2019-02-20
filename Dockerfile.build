@@ -12,8 +12,8 @@ FROM golang:${GO_VERSION}-alpine
 
 RUN apk add --update --no-cache ca-certificates make git curl
 
-ENV DEP_RELEASE_TAG=${DEP_VERSION}
-RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+# ENV DEP_RELEASE_TAG=${DEP_VERSION}
+# RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
 ONBUILD ARG PACKAGE
 ONBUILD ARG VCS_PROJECT_PATH
@@ -21,8 +21,8 @@ ONBUILD ARG VCS_PROJECT_PATH
 ONBUILD RUN mkdir -p /go/src/${PACKAGE}
 ONBUILD WORKDIR /go/src/${PACKAGE}
 
-ONBUILD COPY Gopkg.* /go/src/${PACKAGE}/
-ONBUILD RUN dep ensure --vendor-only
+# ONBUILD COPY Gopkg.* /go/src/${PACKAGE}/
+# ONBUILD RUN dep ensure --vendor-only
+
 ONBUILD COPY . /go/src/${PACKAGE}
-ONBUILD RUN make test
 ONBUILD RUN CGO_ENABLED=0 go install ${VCS_PROJECT_PATH}

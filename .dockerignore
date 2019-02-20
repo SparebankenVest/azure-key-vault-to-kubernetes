@@ -1,4 +1,4 @@
 Dockerfile*
-vendor
+# vendor
 bin
 debug.test
