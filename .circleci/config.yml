@@ -6,14 +6,15 @@ jobs:
     working_directory: /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes
     steps:
     - checkout
-    - setup_remote_docker:
-        docker_layer_caching: true
+    # - setup_remote_docker:
+    #     docker_layer_caching: true
     - run:
         name: Vendor
         command: dep ensure --vendor-only
     - run:
         name: Test
         command: make test
+    - setup_remote_docker
     - run:
         name: Create docker image
         command: make build
