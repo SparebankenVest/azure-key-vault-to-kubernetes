@@ -12,7 +12,7 @@ DOCKER_RELEASE_TAG 	 = $(shell git describe)
 
 GOPACKAGES = $(shell go list ./... | grep -v /pkg/)
 BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-VCS_URL = https://github.com/SparebankenVest/azure-key-vault-to-kubernetes
+VCS_URL = https://$(PACKAGE)
 
 build: build-controller build-webhook build-vaultenv
 
