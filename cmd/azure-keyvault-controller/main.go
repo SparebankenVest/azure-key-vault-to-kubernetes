@@ -35,11 +35,11 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/SparebankenVest/azure-keyvault-controller/cmd/azure-keyvault-controller/controller"
-	vault "github.com/SparebankenVest/azure-keyvault-controller/pkg/azurekeyvault"
-	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
-	informers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions"
-	"github.com/SparebankenVest/azure-keyvault-controller/pkg/signals"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-controller/controller"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault"
+	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned"
+	informers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/informers/externalversions"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/signals"
 )
 
 var (

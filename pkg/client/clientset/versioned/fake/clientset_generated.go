@@ -22,9 +22,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
-	azurekeyvaultcontrollerv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned/typed/azurekeyvaultcontroller/v1alpha1"
-	fakeazurekeyvaultcontrollerv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned/typed/azurekeyvaultcontroller/v1alpha1/fake"
+	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned"
+	azurekeyvaultcontrollerv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned/typed/azurekeyvaultcontroller/v1alpha1"
+	fakeazurekeyvaultcontrollerv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned/typed/azurekeyvaultcontroller/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

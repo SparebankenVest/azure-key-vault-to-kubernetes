@@ -22,7 +22,7 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned/typed/azurekeyvaultcontroller/v1alpha1"
+	v1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned/typed/azurekeyvaultcontroller/v1alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )

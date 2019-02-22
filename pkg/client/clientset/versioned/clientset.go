@@ -22,7 +22,7 @@ limitations under the License.
 package versioned
 
 import (
-	azurekeyvaultcontrollerv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned/typed/azurekeyvaultcontroller/v1alpha1"
+	azurekeyvaultcontrollerv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned/typed/azurekeyvaultcontroller/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

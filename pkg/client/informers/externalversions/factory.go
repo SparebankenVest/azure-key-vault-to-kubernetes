@@ -26,9 +26,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
-	azurekeyvaultcontroller "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions/azurekeyvaultcontroller"
-	internalinterfaces "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions/internalinterfaces"
+	versioned "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned"
+	azurekeyvaultcontroller "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/informers/externalversions/azurekeyvaultcontroller"
+	internalinterfaces "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

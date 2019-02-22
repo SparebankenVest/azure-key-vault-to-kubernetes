@@ -22,7 +22,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	internalinterfaces "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions/internalinterfaces"
+	internalinterfaces "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to all the informers in this group version.

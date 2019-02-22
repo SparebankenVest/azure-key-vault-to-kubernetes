@@ -39,10 +39,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 
-	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/apis/azurekeyvaultcontroller/v1alpha1"
-	vault "github.com/SparebankenVest/azure-keyvault-controller/pkg/azurekeyvault"
-	clientset "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/clientset/versioned"
-	listers "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/listers/azurekeyvaultcontroller/v1alpha1"
+	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/apis/azurekeyvaultcontroller/v1alpha1"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault"
+	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned"
+	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/listers/azurekeyvaultcontroller/v1alpha1"
 )
 
 // Handler process work on workqueues

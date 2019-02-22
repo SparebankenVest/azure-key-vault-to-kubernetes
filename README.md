@@ -1,6 +1,6 @@
 # Azure Key Vault To Kubernetes
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-keyvault-controller?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-keyvault-controller)
+[![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes)
 [![CircleCI](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes.svg?style=shield)](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes)
 
 A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure Key Vault to `Secret`'s in Kubernetes (simple mode)...
@@ -15,6 +15,8 @@ A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure 
 - [Authentication](#authentication)
 - [Authorization](#authorization)
 - [Installation](#installation)
+  - [Simple mode](#simple-mode-1)
+  - [Transparant mode](#transparant-mode-1)
 - [Usage](#usage)
   - [Vault object types](#vault-object-types)
   - [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)

@@ -22,8 +22,8 @@ limitations under the License.
 package azurekeyvaultcontroller
 
 import (
-	v1alpha1 "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions/azurekeyvaultcontroller/v1alpha1"
-	internalinterfaces "github.com/SparebankenVest/azure-keyvault-controller/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/informers/externalversions/azurekeyvaultcontroller/v1alpha1"
+	internalinterfaces "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.
