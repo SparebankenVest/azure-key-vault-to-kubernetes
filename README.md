@@ -142,7 +142,7 @@ In addition there are environment variables for controlling **Azure authenticati
 
 The Transparant mode requires everything in Simple mode, plus:
 
-**4. **
+**4. TODO**
 
 ## Usage
 After you have installed the `azure-keyvault-controller`, you can create `AzureKeyVaultSecret` resources.
