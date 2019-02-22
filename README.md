@@ -1,17 +1,14 @@
 # Azure Key Vault To Kubernetes
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-keyvault-controller?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-keyvault-controller)
-[![CircleCI](https://circleci.com/gh/SparebankenVest/azure-keyvault-controller.svg?style=shield)](https://circleci.com/gh/SparebankenVest/azure-keyvault-controller)
+[![CircleCI](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes.svg?style=shield)](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes)
 
-A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure Key Vault to `Secret`'s in Kubernetes.
+A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure Key Vault to `Secret`'s in Kubernetes (simple mode)...
 
-**Problem:** "I have to manually extract secrets from Azure Key Vault and apply them as Secrets in Kubernetes."
-
-**Solution:** "Install the `azure-keyvault-controller` and automatically synchronize objects from Azure Key Vault as secrets in Kubernetes."
+...and/or a Kubernetes Mutating Web Hook that transparently injects Azure Key Vault secrets into containers (transparent mode).
 
 <!-- TOC depthFrom:2 -->
 
-- [Understand this!](#understand-this)
 - [How it works](#how-it-works)
   - [Simple mode](#simple-mode)
   - [Transparant mode](#transparant-mode)
@@ -27,34 +24,26 @@ A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure 
 
 <!-- /TOC -->
 
-## Understand this!
-
-The same [risks as documented with `Secret`'s in Kubernetes](https://kubernetes.io/docs/concepts/configuration/secret/#risks) also apply for the `azure-keyvault-controller`, with the exception of:
-
-_... If you configure the secret through a manifest (JSON or YAML) file which has the secret data encoded as base64, sharing this file or checking it in to a source repository means the secret is compromised. Base64 encoding is not an encryption method and is considered the same as plain text. ..._
-
-**One of the main reasons for creating this controller was to mitigate the risk above. Using the `azure-keyvault-controller` and the `AzureKeyVaultSecret` prevent secrets from being checked into source control or unintentionally be exposed by other means.**
-
-Make sure you fully understand these risks before synchronizing any Azure Key Vault secrets to Kubernetes.
-
 ## How it works
 
 Azure Key Vault To Kubernetes works in two different modes:
 
-1) Simple - Synch objects from Azure Key Vault as Secret resources in Kubernetes
+1) Simple - Sync objects from Azure Key Vault to `Secret` resources in Kubernetes
 2) Transparant - Synch objects from Azure Key Vault and inject them as environment variables transparantly into containers 
-
-See the [Usage](#usage) section for more information on how to use the controller together with the `AzureKeyVaultSecret` resource.
 
 ### Simple mode
 
-The Simple mode is the most straight forward option, but also the least secure as it stores Azure Key Vault objects as Secrets in Kubernetes which is base64 encoded in plain text.
+The Simple mode is the most straight forward option, but also the least secure as it stores Azure Key Vault objects as Secrets in Kubernetes which is base64 encoded in plain text. For many scenarios that is OK, but in the banking world were this project originated, that is not an option (see [Transparant mode](#transparant-mode) below).
 
-To use Azure Key Vault To Kubernetes in Simple mode:
+The same [risks as documented with `Secret`'s in Kubernetes](https://kubernetes.io/docs/concepts/configuration/secret/#risks) also apply for the simple mode, with the exception of secrets being checked into source control or unintentionally exposed by other means, which the `AzureKeyVaultSecret` resource prevents.
 
-1. Apply a custom `AzureKeyVaultSecret` resource 
-2. The `azure-keyvault-controller` controller will synchronize all Azure Key Vault objects (secrets, certificates and keys) defined in `AzureKeyVaultSecret` resources into Kubernetes `Secret`'s.
-3. The `azure-keyvault-controller` controller will periodically poll Azure Key Vault for changes and apply the changes to the Kubernetes `Secret`s.
+Make sure you fully understand these risks before synchronizing any Azure Key Vault secrets to Kubernetes usint the simple mode.
+
+The simple mode works like this:
+
+1. Create a `AzureKeyVaultSecret` resource containing information of how to get a secret from Azure Key Vault
+2. The `azure-keyvault-controller` controller discovers the newly created `AzureKeyVaultSecret` and use its information to get the secret from Azure Key Vault to create a Kubernetes `Secret`
+3. The `azure-keyvault-controller` controller will periodically poll Azure Key Vault for changes and apply any changes to the Kubernetes `Secret`s.
 
 **Note: By default the `azure-keyvault-controller` controller auto synch Secrets every 10 minutes ([artifacts/example-controller-deployment.yaml](artifacts/example-controller-deployment.yaml)) and depending on how many secrets are synchronized can cause extra usage costs of Azure Key Vault.**
 
@@ -62,9 +51,19 @@ To use Azure Key Vault To Kubernetes in Simple mode:
 
 The Transparant mode is the most secure option, as it transparantly injects Azure Key Vault objects as environment variables into containers, without touching disk or making values visible in container specs.
 
-1. Apply a custom `AzureKeyVaultSecret` resource pointing to a Azure Key Vault and object
-2. In a Deployment, Daemonset, Pod, ReplicaSet or StatefulSet resource define the environment variables needed by the container using the convention `azurekeyvaultsecret#name_of_azure_key_vault_secret_resource`
-3. 
+The transparant mode works like this:
+
+1. Create a `AzureKeyVaultSecret` resource containing information of how to get a secret from Azure Key Vault
+2. Define a Pod (typically using `Deployment` or anything else that creates a Pod in Kuberntes) and define environment variable placeholders like this:
+```
+env:
+- name: SECRET1
+  value: azurekeyvault#<name of AzureKeyVaultSecret>
+- name: SECRET2
+  value: azurekeyvault#<name of AzureKeyVaultSecret>
+...
+```
+3. When the pod is about to be created, a Mutating Web Hook downloads all referenced secrets from Azure Key Vault and inject them as environment variables to the executable running in the container (not to the pod itself, since that would reveal the secret in the pod spec) 
 
 ## Authentication
 
