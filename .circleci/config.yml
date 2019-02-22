@@ -3,7 +3,7 @@ jobs:
   build:
     docker:
     - image: circleci/golang:1.11.5
-    working_directory: /go/src/github.com/SparebankenVest/azure-keyvault-controller
+    working_directory: /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes
     steps:
     - checkout
     - run:
@@ -26,7 +26,7 @@ jobs:
   release:
     docker:
     - image: circleci/golang:1.11.5
-    working_directory: /go/src/github.com/SparebankenVest/azure-keyvault-controller
+    working_directory: /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes
     steps:
     - checkout
     - setup_remote_docker:
