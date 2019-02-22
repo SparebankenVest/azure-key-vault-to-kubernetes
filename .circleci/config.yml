@@ -16,11 +16,11 @@ jobs:
         command: make test
     - setup_remote_docker
     - run:
-        name: Create docker image
-        command: make build
-    - run:
         name: Logg into Docker registry
         command: docker login -u $docker_user -p $docker_password dokken.azurecr.io
+    - run:
+        name: Create docker image
+        command: make build
     - run:
         name: Publish docker image
         command: make push
