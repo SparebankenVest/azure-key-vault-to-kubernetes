@@ -2,3 +2,4 @@ Dockerfile*
 # vendor
 bin
 debug.test
+.git
