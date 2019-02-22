@@ -1,4 +1,22 @@
-FROM spvest/golang-build-stage as build
+# Accept the Go version for the image to be set as a build argument.
+# Default to Go 1.11.5
+ARG GO_VERSION=1.11.5
+ARG DEP_VERSION=v0.5.0
+ARG VCS_REF
+ARG BUILD_DATE
+ARG VCS_URL
+ARG VCS_PROJECT_PATH
+ARG PACKAGE
+
+FROM golang:${GO_VERSION}-alpine as build
+
+RUN apk add --update --no-cache ca-certificates make git curl
+
+RUN mkdir -p /go/src/${PACKAGE}
+WORKDIR /go/src/${PACKAGE}
+
+COPY . /go/src/${PACKAGE}
+RUN CGO_ENABLED=0 go install ${VCS_PROJECT_PATH}
 
 FROM alpine:3.8
 
