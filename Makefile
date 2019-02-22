@@ -1,4 +1,4 @@
-PACKAGE = github.com/SparebankenVest/azure-keyvault-controller
+PACKAGE = github.com/SparebankenVest/azure-key-vault-to-kubernetes
 
 DOCKER_HOST = dokken.azurecr.io
 DOCKER_RELEASE_HOST = spvest
@@ -12,7 +12,7 @@ DOCKER_RELEASE_TAG 	 = $(shell git describe)
 
 GOPACKAGES = $(shell go list ./... | grep -v /pkg/)
 BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-VCS_URL = https://github.com/SparebankenVest/azure-keyvault-controller
+VCS_URL = https://github.com/SparebankenVest/azure-key-vault-to-kubernetes
 
 build: build-controller build-webhook build-vaultenv
 

@@ -109,11 +109,19 @@ Azure Key Vault Keys:
 
 ## Installation
 
+It's recommended to use the Helm chart for installation, but a manual option is also available and described below.
+
+### Simple mode
+
 **1. Deploy the Custom Resource Definition for AzureKeyVaultSecret**
 
 The CRD can be found here: [artifacts/crd.yaml](artifacts/crd.yaml)
 
-**2. Deploy controller**
+**2. Deploy the RBAC defininition**
+
+The RBAC can be found here: [artifacts/controller-rbac.yaml](artifacts/controller-rbac.yaml)
+
+**3. Deploy controller**
 
 An example deployment definition can be found here: [artifacts/example-controller-deployment.yaml](artifacts/example-controller-deployment.yaml)
 
@@ -127,6 +135,12 @@ Optional environment variables:
 | LOG_LEVEL                            | Log level to use for output logs. Options are `trace`, `debug`, `info`, `warning`, `error`, `fatal` or `panic`. | info |
 
 In addition there are environment variables for controlling **Azure authentication** which is documented by Microsoft here: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization#use-environment-based-authentication and describe above in the Authentication section.
+
+### Transparant mode
+
+The Transparant mode requires everything in Simple mode, plus:
+
+**4. **
 
 ## Usage
 After you have installed the `azure-keyvault-controller`, you can create `AzureKeyVaultSecret` resources.
