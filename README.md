@@ -71,8 +71,6 @@ The `azure-keyvault-controller` use environment-based authentication as document
 
 Note: Using Managed Service Identity (MSI) in a Azure AKS cluster requires the [`azure-pod-identity`](https://github.com/Azure/aad-pod-identity) controller running and configured in the cluster.
 
-The two most common authentication methods are Client Credentials (Service Principal) and MSI.
-
 At the time of writing the following authentication options was available (extracted from the Microsoft doc about environment-based authentication above):
 
 | Authentication type |	Environment variable |	Description |

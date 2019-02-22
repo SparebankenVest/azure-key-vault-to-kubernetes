@@ -32,16 +32,11 @@ import (
 )
 
 func main() {
-
-	fmt.Println("Starting...")
-
 	namespace := os.Getenv("POD_NAMESPACE")
 	if namespace == "" {
 		fmt.Fprintf(os.Stderr, "Current namespace not provided in environment variable POD_NAMESPACE")
 		os.Exit(1)
 	}
-
-	fmt.Printf("Current namespace is '%s'\n", namespace)
 
 	clientID := os.Getenv("AZURE_CLIENT_ID")
 

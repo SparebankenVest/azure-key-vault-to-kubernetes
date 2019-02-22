@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ template "azure-keyvault-secrets-webhook.fullname" . }}-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: {{ template "azure-keyvault-secrets-webhook.fullname" . }}-controller
+rules:
+- apiGroups:
+  - spv.no
+  resources:
+  - azurekeyvaultsecrets
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - spv.no
+  resources:
+  - azurekeyvaultsecrets/status
+  verbs:
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - update
+  - delete
+  - get
+  - watch
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - update
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: {{ template "azure-keyvault-secrets-webhook.fullname" . }}-reader
+rules:
+- apiGroups:
+  - spv.no
+  resources:
+  - azurekeyvaultsecrets
+  verbs:
+  - get
+  - list
+  - watch
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: azure-keyvault-controller
+  name: {{ template "azure-keyvault-secrets-webhook.fullname" . }}-controller
+subjects:
+- kind: ServiceAccount
+  name: {{ template "azure-keyvault-secrets-webhook.fullname" . }}-controller
+  namespace: spv-system
+roleRef:
+  kind: ClusterRole
+  name: {{ template "azure-keyvault-secrets-webhook.fullname" . }}-controller
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: {{ template "azure-keyvault-secrets-webhook.fullname" . }}-reader
+subjects:
+- kind: Group
+  name: system:serviceaccounts
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: {{ template "azure-keyvault-secrets-webhook.fullname" . }}-reader
+  apiGroup: rbac.authorization.k8s.io

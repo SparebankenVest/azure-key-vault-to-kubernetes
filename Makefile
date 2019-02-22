@@ -1,10 +1,15 @@
 PACKAGE = github.com/SparebankenVest/azure-keyvault-controller
-DOCKER_IMAGE = dokken.azurecr.io/azure-keyvault-controller
-DOCKER_WEBHOOK_IMAGE = dokken.azurecr.io/azure-keyvault-secrets-webhook
-DOCKER_VAULTENV_IMAGE = dokken.azurecr.io/azure-keyvault-env
+
+DOCKER_HOST = dokken.azurecr.io
+DOCKER_RELEASE_HOST = spvest
+
+DOCKER_IMAGE = azure-keyvault-controller
+DOCKER_WEBHOOK_IMAGE = azure-keyvault-webhook
+DOCKER_VAULTENV_IMAGE = azure-keyvault-env
+
 DOCKER_TAG 	 = $(shell git rev-parse --short HEAD)
-DOCKER_RELEASE_IMAGE = spvest/azure-keyvault-controller
 DOCKER_RELEASE_TAG 	 = $(shell git describe)
+
 GOPACKAGES = $(shell go list ./... | grep -v /pkg/)
 BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_URL = https://github.com/SparebankenVest/azure-keyvault-controller
@@ -36,29 +41,43 @@ push: push-controller push-webhook push-vaultenv
 
 push-controller:
 	@echo "\n=================================================="
-	@echo "Pushing Docker image $(DOCKER_IMAGE):$(DOCKER_TAG)"
+	@echo "Pushing Docker image $(DOCKER_HOST)/$(DOCKER_IMAGE):$(DOCKER_TAG)"
 	@echo "=================================================="
-	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
+	docker push $(DOCKER_HOST)/$(DOCKER_IMAGE):$(DOCKER_TAG)
 
 push-webhook:
 	@echo "\n=================================================="
-	@echo "Pushing Docker image $(DOCKER_WEBHOOK_IMAGE):$(DOCKER_TAG)"
+	@echo "Pushing Docker image $(DOCKER_HOST)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_TAG)"
 	@echo "=================================================="
-	docker push $(DOCKER_WEBHOOK_IMAGE):$(DOCKER_TAG)
+	docker push $(DOCKER_HOST)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_TAG)
 
 push-vaultenv:
 	@echo "\n=================================================="
-	@echo "Pushing Docker image $(DOCKER_VAULTENV_IMAGE):$(DOCKER_TAG)"
+	@echo "Pushing Docker image $(DOCKER_HOST)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_TAG)"
 	@echo "=================================================="
-	docker push $(DOCKER_VAULTENV_IMAGE):$(DOCKER_TAG)
+	docker push $(DOCKER_HOST)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_TAG)
 
 pull-release:
-	docker pull $(DOCKER_IMAGE):$(DOCKER_TAG) 
+	docker pull $(DOCKER_HOST)/$(DOCKER_IMAGE):$(DOCKER_TAG) 
+	docker pull $(DOCKER_HOST)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_TAG) 
+	docker pull $(DOCKER_HOST)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_TAG) 
 
 tag-release:
-	docker tag $(DOCKER_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_IMAGE):$(DOCKER_RELEASE_TAG)
-	docker tag $(DOCKER_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_IMAGE):latest
+	docker tag $(DOCKER_HOST)/$(DOCKER_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_HOST)/$(DOCKER_IMAGE):$(DOCKER_RELEASE_TAG)
+	docker tag $(DOCKER_HOST)/$(DOCKER_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_HOST)/$(DOCKER_IMAGE):latest
+	
+	docker tag $(DOCKER_HOST)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_HOST)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_RELEASE_TAG)
+	docker tag $(DOCKER_HOST)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_HOST)/$(DOCKER_WEBHOOK_IMAGE):latest
+	
+	docker tag $(DOCKER_HOST)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_HOST)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_RELEASE_TAG)
+	docker tag $(DOCKER_HOST)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_TAG) $(DOCKER_RELEASE_HOST)/$(DOCKER_VAULTENV_IMAGE):latest
 
 push-release:
-	docker push $(DOCKER_RELEASE_IMAGE):$(DOCKER_RELEASE_TAG)
-	docker push $(DOCKER_RELEASE_IMAGE):latest
+	docker push $(DOCKER_HOST)/$(DOCKER_IMAGE):$(DOCKER_RELEASE_TAG)
+	docker push $(DOCKER_HOST)/$(DOCKER_IMAGE):latest
+	
+	docker push $(DOCKER_HOST)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_RELEASE_TAG)
+	docker push $(DOCKER_HOST)/$(DOCKER_WEBHOOK_IMAGE):latest
+	
+	docker push $(DOCKER_HOST)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_RELEASE_TAG)
+	docker push $(DOCKER_HOST)/$(DOCKER_VAULTENV_IMAGE):latest

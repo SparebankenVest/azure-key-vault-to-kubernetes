@@ -261,7 +261,7 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 	return cmd, nil
 }
 
-func getSecretForAzureKeyVault() (*corev1.Secret, error) {
+func getCredentialsForAzureKeyVault() (*corev1.Secret, error) {
 	fmt.Fprintln(os.Stdout, "Getting secret for azure key vault...")
 
 	tenantID := viper.GetString("azure_tenant_id")
@@ -339,7 +339,7 @@ func getRegistryCreds(clientset kubernetes.Clientset, podSpec *corev1.PodSpec, n
 				credsValue := dockertypes.AuthConfig{
 					Username: authParts[0],
 					Password: authParts[1],
-				} //fmt.Sprintf("{ \"username\": \"%s\", \"password\": \"%s\", \"email\": \"%s\" }", authParts[0], authParts[1], "jon@torresdal.net")
+				}
 				encodedJSON, err := json.Marshal(credsValue)
 				if err != nil {
 					return creds, err
@@ -362,7 +362,7 @@ func mutatePodSpec(obj metav1.Object, podSpec *corev1.PodSpec, namespace string)
 		return err
 	}
 
-	keyVaultSecret, err := getSecretForAzureKeyVault()
+	keyVaultSecret, err := getCredentialsForAzureKeyVault()
 	if err != nil {
 		return err
 	}
