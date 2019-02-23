@@ -18,6 +18,8 @@ VCS_URL := https://$(PACKAGE)
 CURRENT_DIR := $(shell pwd)
 DOCKER=/usr/bin/docker
 
+.PHONY: build build-controller build-webhook build-vaultenv test push push-controller push-webhook push-vaultenv pull-release tag-release push-release
+
 build: build-controller build-webhook build-vaultenv
 
 build-controller:
