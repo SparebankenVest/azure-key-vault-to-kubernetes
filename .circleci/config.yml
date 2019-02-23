@@ -18,11 +18,8 @@ jobs:
         name: Logg into Docker registry
         command: docker login -u $docker_user -p $docker_password dokken.azurecr.io
     - run:
-        name: Docker debug info
-        command: docker version && docker info && docker search spvest/golang-build-stage && docker pull spvest/golang-build-stage
-    - run:
         name: Create docker image
-        command: ls -al && make build
+        command: make build
     - run:
         name: Publish docker image
         command: make push

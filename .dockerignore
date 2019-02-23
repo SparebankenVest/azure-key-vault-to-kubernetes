@@ -2,3 +2,5 @@ Dockerfile*
 bin
 debug.test
 .git
+.circleci
+artifacts

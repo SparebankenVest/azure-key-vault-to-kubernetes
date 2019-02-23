@@ -3,26 +3,31 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes)
 [![CircleCI](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes.svg?style=shield)](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes)
 
-A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure Key Vault to `Secret`'s in Kubernetes (simple mode)...
+A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure Key Vault to `Secret`'s in Kubernetes (Basic mode)...
 
 ...and/or a Kubernetes Mutating Web Hook that transparently injects Azure Key Vault secrets into containers (transparent mode).
 
 <!-- TOC depthFrom:2 -->
 
 - [How it works](#how-it-works)
-  - [Simple mode](#simple-mode)
+  - [Basic mode](#basic-mode)
   - [Transparant mode](#transparant-mode)
 - [Authentication](#authentication)
+  - [Basic mode](#basic-mode-1)
+  - [Transparant mode](#transparant-mode-1)
+  - [Authentication options](#authentication-options)
 - [Authorization](#authorization)
 - [Installation](#installation)
-  - [Simple mode](#simple-mode-1)
-  - [Transparant mode](#transparant-mode-1)
+  - [Basic mode](#basic-mode-2)
+  - [Transparant mode](#transparant-mode-2)
 - [Usage](#usage)
   - [Vault object types](#vault-object-types)
   - [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)
 - [Examples](#examples)
-  - [Plain secret](#plain-secret)
-  - [Certificate with exportable key](#certificate-with-exportable-key)
+  - [Plain secret (Basic)](#plain-secret-basic)
+  - [Certificate with exportable key (Basic)](#certificate-with-exportable-key-basic)
+  - [Plain secret (Transparant)](#plain-secret-transparant)
+  - [Certificate with exportable key (Transparant)](#certificate-with-exportable-key-transparant)
 
 <!-- /TOC -->
 
@@ -30,18 +35,18 @@ A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure 
 
 Azure Key Vault To Kubernetes works in two different modes:
 
-1) Simple - Sync objects from Azure Key Vault to `Secret` resources in Kubernetes
+1) Basic - Sync objects from Azure Key Vault to `Secret` resources in Kubernetes
 2) Transparant - Synch objects from Azure Key Vault and inject them as environment variables transparantly into containers 
 
-### Simple mode
+### Basic mode
 
-The Simple mode is the most straight forward option, but also the least secure as it stores Azure Key Vault objects as Secrets in Kubernetes which is base64 encoded in plain text. For many scenarios that is OK, but in the banking world were this project originated, that is not an option (see [Transparant mode](#transparant-mode) below).
+The Basic mode is the most straight forward option, but also the least secure as it stores Azure Key Vault objects as Secrets in Kubernetes which is base64 encoded in plain text. For many scenarios that is OK, but in the banking world were this project originated, that is not an option (see [Transparant mode](#transparant-mode) below).
 
-The same [risks as documented with `Secret`'s in Kubernetes](https://kubernetes.io/docs/concepts/configuration/secret/#risks) also apply for the simple mode, with the exception of secrets being checked into source control or unintentionally exposed by other means, which the `AzureKeyVaultSecret` resource prevents.
+The same [risks as documented with `Secret`'s in Kubernetes](https://kubernetes.io/docs/concepts/configuration/secret/#risks) also apply for the Basic mode, with the exception of secrets being checked into source control or unintentionally exposed by other means, which the `AzureKeyVaultSecret` resource prevents.
 
-Make sure you fully understand these risks before synchronizing any Azure Key Vault secrets to Kubernetes usint the simple mode.
+Make sure you fully understand these risks before synchronizing any Azure Key Vault secrets to Kubernetes usint the Basic mode.
 
-The simple mode works like this:
+The Basic mode works like this:
 
 1. Create a `AzureKeyVaultSecret` resource containing information of how to get a secret from Azure Key Vault
 2. The `azure-keyvault-controller` controller discovers the newly created `AzureKeyVaultSecret` and use its information to get the secret from Azure Key Vault to create a Kubernetes `Secret`
@@ -71,9 +76,20 @@ env:
 
 The `azure-keyvault-controller` use environment-based authentication as documented here: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization#use-environment-based-authentication
 
-Note: Using Managed Service Identity (MSI) in a Azure AKS cluster requires the [`azure-pod-identity`](https://github.com/Azure/aad-pod-identity) controller running and configured in the cluster.
+To avoid exposing Azure Key Vault credentials in Kubernetes (like in a `Secret`) the recommendation is to take advantage of Azure Managed Service Identity (MSI) in Kubernetes by using [`azure-pod-identity`](https://github.com/Azure/aad-pod-identity).
 
-At the time of writing the following authentication options was available (extracted from the Microsoft doc about environment-based authentication above):
+Which components require authentication will depend on which mode you run `azure-key-vault-to-kubernetes` in.
+
+### Basic mode
+
+In Basic mode the `azure-keyvault-controller` will need Azure Key Vault credentials to get Secrets from Azure Key Vault and store them as Kubernetes Secrets. If the Kubernetes cluster is utilizing Manages Service Identity through `azure-pod-identity` the controller just needs the proper label to pick up the credentials. If not, see [Authentication options](#authentication-options) below.
+
+### Transparant mode
+
+In Transparant mode every container referencing `azurekeyvault` environment values needs to have access to Azure Key Vault credentials. If the Kubernetes cluster is utilizing Manages Service Identity through `azure-pod-identity`, the container just needs the proper label to pick up the credentials. If not, see [Authentication options](#authentication-options) below.
+
+### Authentication options
+At the time of writing the following authentication options was available (extracted from here: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization#use-environment-based-authentication):
 
 | Authentication type |	Environment variable |	Description |
 | ------------------- | -------------------- | ------------ |
@@ -91,9 +107,9 @@ At the time of writing the following authentication options was available (extra
 
 ## Authorization
 
-The account which the controller is running in context of must have Azure Key Vault `get` permissions to the object types (secret, certificate and key) that is going to be synchronized with Kubernetes.
+The account configured under Authentication will need `get` permissions to the object types (secret, certificate and key) in Azure Key Vault to synchronize with Kubernetes.
 
-**Note: It's only possible to control access on the top level of Azure Key Vault, not per object/resource. The recommedation is therefore to have a dedicated Key Vault per azure-keyvault-controller.**
+**Note: It's only possible to control access on the top level of Azure Key Vault, not per object/resource. The recommedation is therefore to have a dedicated Key Vault per cluster.**
 
 Access is controlled through Azure Key Vault policies and can be configured through Azure CLI like this:
 
@@ -111,9 +127,9 @@ Azure Key Vault Keys:
 
 ## Installation
 
-It's recommended to use the Helm chart for installation, but a manual option is also available and described below.
+It's recommended to use the Helm chart [https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-to-kubernetes](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-to-kubernetes) for installation, but a manual option is also available and described below.
 
-### Simple mode
+### Basic mode
 
 **1. Deploy the Custom Resource Definition for AzureKeyVaultSecret**
 
@@ -136,16 +152,18 @@ Optional environment variables:
 | AZURE_VAULT_MAX_FAILURE_ATTEMPTS     | How many failures are accepted before reducing the frequency to Slow | "5" |
 | LOG_LEVEL                            | Log level to use for output logs. Options are `trace`, `debug`, `info`, `warning`, `error`, `fatal` or `panic`. | info |
 
-In addition there are environment variables for controlling **Azure authentication** which is documented by Microsoft here: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization#use-environment-based-authentication and describe above in the Authentication section.
+In addition there are environment variables for controlling authentication which is [documented above](#authentication-options).
 
 ### Transparant mode
 
-The Transparant mode requires everything in Simple mode, plus:
+The Transparant mode requires everything in Basic mode, plus:
 
-**4. TODO**
+**4. TBD**
 
 ## Usage
-After you have installed the `azure-keyvault-controller`, you can create `AzureKeyVaultSecret` resources.
+After you have installed `azure-key-vault-to-kubernetes`, you can create `AzureKeyVaultSecret` resources and take advantage of either Kubernetes Secrets (Basic) or referencing `AzureKeyVaultSecret` resources from Pods.
+
+**NB! `output` is only used in Basic mode - the controller wil create the Azure Key Vault secret as a Kubernetes Secret - in Transparant mode `output` must be undefined.**
 
 The `AzureKeyVaultSecret` is defined using this schema:
 
@@ -162,10 +180,10 @@ spec:
       name: <name of azure key vault object to sync>
       type: <object type in azure key vault to sync>
       version: <optional - version of object to sync>
-      contentType: <only applicable when type is the special multi-key-value-secret - either application/x-json or application/x-yaml - >
+      contentType: <only applicable when type is the special multi-key-value-secret - either application/x-json or application/x-yaml>
   output:
-    secret:
-      name: <optional - name of the kubernetes secret to create - defaults to this resource metadata.name>
+    secret: # required for Basic mode (output is Kubernetes Secret)
+      name: <required - name of the kubernetes secret to create - defaults to this resource metadata.name>
       dataKey: <required when type is opaque - name of the kubernetes secret data key to assign value to - ignored for all other types>
       type: <optional - kubernetes secret type - defaults to opaque>
 ```
@@ -230,7 +248,7 @@ This must be a properly formatted **Private** SSH Key stored in a Secret object.
 
 ## Examples
 
-### Plain secret
+### Plain secret (Basic)
 
 ```yaml
 apiVersion: spv.no/v1alpha1
@@ -262,7 +280,7 @@ metadata:
 type: opaque
 ```
 
-### Certificate with exportable key
+### Certificate with exportable key (Basic)
 
 ```yaml
 apiVersion: spv.no/v1alpha1
@@ -276,9 +294,9 @@ spec:
     object:
       type: certificate
       name: test-cert
-    output:
-      secret:
-        type: kubernetes/tls
+  output:
+    secret:
+      type: kubernetes/tls
 ```
 
 Controller creates:
@@ -292,4 +310,65 @@ metadata:
   name: my-first-azure-keyvault-certificate
   namespace: default
 type: kubernetes/tls
+```
+
+### Plain secret (Transparant)
+
+```yaml
+apiVersion: spv.no/v1alpha1
+kind: AzureKeyVaultSecret
+metadata:
+  name: my-first-azure-keyvault-secret
+  namespace: default
+spec:
+  vault:
+    name: my-kv # name of key vault
+    object:
+      type: secret # object type
+      name: test-secret # name of the object
+  output:
+    secret:
+      dataKey: azuresecret # key to store object value in kubernetes secret
+
+```
+
+Container reference:
+```yaml
+...
+containers:
+- name: alpine
+  env:
+  - name: MY_SECRET
+    value: azurekeyvault@my-first-azure-keyvault-secret
+...
+```
+
+### Certificate with exportable key (Transparant)
+
+```yaml
+apiVersion: spv.no/v1alpha1
+kind: AzureKeyVaultSecret
+metadata:
+  name: my-first-azure-keyvault-certificate
+  namespace: default
+spec:
+  vault:
+    name: my-kv
+    object:
+      type: certificate
+      name: test-cert
+```
+
+Container reference:
+
+```yaml
+...
+containers:
+- name: alpine
+  env:
+  - name: PUB_KEY
+    value: azurekeyvault@my-first-azure-keyvault-certificate?tls.crt
+  - name: PRIV_KEY
+    value: azurekeyvault@my-first-azure-keyvault-certificate?tls.key
+...
 ```
