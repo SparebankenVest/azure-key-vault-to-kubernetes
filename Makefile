@@ -16,12 +16,13 @@ BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_URL := https://$(PACKAGE)
 
 CURRENT_DIR := $(shell pwd)
+DOCKER=/usr/bin/docker
 
 build: build-controller build-webhook build-vaultenv
 
 build-controller:
 	@echo "Building $(DOCKER_HOST)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_TAG) in $(CURRENT_DIR)"
-	docker build $(CURRENT_DIR) -t $(DOCKER_HOST)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_TAG) --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
+	$(DOCKER) build $(CURRENT_DIR) -t $(DOCKER_HOST)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_TAG) --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
 
 build-webhook:
 	@echo "\n================================="
