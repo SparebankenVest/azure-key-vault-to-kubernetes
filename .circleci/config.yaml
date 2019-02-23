@@ -1,0 +1,22 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: alpine
+    steps:
+      - checkout
+      - run:
+          name: helm-github-pages
+          command: cat publish.sh | sh
+          environment:
+            - GITHUB_PAGES_REPO: SparebankenVest/helm-charts
+      - run:
+          name: Verify
+          command: |
+            alias helm=/tmp/helm/bin/linux-amd64/helm
+            if [ "$CIRCLE_BRANCH" = "master" ]; then
+              helm repo add spv-charts https://SparebankenVest.github.io/helm-charts/stable
+              helm repo update
+              helm repo list
+              helm inspect spv-charts/azure-key-vault-controller
+            fi
