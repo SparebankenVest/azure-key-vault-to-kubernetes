@@ -19,7 +19,7 @@ jobs:
         command: docker login -u $docker_user -p $docker_password dokken.azurecr.io
     - run:
         name: Create docker image
-        command: make build
+        command: make build-controller
     - run:
         name: Publish docker image
         command: make push
