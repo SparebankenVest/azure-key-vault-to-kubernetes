@@ -19,7 +19,7 @@ jobs:
         command: docker login -u $docker_user -p $docker_password dokken.azurecr.io
     - run:
         name: Create docker image
-        command: make build-webhook
+        command: ls -al && make build
     - run:
         name: Publish docker image
         command: make push
@@ -43,7 +43,7 @@ jobs:
         command: docker login -u $docker_release_user -p $docker_release_password
     - run:
         name: Tag release
-        command: ls -al && make tag-release
+        command: make tag-release
     - run:
         name: Publish release
         command: make push-release
