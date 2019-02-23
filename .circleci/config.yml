@@ -9,7 +9,7 @@ jobs:
     - setup_remote_docker
     - run:
         name: Create docker image
-        command: make build-controller
+        command: make build
 
   release:
     docker:
