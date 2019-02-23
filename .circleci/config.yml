@@ -18,5 +18,5 @@ jobs:
               helm repo add spv-charts https://sparebankenvest.github.io/helm-charts
               helm repo update
               helm repo list
-              helm inspect spv-charts/azure-key-vault-controller
+              helm inspect spv-charts/azure-key-vault-controller --version 0.1.0-alpha.2
             fi
