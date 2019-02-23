@@ -10,6 +10,11 @@ jobs:
     # - setup_remote_docker:
     #     docker_layer_caching: true
     - run:
+        name: Install dep
+        command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+        environment: 
+            DEP_RELEASE_TAG: v0.5.0
+    - run:
         name: Vendor
         command: dep ensure --vendor-only
     - run:
