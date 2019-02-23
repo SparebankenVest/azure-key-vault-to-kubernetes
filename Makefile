@@ -17,7 +17,7 @@ VCS_URL = https://$(PACKAGE)
 build: build-controller build-webhook build-vaultenv
 
 build-controller:
-	docker build . --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL) -t dokken.azurecr.io/something:0.0.1
+	docker build . -t $(DOCKER_HOST)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_TAG) --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
 
 build-webhook:
 	@echo "\n================================="
