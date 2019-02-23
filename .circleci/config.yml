@@ -43,7 +43,7 @@ jobs:
         command: docker login -u $docker_release_user -p $docker_release_password
     - run:
         name: Tag release
-        command: make tag-release
+        command: ls -al && make tag-release
     - run:
         name: Publish release
         command: make push-release
