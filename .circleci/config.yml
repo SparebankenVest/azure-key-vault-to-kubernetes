@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-    - image: circleci/golang:1.11.5
+    - image: spvest/circleci-golang:1.11.5-rev3
     working_directory: /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes
     steps:
     - checkout
