@@ -1,3 +1,4 @@
+SHELL=/bin/bash
 PACKAGE=github.com/SparebankenVest/azure-key-vault-to-kubernetes
 
 DOCKER_HOST=dokken.azurecr.io
