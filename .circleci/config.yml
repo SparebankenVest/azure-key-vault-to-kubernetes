@@ -33,20 +33,16 @@ jobs:
     - setup_remote_docker:
         docker_layer_caching: true
     - run:
-        name: Logg into internal Docker registry
-        command: docker login -u $docker_user -p $docker_password dokken.azurecr.io
+        name: Pull images to release
+        command: |
+            docker login -u $docker_user -p $docker_password dokken.azurecr.io
+            make pull-release
     - run:
-        name: Pull image to release
-        command: make pull-release
-    - run:
-        name: Logg into public Docker registry
-        command: docker login -u $docker_release_user -p $docker_release_password
-    - run:
-        name: Tag release
-        command: make tag-release
-    - run:
-        name: Publish release
-        command: make push-release
+        name: Push release
+        command: |
+            docker login -u $docker_release_user -p $docker_release_password
+            make tag-release
+            make push-release
 
 workflows:
   version: 2
