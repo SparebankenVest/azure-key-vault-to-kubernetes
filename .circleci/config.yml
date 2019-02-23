@@ -33,16 +33,8 @@ jobs:
     - setup_remote_docker:
         docker_layer_caching: true
     - run:
-        name: Pull images to release
-        command: |
-            docker login -u $docker_user -p $docker_password dokken.azurecr.io
-            make pull-release
-    - run:
-        name: Push release
-        command: |
-            docker login -u $docker_release_user -p $docker_release_password
-            make tag-release
-            make push-release
+        name: Release docker images
+        command: make release
 
 workflows:
   version: 2
