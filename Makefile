@@ -22,7 +22,8 @@ build-controller:
 	@echo "$(DOCKER_HOST)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_TAG)"
 	@echo "$(shell pwd)"
 	@echo "===================================="
-	docker build --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL) -t dokken.azurecr.io/something:0.0.1 -f Dockerfile .
+	docker build . --build-arg -t $(DOCKER_HOST)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_TAG)
+#	docker build . --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL) -t dokken.azurecr.io/something:0.0.1
 
 build-webhook:
 	@echo "\n================================="
