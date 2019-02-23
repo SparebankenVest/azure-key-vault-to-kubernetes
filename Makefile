@@ -7,17 +7,23 @@ DOCKER_CONTROLLER_IMAGE=azure-keyvault-controller
 DOCKER_WEBHOOK_IMAGE=azure-keyvault-webhook
 DOCKER_VAULTENV_IMAGE=azure-keyvault-env
 
-DOCKER_TAG=$(shell git rev-parse --short HEAD)
-DOCKER_RELEASE_TAG=$(shell git describe)
+DOCKER_TAG := $(shell git rev-parse --short HEAD)
+DOCKER_RELEASE_TAG := $(shell git describe)
 
-GOPACKAGES=$(shell go list ./... | grep -v /pkg/)
-BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-VCS_URL=https://$(PACKAGE)
+GOPACKAGES := $(shell go list ./... | grep -v /pkg/)
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+VCS_URL := https://$(PACKAGE)
 
 build: build-controller build-webhook build-vaultenv
 
 build-controller:
 	docker build . -t $(DOCKER_HOST)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_TAG) --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
+
+build-controller1:
+	docker build . -t dokken.azurecr.io/azure-keyvault-controller:latest
+
+build-controller11:
+	docker build . -t dokken.azurecr.io/azure-keyvault-controller:$(DOCKER_TAG)
 
 build-controller2:
 	docker build . -t $(DOCKER_HOST)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_TAG) 
