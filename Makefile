@@ -14,8 +14,7 @@ GOPACKAGES := $(shell go list ./... | grep -v /pkg/)
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_URL := https://$(PACKAGE)
 
-mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
-CURRENT_DIR := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
+CURRENT_DIR := $(shell pwd)
 
 build: build-controller build-webhook build-vaultenv
 
