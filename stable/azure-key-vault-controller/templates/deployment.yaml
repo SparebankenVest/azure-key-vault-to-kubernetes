@@ -1,0 +1,55 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "azure-key-vault-controller.fullname" . }}
+  labels:
+    app: {{ template "azure-key-vault-controller.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    component: controller
+spec:
+  selector:
+    matchLabels:
+      app: {{ template "azure-key-vault-controller.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "azure-key-vault-controller.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ template "azure-key-vault-controller.fullname" . }}
+      containers:
+      - name: azure-keyvault-controller
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: Always
+        env:
+        - name: AZURE_TENANT_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.keyVault.secret.name }}
+              key: {{ .Values.keyVault.secret.tenantKey }}
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.keyVault.secret.name }}
+              key: {{ .Values.keyVault.secret.clientIdKey }}
+        - name: AZURE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.keyVault.secret.name }}
+              key: {{ .Values.keyVault.secret.clientSecretKey }}
+        - name: AZURE_VAULT_NORMAL_POLL_INTERVALS
+          value: "{{ .Values.keyVault.polling.normalInterval }}"
+        - name: AZURE_VAULT_EXCEPTION_POLL_INTERVALS
+          value: "{{ .Values.keyVault.polling.failureInterval }}"
+        - name: AZURE_VAULT_MAX_FAILURE_ATTEMPTS
+          value: "{{ .Values.keyVault.polling.failureAttempts }}"
+        - name: LOG_LEVEL
+          value: "{{ .Values.logLevel }}"
+      {{- if .Values.image.pullSecret }}
+      imagePullSecrets:
+      - name: "{{ .Values.image.pullSecret }}"
+      {{- end }}

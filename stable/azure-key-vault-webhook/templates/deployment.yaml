@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "azure-key-vault-webhook.fullname" . }}
+  labels:
+    app: {{ template "azure-key-vault-webhook.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    component: mutating-webhook
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "azure-key-vault-webhook.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "azure-key-vault-webhook.name" . }}
+        release: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/apiservice.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ template "azure-key-vault-webhook.fullname" . }}
+      volumes:
+      - name: serving-cert
+        secret:
+          defaultMode: 420
+          secretName: {{ template "azure-key-vault-webhook.fullname" . }}
+      - name: dockersock
+        hostPath:
+          path: /var/run/docker.sock
+          type: File
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          # securityContext:
+          #   privileged: true
+          #   seLinuxOptions:
+          #     type: docker_t
+          env:
+          - name: TLS_CERT_FILE
+            value: /var/serving-cert/servingCert
+          - name: TLS_PRIVATE_KEY_FILE
+            value: /var/serving-cert/servingKey
+          - name: DEBUG
+            value: {{ .Values.debug | quote }}
+          - name: AZURE_TENANT_ID
+            valueFrom:
+              secretKeyRef:
+                name: azure-keyvault-credentials
+                key: tenant-id
+          - name: AZURE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: azure-keyvault-credentials
+                key: client-id
+          - name: AZURE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: azure-keyvault-credentials
+                key: client-secret
+          {{- range $key, $value := .Values.env }}
+          - name: {{ $key }}
+            value: {{ $value }}
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.internalPort }}
+          volumeMounts:
+          - mountPath: /var/serving-cert
+            name: serving-cert
+          - mountPath: "/var/run/docker.sock"
+            name: dockersock
+            readOnly: true
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}
+  {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+  {{- end }}
+  {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+  {{- end }}

@@ -1,0 +1,19 @@
+# Default values 
+
+image:
+  repository: spvest/azure-keyvault-controller
+  tag: 0.1.0-alpha.2
+
+keyVault:
+  secret:
+    name: azure-keyvault-credentials
+    tenantKey: tenant-id
+    clientIdKey: client-id
+    clientSecretKey: client-secret
+
+  polling:
+    normalInterval: 1m
+    failureInterval: 10m
+    failureAttempts: 5
+
+logLevel: info
