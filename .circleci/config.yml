@@ -15,8 +15,8 @@ jobs:
           command: |
             alias helm=/tmp/helm/bin/linux-amd64/helm
             if [ "$CIRCLE_BRANCH" = "master" ]; then
-              helm repo add spv-charts https://SparebankenVest.github.io/helm-charts/stable
+              helm repo add spv-charts https://SparebankenVest.github.io/helm-charts
               helm repo update
               helm repo list
-              helm inspect spv-charts/azure-key-vault-controller
+              helm inspect spv-charts/stable/azure-key-vault-controller
             fi
