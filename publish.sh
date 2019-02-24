@@ -64,28 +64,12 @@ done
 
 echo '>> Remove deleted charts...'
 find "." -mindepth 1 -maxdepth 1 -type d | while read existingFolder; do
-  exists=false
   find "$HELM_CHARTS_SOURCE" -mindepth 1 -maxdepth 1 -type d | while read newFolder; do
-    a="$(basename $existingFolder)"
-    b="$(basename $newFolder)"
-
-    if [ "$a" = ".git" ]; then
-      exists=true
-      break
-    fi
-
-    echo ">> Checking if $a = $b"
-    if [ "$a" = "$b" ]; then
-      echo ">>> Found folder $existingFolder - don't delete"
-      exists=true
-      break
+    if [ ! -d ${HELM_CHARTS_SOURCE}/$existingFolder ]; then
+      echo ">>> Removing deleted folder $existingFolder"
+      rm -rf "$existingFolder"
     fi
   done
-
-  if [ "$exists" = false ]; then
-    echo ">>> Removing deleted folder $existingFolder"
-    rm -rf "$existingFolder"
-  fi
 done
 
 
