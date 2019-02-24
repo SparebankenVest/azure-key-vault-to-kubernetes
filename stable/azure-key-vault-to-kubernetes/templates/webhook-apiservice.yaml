@@ -40,8 +40,10 @@ items:
       - pods
     failurePolicy: Fail
     namespaceSelector:
-      matchExpressions:
-      - key: name
-        operator: NotIn
-        values:
-        - {{ .Release.Namespace }}
+      matchLabels:
+        akv-env-var-injection: enabled
+      # matchExpressions:
+      # - key: name
+      #   operator: NotIn
+      #   values:
+      #   - {{ .Release.Namespace }}
