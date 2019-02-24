@@ -1,0 +1,4 @@
+dependencies:
+- name: azure-key-vault-controller
+  version: "0.1.0-alpha.2"
+  repository: "https://charts.spv.no"

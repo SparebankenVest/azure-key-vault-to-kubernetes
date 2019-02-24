@@ -1,1 +1,47 @@
 # Default values 
+azure-key-vault-controller:
+  image:
+    repository: spvest/azure-keyvault-controller
+    tag: 0.1.0-alpha.2
+
+  keyVault:
+    secret:
+      name: azure-keyvault-credentials
+      tenantKey: tenant-id
+      clientIdKey: client-id
+      clientSecretKey: client-secret
+
+    polling:
+      normalInterval: 1m
+      failureInterval: 10m
+      failureAttempts: 5
+
+  logLevel: info
+
+webhook:
+  replicaCount: 1
+
+  debug: true
+
+  image:
+    repository: spvest/azure-keyvault-webhook
+    tag: 0.1.0-alpha.2
+    pullPolicy: IfNotPresent
+
+  service:
+    name: azure-keyvault-secrets-webhook
+    type: ClusterIP
+    externalPort: 443
+    internalPort: 443
+
+  env:
+    AZUREKEYVAULT_ENV_IMAGE: spvest/azure-keyvault-env:0.1.0-alpha.2
+    AZURE_KEYVAULT_SECRET_NAME: azure-keyvault-credentials-secret
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}

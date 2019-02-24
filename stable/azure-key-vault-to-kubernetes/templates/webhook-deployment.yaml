@@ -1,40 +1,40 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "azure-key-vault-webhook.fullname" . }}
+  name: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
   labels:
-    app: {{ template "azure-key-vault-webhook.name" . }}
+    app: {{ template "azure-key-vault-to-kubernetes.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
-    component: mutating-webhook
+    component: webhook
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.webhook.replicaCount }}
   selector:
     matchLabels:
-      app: {{ template "azure-key-vault-webhook.name" . }}
+      app: {{ template "azure-key-vault-to-kubernetes.name" . }}
       release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ template "azure-key-vault-webhook.name" . }}
+        app: {{ template "azure-key-vault-to-kubernetes.name" . }}
         release: {{ .Release.Name }}
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/apiservice.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/webhook-apiservice.yaml") . | sha256sum }}
     spec:
-      serviceAccountName: {{ template "azure-key-vault-webhook.fullname" . }}
+      serviceAccountName: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
       volumes:
       - name: serving-cert
         secret:
           defaultMode: 420
-          secretName: {{ template "azure-key-vault-webhook.fullname" . }}
+          secretName: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
       - name: dockersock
         hostPath:
           path: /var/run/docker.sock
           type: File
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag }}"
           # securityContext:
           #   privileged: true
           #   seLinuxOptions:
@@ -45,7 +45,7 @@ spec:
           - name: TLS_PRIVATE_KEY_FILE
             value: /var/serving-cert/servingKey
           - name: DEBUG
-            value: {{ .Values.debug | quote }}
+            value: {{ .Values.webhook.debug | quote }}
           - name: AZURE_TENANT_ID
             valueFrom:
               secretKeyRef:
@@ -61,13 +61,13 @@ spec:
               secretKeyRef:
                 name: azure-keyvault-credentials
                 key: client-secret
-          {{- range $key, $value := .Values.env }}
+          {{- range $key, $value := .Values.webhook.env }}
           - name: {{ $key }}
             value: {{ $value }}
           {{- end }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.webhook.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.service.internalPort }}
+            - containerPort: {{ .Values.webhook.service.internalPort }}
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
@@ -75,16 +75,16 @@ spec:
             name: dockersock
             readOnly: true
           resources:
-{{ toYaml .Values.resources | indent 12 }}
-    {{- if .Values.nodeSelector }}
+{{ toYaml .Values.webhook.resources | indent 12 }}
+    {{- if .Values.webhook.nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.nodeSelector | indent 8 }}
+{{ toYaml .Values.webhook.nodeSelector | indent 8 }}
     {{- end }}
-  {{- if .Values.tolerations }}
+  {{- if .Values.webhook.tolerations }}
       tolerations:
-{{ toYaml .Values.tolerations | indent 8 }}
+{{ toYaml .Values.webhook.tolerations | indent 8 }}
   {{- end }}
-  {{- if .Values.affinity }}
+  {{- if .Values.webhook.affinity }}
       affinity:
-{{ toYaml .Values.affinity | indent 8 }}
+{{ toYaml .Values.webhook.affinity | indent 8 }}
   {{- end }}

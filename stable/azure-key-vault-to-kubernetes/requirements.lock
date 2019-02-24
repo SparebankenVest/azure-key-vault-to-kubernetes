@@ -1,0 +1,6 @@
+dependencies:
+- name: azure-key-vault-controller
+  repository: https://charts.spv.no
+  version: 0.1.0-alpha.2
+digest: sha256:6afb181e6ce44b46267e0b5174bc316eb1d9df1ad61313d2a3794855e8a77dcd
+generated: 2019-02-24T10:13:08.915549+01:00
