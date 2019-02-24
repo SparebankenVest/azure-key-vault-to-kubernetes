@@ -1,37 +1,33 @@
-# Vault Secrets webhook
+# Azure Key Vault Controller
 
-This chart will install a mutating admission webhook, that injects an executable to containers in a deployment/statefulset which than can request secrets from Vault through environment variable definitions.
+This chart will install a Kubernetes controller that uses information from `AzureKeyVaultSecret` resources to download secrets from Azure Key Vault and create them as Kubernetes native `Secret` resources.
+
+This chart is a subchart of [`azure-key-vault-to-kubernetes`](../azure-key-vault-to-kubernetes) which allows a more secure handling of Azure Key Vault secrets, by transparantly injecting them into containers. 
 
 ## Installing the Chart
 
 ```bash
-$ helm repo add banzaicloud-stable http://kubernetes-charts.banzaicloud.com/branch/master
+$ helm repo add spv-charts http://charts.spv.no
 $ helm repo update
 ```
 
-The chart needs to be installed into it's own namespace to overcome recursive mutation issues, that namespace is ignored by the mutating webhook.
-See: https://github.com/banzaicloud/banzai-charts/issues/595#issuecomment-452223465 for more information.
-
 ```bash
-$ helm upgrade --namespace vswh --install vswh banzaicloud-stable/vault-secrets-webhook
+$ helm install spv-charts/azure-key-vault-controller
 ```
 
 ## Configuration
 
 The following tables lists configurable parameters of the vault-secrets-webhook chart and their default values.
 
-|               Parameter             |                Description                  |                  Default                 |
-| ----------------------------------- | ------------------------------------------- | -----------------------------------------|
-|affinity                             |affinities to use                            |{}                                        |
-|debug                                |debug logs for webhook                       |false                                     |
-|image.pullPolicy                     |image pull policy                            |IfNotPresent                              |
-|image.repository                     |image repo that contains the admission server|banzaicloud/vault-secrets-webhook         |
-|image.tag                            |image tag                                    |latest                                    |
-|nodeSelector                         |node selector to use                         |{}                                        |
-|replicaCount                         |number of replicas                           |1                                         |
-|resources                            |resources to request                         |{}                                        |
-|service.externalPort                 |webhook service external port                |443                                       |
-|service.internalPort                 |webhook service external port                |443                                       |
-|service.name                         |webhook service name                         |vault-secrets-webhook                     |
-|service.type                         |webhook service type                         |ClusterIP                                 |
-|tolerations                          |tolerations to add                           |[]                                        |
+|               Parameter             |                Description                   |                  Default                 |
+| ----------------------------------- | -------------------------------------------- | -----------------------------------------|
+|image.repository                     |image repo that contains the controller image | spvest/azure-keyvault-controller         |
+|image.tag                            |image tag|0.1.0-alpha.5|
+|keyVault.secret.name                 |name of kubernetes secret containing azure key vault credentials | azure-keyvault-credentials|
+|keyVault.secret.tenantKey            |key name used for tenant inside kubernetes secret | tenant-id |
+|keyVault.secret.clientIdKey          |key name used for clientId inside kubernetes secret | client-id |
+|keyVault.secret.clientSecretKey      |key name used for clientSecret inside kubernetes secret | client-secret |
+|keyVault.polling.normalInterval      |interval to wait before polling azure key vault for secret updates | 1m |
+|keyVault.polling.failureInterval     |interval to wait when polling has failed `failureAttempts` before polling azure key vault for secret updates | 5m |
+|keyVault.polling.failureAttempts     |number of times to allow secret updates to fail before applying `failureInterval` | 5 |
+|logLevel                             | log level | info |
