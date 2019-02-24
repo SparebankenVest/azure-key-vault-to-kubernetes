@@ -4,6 +4,8 @@ This chart will install a Kubernetes controller that uses information from `Azur
 
 This chart is a subchart of [`azure-key-vault-to-kubernetes`](../azure-key-vault-to-kubernetes) which allows a more secure handling of Azure Key Vault secrets, by transparantly injecting them into containers. 
 
+For more information see the main GitHub repository at [https://github.com/SparebankenVest/azure-key-vault-to-kubernetes](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes).
+
 ## Installing the Chart
 
 ```bash
@@ -17,7 +19,7 @@ $ helm install spv-charts/azure-key-vault-controller
 
 ## Configuration
 
-The following tables lists configurable parameters of the vault-secrets-webhook chart and their default values.
+The following table lists configurable parameters of the azure-key-vault-controller chart and their default values.
 
 |               Parameter             |                Description                   |                  Default                 |
 | ----------------------------------- | -------------------------------------------- | -----------------------------------------|
