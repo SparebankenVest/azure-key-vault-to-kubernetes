@@ -64,12 +64,12 @@ done
 
 echo '>> Remove deleted charts...'
 find "." -mindepth 1 -maxdepth 1 -type d | while read existingFolder; do
-  find "$HELM_CHARTS_SOURCE" -mindepth 1 -maxdepth 1 -type d | while read newFolder; do
-    if [ ! -d ${HELM_CHARTS_SOURCE}/$existingFolder ]; then
-      echo ">>> Removing deleted folder $existingFolder"
-      rm -rf "$existingFolder"
-    fi
-  done
+  a="$(basename $existingFolder)"
+  if [ ! -d ${HELM_CHARTS_SOURCE}/$a ]; then
+    echo ">>> Removing deleted folder $existingFolder"
+    rm -rf "$existingFolder"
+    break
+  fi
 done
 
 
