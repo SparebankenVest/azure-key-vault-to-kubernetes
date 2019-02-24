@@ -2,7 +2,7 @@
 azure-key-vault-controller:
   image:
     repository: spvest/azure-keyvault-controller
-    tag: 0.1.0-alpha.2
+    tag: 0.1.0-alpha.5
 
   keyVault:
     secret:
@@ -25,7 +25,7 @@ webhook:
 
   image:
     repository: spvest/azure-keyvault-webhook
-    tag: 0.1.0-alpha.2
+    tag: 0.1.0-alpha.5
     pullPolicy: IfNotPresent
 
   service:
