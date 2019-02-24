@@ -62,6 +62,23 @@ find "$HELM_CHARTS_SOURCE" -mindepth 1 -maxdepth 1 -type d | while read chart; d
   helm package -d "$chart_name" "$chart"
 done
 
+echo '>> Remove deleted charts...'
+find "$HELM_CHARTS_SOURCE" -mindepth 1 -maxdepth 1 -type d | while read existingFolder; do
+  exists=false
+  find "$HELM_CHARTS_SOURCE" -mindepth 1 -maxdepth 1 -type d | while read newFolder; do
+    if ["$existingFolder" = "$newFolder"]; then
+      exists=true
+      break
+    fi
+  done
+
+  if ["$exists" = false]; then
+    echo ">>> Removing deleted folder $existingFolder"
+    rm -rf "$existingFolder"
+  fi
+done
+
+
 echo '>>> helm repo index'
 helm repo index .
 
