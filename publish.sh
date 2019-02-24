@@ -68,13 +68,15 @@ find "." -mindepth 1 -maxdepth 1 -type d | while read existingFolder; do
   find "$HELM_CHARTS_SOURCE" -mindepth 1 -maxdepth 1 -type d | while read newFolder; do
     a="$(basename $existingFolder)"
     b="$(basename $newFolder)"
+    echo ">> Checking if $a = $b"
     if ["$a" = "$b"]; then
+      echo ">>> Found deleted folder $existingFolder"
       exists=true
       break
     fi
   done
 
-  if ["$exists" = false]; then
+  if [ "$exists" = false ]; then
     echo ">>> Removing deleted folder $existingFolder"
     rm -rf "$existingFolder"
   fi
