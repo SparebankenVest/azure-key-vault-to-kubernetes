@@ -62,7 +62,6 @@ find "$HELM_CHARTS_SOURCE" -mindepth 1 -maxdepth 1 -type d | while read chart; d
   helm package -d "$chart_name" "$chart"
 done
 
-echo '>> Remove deleted charts...'
 find "." -mindepth 1 -maxdepth 1 -type d | while read existingFolder; do
   folder="$(basename $existingFolder)"
   if [ "$folder" != ".git" ] && [ ! -d ${HELM_CHARTS_SOURCE}/$folder ]; then
