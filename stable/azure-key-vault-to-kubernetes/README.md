@@ -1,19 +1,18 @@
-# Azure Key Vault webhook
+# Azure Key Vault for Kubernetes
 
-This chart will install a mutating admission webhook, that injects an executable to containers in a deployment/statefulset which than can request secrets from Azure Key Vault through environment variable definitions.
+This chart will install a Kubernetes controller to handle `AzureKeyValuSecret` resources and a mutating admission webhook, that transparantly injects Azure Key Vault secrets into containers.
+
+For more information see the main GitHub repository at [https://github.com/SparebankenVest/azure-key-vault-to-kubernetes](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes).
 
 ## Installing the Chart
 
 ```bash
-$ helm repo add banzaicloud-stable http://kubernetes-charts.banzaicloud.com/branch/master
+$ helm repo add spv-charts http://charts.spv.no
 $ helm repo update
 ```
 
-The chart needs to be installed into it's own namespace to overcome recursive mutation issues, that namespace is ignored by the mutating webhook.
-See: https://github.com/banzaicloud/banzai-charts/issues/595#issuecomment-452223465 for more information.
-
 ```bash
-$ helm upgrade --namespace vswh --install vswh banzaicloud-stable/vault-secrets-webhook
+$ helm install spv-charts/azure-key-vault-for-kubernetes
 ```
 
 ## Configuration
