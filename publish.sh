@@ -68,9 +68,15 @@ find "." -mindepth 1 -maxdepth 1 -type d | while read existingFolder; do
   find "$HELM_CHARTS_SOURCE" -mindepth 1 -maxdepth 1 -type d | while read newFolder; do
     a="$(basename $existingFolder)"
     b="$(basename $newFolder)"
+
+    if [ "$a" = ".git" ]; then
+      exists=true
+      break
+    fi
+
     echo ">> Checking if $a = $b"
-    if ["$a" = "$b"]; then
-      echo ">>> Found deleted folder $existingFolder"
+    if [ "$a" = "$b" ]; then
+      echo ">>> Found folder $existingFolder - don't delete"
       exists=true
       break
     fi
