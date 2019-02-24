@@ -52,8 +52,8 @@ find "$HELM_CHARTS_SOURCE" -mindepth 1 -maxdepth 1 -type d | while read chart; d
   echo ">>> helm lint $chart"
   helm lint "$chart"
   chart_name="`basename "$chart"`"
-  echo '>>> helm update dependencies'
-  helm dependency update
+  echo '>>> helm update dependencies $chart'
+  helm dependency update $chart
   echo ">>> helm package -d $chart_name $chart"
   mkdir -p "$chart_name"
   helm package -d "$chart_name" "$chart"
