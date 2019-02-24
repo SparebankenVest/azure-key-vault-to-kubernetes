@@ -47,13 +47,16 @@ mkdir -p "$HOME/.ssh"
 ssh-keyscan -H github.com >> "$HOME/.ssh/known_hosts"
 git clone -b "$GITHUB_PAGES_BRANCH" "git@github.com:$GITHUB_PAGES_REPO.git" .
 
+echo '>> Adding https://charts.spv.no to repos to support dependencies...'
+helm repo add spv-pub-charts https://charts.spv.no
+
 echo '>> Building charts...'
 find "$HELM_CHARTS_SOURCE" -mindepth 1 -maxdepth 1 -type d | while read chart; do
   echo ">>> helm lint $chart"
   helm lint "$chart"
   chart_name="`basename "$chart"`"
-  echo '>>> helm update dependencies $chart'
-  helm dependency update $chart
+  echo ">>> helm update dependencies $chart"
+  helm dependency update "$chart"
   echo ">>> helm package -d $chart_name $chart"
   mkdir -p "$chart_name"
   helm package -d "$chart_name" "$chart"
