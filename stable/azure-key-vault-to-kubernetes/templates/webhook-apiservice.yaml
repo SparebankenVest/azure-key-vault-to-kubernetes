@@ -41,7 +41,7 @@ items:
     failurePolicy: Fail
     namespaceSelector:
       matchLabels:
-        akv-env-var-injection: enabled
+        azure-key-vault-env-injection: enabled
       # matchExpressions:
       # - key: name
       #   operator: NotIn
