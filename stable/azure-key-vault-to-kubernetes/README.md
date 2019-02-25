@@ -1,5 +1,7 @@
 # Azure Key Vault for Kubernetes
 
+**This helm chart is still in Alpha and not yet ready for public consumption**
+
 This chart will install a Kubernetes controller to handle `AzureKeyValuSecret` resources and a mutating admission webhook, that transparantly injects Azure Key Vault secrets into containers.
 
 For more information see the main GitHub repository at [https://github.com/SparebankenVest/azure-key-vault-to-kubernetes](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes).
