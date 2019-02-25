@@ -3,6 +3,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes)
 [![CircleCI](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes.svg?style=shield)](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes)
 
+**This project is currently in Alpha and not yet ready for public consumption**
+
 A Kubernetes controller synchronizing Secrets, Certificates and Keys from Azure Key Vault to `Secret`'s in Kubernetes (Basic mode)...
 
 ...and/or a Kubernetes Mutating Web Hook that transparently injects Azure Key Vault secrets into containers (transparent mode).
