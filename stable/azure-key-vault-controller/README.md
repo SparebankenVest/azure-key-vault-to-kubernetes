@@ -9,7 +9,7 @@ For more information see the main GitHub repository at [https://github.com/Spare
 ## Installing the Chart
 
 ```bash
-$ helm repo add spv-charts http://charts.spv.no
+$ helm repo add spv-charts http://charts.spvapi.no
 $ helm repo update
 ```
 

@@ -8,6 +8,7 @@ WORKING_DIRECTORY="$PWD"
   echo "ERROR: Environment variable GITHUB_PAGES_REPO is required"
   exit 1
 }
+[ -< "$CUSTOM_DOMAIN"] && CUSTOM_DOMAIN=charts.spvapi.no
 [ -z "$GITHUB_PAGES_BRANCH" ] && GITHUB_PAGES_BRANCH=gh-pages
 [ -z "$HELM_CHARTS_SOURCE" ] && HELM_CHARTS_SOURCE="$WORKING_DIRECTORY/stable"
 [ -d "$HELM_CHARTS_SOURCE" ] || {
@@ -47,8 +48,8 @@ mkdir -p "$HOME/.ssh"
 ssh-keyscan -H github.com >> "$HOME/.ssh/known_hosts"
 git clone -b "$GITHUB_PAGES_BRANCH" "git@github.com:$GITHUB_PAGES_REPO.git" .
 
-echo '>> Adding https://charts.spv.no to repos to support dependencies...'
-helm repo add spv-pub-charts https://charts.spv.no
+echo '>> Adding https://$CUSTOM_DOMAIN to repos to support dependencies...'
+helm repo add spv-pub-charts https://$CUSTOM_DOMAIN
 
 echo '>> Building charts...'
 find "$HELM_CHARTS_SOURCE" -mindepth 1 -maxdepth 1 -type d | while read chart; do
