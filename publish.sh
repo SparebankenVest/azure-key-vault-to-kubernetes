@@ -8,7 +8,7 @@ WORKING_DIRECTORY="$PWD"
   echo "ERROR: Environment variable GITHUB_PAGES_REPO is required"
   exit 1
 }
-[ -< "$CUSTOM_DOMAIN"] && CUSTOM_DOMAIN=charts.spvapi.no
+[ -z "$CUSTOM_DOMAIN"] && CUSTOM_DOMAIN=charts.spvapi.no
 [ -z "$GITHUB_PAGES_BRANCH" ] && GITHUB_PAGES_BRANCH=gh-pages
 [ -z "$HELM_CHARTS_SOURCE" ] && HELM_CHARTS_SOURCE="$WORKING_DIRECTORY/stable"
 [ -d "$HELM_CHARTS_SOURCE" ] || {
