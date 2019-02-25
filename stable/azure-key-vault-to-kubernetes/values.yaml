@@ -45,3 +45,6 @@ webhook:
   tolerations: []
 
   affinity: {}
+
+aad-pod-identity:
+  enabled: false
