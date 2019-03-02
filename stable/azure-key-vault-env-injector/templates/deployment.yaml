@@ -20,7 +20,7 @@ spec:
         app: {{ template "azure-key-vault-to-kubernetes.name" . }}
         release: {{ .Release.Name }}
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/webhook-apiservice.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/apiservice.yaml") . | sha256sum }}
     spec:
       serviceAccountName: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
       volumes:
