@@ -1,9 +1,0 @@
-dependencies:
-- name: azure-key-vault-controller
-  repository: https://charts.spvapi.no
-  version: 0.1.0-alpha.5
-- name: aad-pod-identity
-  repository: https://charts.spvapi.no
-  version: 0.1.0
-digest: sha256:5909a6e460518a6ae116282b898c23874b4d629d7839f7e29bdf341d8cc92344
-generated: 2019-02-25T19:43:49.574196+01:00

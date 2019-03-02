@@ -1,10 +1,8 @@
 # Azure Key Vault Controller
 
-This chart will install a Kubernetes controller that uses information from `AzureKeyVaultSecret` resources to download secrets from Azure Key Vault and create them as Kubernetes native `Secret` resources.
+This chart will install a Custom Resource Definition (`AzureKeyVaultSecret`) and a Kubernetes controller, that together enable secrets from Azure Key Vault to be stored as Kubernetes native `Secret` resources.
 
-This chart is a subchart of [`azure-key-vault-to-kubernetes`](../azure-key-vault-to-kubernetes) which allows a more secure handling of Azure Key Vault secrets, by transparantly injecting them into containers. 
-
-For more information see the main GitHub repository at [https://github.com/SparebankenVest/azure-key-vault-to-kubernetes](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes).
+For more information see the main GitHub repository at https://github.com/SparebankenVest/azure-key-vault-to-kubernetes.
 
 ## Installing the Chart
 
