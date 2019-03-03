@@ -32,6 +32,9 @@ spec:
         hostPath:
           path: /var/run/docker.sock
           type: File
+      - name: dockercnf
+        hostPath:
+          path: /root/.docker
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -60,8 +63,11 @@ spec:
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
-          - mountPath: "/var/run/docker.sock"
+          - mountPath: /var/run/docker.sock
             name: dockersock
+            readOnly: true
+          - mountPath: /root/.docker
+            name: dockercnf
             readOnly: true
           resources:
 {{ toYaml .Values.resources | indent 12 }}
