@@ -1,63 +1,44 @@
 # Default values 
-azure-key-vault-controller:
-  auth:
-    podIdentity:
-      selector: azure-key-vault
-      
-    # env:
-    #   - name: AZURE_TENANT_ID
-    #     valueFrom:
-    #       secretKeyRef:
-    #         name: azure-keyvault-credentials
-    #         key: tenant-id
-    #   - name: AZURE_CLIENT_ID
-    #     valueFrom:
-    #       secretKeyRef:
-    #         name: azure-keyvault-credentials
-    #         key: client-id
-    #   - name: AZURE_CLIENT_SECRET
-    #     valueFrom:
-    #       secretKeyRef:
-    #         name: azure-keyvault-credentials
-    #         key: client-secret
+replicaCount: 1
 
-webhook:
-  replicaCount: 1
+debug: false
 
-  debug: true
+image:
+  repository: spvest/azure-keyvault-webhook
+  tag: 0.1.0-alpha.5
+  pullPolicy: IfNotPresent
 
-  image:
-    repository: spvest/azure-keyvault-webhook
-    tag: 0.1.0-alpha.5
-    pullPolicy: IfNotPresent
+service:
+  name: azure-keyvault-secrets-webhook
+  type: ClusterIP
+  externalPort: 443
+  internalPort: 443
 
-  service:
-    name: azure-keyvault-secrets-webhook
-    type: ClusterIP
-    externalPort: 443
-    internalPort: 443
+auth:
+  default: true
+  autoInject: true 
 
-  auth:
+  override:
+
     # Automatically inject Key Vault credentials into containers
     # Setting this to false means every container using env-injections must provide credentials for Azure Key Vault
-    injectToContainers: true 
     podIdentity:
       selector: azure-key-vault
 
-  env:
-    AZUREKEYVAULT_ENV_IMAGE: spvest/azure-keyvault-env:0.1.0-alpha.5
-    AZURE_KEYVAULT_SECRET_NAME: azure-keyvault-credentials-secret
+env:
+  AZUREKEYVAULT_ENV_IMAGE: spvest/azure-keyvault-env:0.1.0-alpha.6
+  AZURE_KEYVAULT_SECRET_NAME: azure-keyvault-credentials-secret
 
-  resources: {}
+resources: {}
 
-  nodeSelector: {}
+nodeSelector: {}
 
-  tolerations: []
+tolerations: []
 
-  affinity: {}
+affinity: {}
 
 aad-pod-identity:
-  enabled: false # set to true and fill out below to install pod-identity
+  enabled: false # set to true and uncomment below to install pod-identity
   # azureIdentity:
   #   type: 0 # type 0: MSI, type 1: Service Principal
   #   resourceID: "" # /subscriptions/subscription-id/resourcegroups/resource-group/providers/Microsoft.ManagedIdentity/userAssignedIdentities/identity-name

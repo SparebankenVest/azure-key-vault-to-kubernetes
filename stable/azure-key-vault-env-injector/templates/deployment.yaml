@@ -9,7 +9,7 @@ metadata:
     heritage: {{ .Release.Service }}
     component: webhook
 spec:
-  replicas: {{ .Values.webhook.replicaCount }}
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: {{ template "azure-key-vault-to-kubernetes.name" . }}
@@ -34,29 +34,29 @@ spec:
           type: File
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag }}"
-          # securityContext:
-          #   privileged: true
-          #   seLinuxOptions:
-          #     type: docker_t
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           env:
           - name: TLS_CERT_FILE
             value: /var/serving-cert/servingCert
           - name: TLS_PRIVATE_KEY_FILE
             value: /var/serving-cert/servingKey
-          - name: DEBUG
-            value: {{ .Values.webhook.debug | quote }}
           - name: AAD_POD_BINDING_LABEL
             valueFrom:
               fieldRef:
                 fieldPath:  metadata.labels['aadpodidbinding']
-          {{- range $key, $value := .Values.webhook.env }}
+          - name: AUTH_DEFAULT
+            value: {{ .Values.auth.default | quote }}
+          - name: AUTH_AUTO_INJECT
+            value: {{ .Values.auth.autoInject | quote }}
+          - name: DEBUG
+            value: {{ .Values.debug | quote }}
+          {{- range $key, $value := .Values.env }}
           - name: {{ $key }}
             value: {{ $value }}
           {{- end }}
-          imagePullPolicy: {{ .Values.webhook.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.webhook.service.internalPort }}
+            - containerPort: {{ .Values.service.internalPort }}
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
@@ -64,16 +64,16 @@ spec:
             name: dockersock
             readOnly: true
           resources:
-{{ toYaml .Values.webhook.resources | indent 12 }}
-    {{- if .Values.webhook.nodeSelector }}
+{{ toYaml .Values.resources | indent 12 }}
+    {{- if .Values.nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.webhook.nodeSelector | indent 8 }}
+{{ toYaml .Values.nodeSelector | indent 8 }}
     {{- end }}
-  {{- if .Values.webhook.tolerations }}
+  {{- if .Values.tolerations }}
       tolerations:
-{{ toYaml .Values.webhook.tolerations | indent 8 }}
+{{ toYaml .Values.tolerations | indent 8 }}
   {{- end }}
-  {{- if .Values.webhook.affinity }}
+  {{- if .Values.affinity }}
       affinity:
-{{ toYaml .Values.webhook.affinity | indent 8 }}
+{{ toYaml .Values.affinity | indent 8 }}
   {{- end }}

@@ -9,12 +9,12 @@ metadata:
     heritage: {{ .Release.Service }}
     component: mutating
 spec:
-  type: {{ .Values.webhook.service.type }}
+  type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.webhook.service.externalPort }}
-      targetPort: {{ .Values.webhook.service.internalPort }}
+    - port: {{ .Values.service.externalPort }}
+      targetPort: {{ .Values.service.internalPort }}
       protocol: TCP
-      name: {{ .Values.webhook.service.name }}
+      name: {{ .Values.service.name }}
   selector:
     app: {{ template "azure-key-vault-to-kubernetes.name" . }}
     release: {{ .Release.Name }}
