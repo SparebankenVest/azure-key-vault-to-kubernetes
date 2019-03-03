@@ -5,7 +5,7 @@ debug: false
 
 image:
   repository: spvest/azure-keyvault-webhook
-  tag: 0.1.0-alpha.5
+  tag: 0.1.0-alpha.6
   pullPolicy: IfNotPresent
 
 service:

@@ -1,8 +1,4 @@
 dependencies:
-- name: aad-pod-identity
-  version: "0.1.0"
-  repository: "https://charts.spvapi.no"
-  condition: aad-pod-identity.enabled
 - name: azure-key-vault-crd
   version: "0.1.0"
   repository: "https://charts.spvapi.no"
