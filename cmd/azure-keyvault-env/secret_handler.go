@@ -19,184 +19,158 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
-	akvsv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/apis/azurekeyvaultcontroller/v1alpha1"
-	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/apis/azurekeyvaultcontroller/v1alpha1"
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	akvsv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
 
-	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // EnvSecretHandler handles getting and formatting secrets from Azure Key Vault to environment variables
 type EnvSecretHandler interface {
-	Handle() (map[string]string, error)
+	Handle() (string, error)
 }
 
 // AzureKeyVaultSecretHandler handles getting and formatting Azure Key Vault Secret from Azure Key Vault to environment variables
 type AzureKeyVaultSecretHandler struct {
-	secretSpec   *akvsv1alpha1.AzureKeyVaultSecret
+	secretSpec   *akvsv1alpha1.AzureKeyVaultEnvSecret
 	vaultService vault.Service
+	query        string
 }
 
 // AzureKeyVaultCertificateHandler handles getting and formatting Azure Key Vault Certificate from Azure Key Vault to environment variables
 type AzureKeyVaultCertificateHandler struct {
-	secretSpec   *akvsv1alpha1.AzureKeyVaultSecret
+	secretSpec   *akvsv1alpha1.AzureKeyVaultEnvSecret
 	vaultService vault.Service
+	query        string
 }
 
 // AzureKeyVaultKeyHandler handles getting and formatting Azure Key Vault Key from Azure Key Vault to environment variables
 type AzureKeyVaultKeyHandler struct {
-	secretSpec   *akvsv1alpha1.AzureKeyVaultSecret
+	secretSpec   *akvsv1alpha1.AzureKeyVaultEnvSecret
 	vaultService vault.Service
+	query        string
 }
 
 // AzureKeyVaultMultiValueSecretHandler handles getting and formatting Azure Key Vault Secret containing multiple values from Azure Key Vault to Kubernetes
 type AzureKeyVaultMultiValueSecretHandler struct {
-	secretSpec   *akvsv1alpha1.AzureKeyVaultSecret
+	secretSpec   *akvsv1alpha1.AzureKeyVaultEnvSecret
 	vaultService vault.Service
+	query        string
 }
 
 // NewAzureKeyVaultSecretHandler return a new AzureKeyVaultSecretHandler
-func NewAzureKeyVaultSecretHandler(secretSpec *akvsv1alpha1.AzureKeyVaultSecret, vaultService vault.Service) *AzureKeyVaultSecretHandler {
+func NewAzureKeyVaultSecretHandler(secretSpec *akvsv1alpha1.AzureKeyVaultEnvSecret, query string, vaultService vault.Service) *AzureKeyVaultSecretHandler {
 	return &AzureKeyVaultSecretHandler{
 		secretSpec:   secretSpec,
 		vaultService: vaultService,
+		query:        query,
 	}
 }
 
 // NewAzureKeyVaultCertificateHandler return a new AzureKeyVaultCertificateHandler
-func NewAzureKeyVaultCertificateHandler(secretSpec *akvsv1alpha1.AzureKeyVaultSecret, vaultService vault.Service) *AzureKeyVaultCertificateHandler {
+func NewAzureKeyVaultCertificateHandler(secretSpec *akvsv1alpha1.AzureKeyVaultEnvSecret, query string, vaultService vault.Service) *AzureKeyVaultCertificateHandler {
 	return &AzureKeyVaultCertificateHandler{
 		secretSpec:   secretSpec,
 		vaultService: vaultService,
+		query:        query,
 	}
 }
 
 // NewAzureKeyVaultKeyHandler returns a new AzureKeyVaultKeyHandler
-func NewAzureKeyVaultKeyHandler(secretSpec *akvsv1alpha1.AzureKeyVaultSecret, vaultService vault.Service) *AzureKeyVaultKeyHandler {
+func NewAzureKeyVaultKeyHandler(secretSpec *akvsv1alpha1.AzureKeyVaultEnvSecret, query string, vaultService vault.Service) *AzureKeyVaultKeyHandler {
 	return &AzureKeyVaultKeyHandler{
 		secretSpec:   secretSpec,
 		vaultService: vaultService,
+		query:        query,
 	}
 }
 
 // NewAzureKeyVaultMultiKeySecretHandler returns a new AzureKeyVaultMultiKeySecretHandler
-func NewAzureKeyVaultMultiKeySecretHandler(secretSpec *akvsv1alpha1.AzureKeyVaultSecret, vaultService vault.Service) *AzureKeyVaultMultiValueSecretHandler {
+func NewAzureKeyVaultMultiKeySecretHandler(secretSpec *akvsv1alpha1.AzureKeyVaultEnvSecret, query string, vaultService vault.Service) *AzureKeyVaultMultiValueSecretHandler {
 	return &AzureKeyVaultMultiValueSecretHandler{
 		secretSpec:   secretSpec,
 		vaultService: vaultService,
+		query:        query,
 	}
 }
 
 // Handle getting and formating Azure Key Vault Secret from Azure Key Vault to Kubernetes
-func (h *AzureKeyVaultSecretHandler) Handle() (map[string]string, error) {
-	if h.secretSpec.Spec.Vault.Object.Type == akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret && h.secretSpec.Spec.Output.Secret.DataKey != "" {
-		log.Warnf("output data key for %s/%s ignored, since vault object type is '%s' it will use its own keys", h.secretSpec.Namespace, h.secretSpec.Name, akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret)
-	}
-
-	values := make(map[string]string)
-
-	fmt.Fprintln(os.Stdout, "Getting secret now!")
+func (h *AzureKeyVaultSecretHandler) Handle() (string, error) {
 	secret, err := h.vaultService.GetSecret(&h.secretSpec.Spec.Vault)
 	if err != nil {
-		fmt.Fprintln(os.Stdout, "Found error getting secret now!")
-		return nil, err
+		return "", err
 	}
 
-	switch h.secretSpec.Spec.Output.Secret.Type {
-	case corev1.SecretTypeBasicAuth:
+	switch h.query {
+	case "":
+		return secret, nil
+	case corev1.BasicAuthUsernameKey:
 		creds := strings.Split(secret, ":")
 		if len(creds) != 2 {
-			return nil, fmt.Errorf("unable to handle azure key vault secret as basic auth - check that formatting is correct 'username:password'")
+			return "", fmt.Errorf("unable to handle azure key vault env secret as basic auth - check that formatting is correct 'username:password'")
 		}
-		values[corev1.BasicAuthUsernameKey] = creds[0]
-		values[corev1.BasicAuthPasswordKey] = creds[1]
+		return creds[0], nil
 
-	case corev1.SecretTypeDockerConfigJson:
-		values[corev1.DockerConfigJsonKey] = secret
-
-	case corev1.SecretTypeDockercfg:
-		values[corev1.DockerConfigKey] = secret
-
-	case corev1.SecretTypeSSHAuth:
-		values[corev1.SSHAuthPrivateKey] = secret
+	case corev1.BasicAuthPasswordKey:
+		creds := strings.Split(secret, ":")
+		if len(creds) != 2 {
+			return "", fmt.Errorf("unable to handle azure key vault secret as basic auth - check that formatting is correct 'username:password'")
+		}
+		return creds[1], nil
 
 	default:
-		if h.secretSpec.Spec.Vault.Object.Type != akvsv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret &&
-			h.secretSpec.Spec.Output.Secret.DataKey == "" {
-			return nil, fmt.Errorf("no datakey spesified for output secret")
-		}
-		values[h.secretSpec.Spec.Output.Secret.DataKey] = secret
+		return "", fmt.Errorf("unable to handle azure key vault secret with query '%s' - query is not valid", h.query)
 	}
-
-	return values, nil
 }
 
 // Handle getting and formating Azure Key Vault Certificate from Azure Key Vault to Kubernetes
-func (h *AzureKeyVaultCertificateHandler) Handle() (map[string]string, error) {
-	values := make(map[string]string)
-	var err error
-
-	exportPrivateKey := h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeTLS
-	if !exportPrivateKey && h.secretSpec.Spec.Output.Secret.DataKey == "" {
-		return nil, fmt.Errorf("no datakey spesified for output secret")
-	}
-
+func (h *AzureKeyVaultCertificateHandler) Handle() (string, error) {
+	exportPrivateKey := h.query == corev1.TLSPrivateKeyKey
 	cert, err := h.vaultService.GetCertificate(&h.secretSpec.Spec.Vault, exportPrivateKey)
 
-	var pubKey []byte
-	var privKey []byte
-
 	if err != nil {
-		return nil, err
+		return "", err
 	}
+
+	var privKey []byte
+	var pubKey []byte
+
 	if exportPrivateKey {
-		if pubKey, err = cert.ExportPublicKeyAsPem(); err != nil {
-			return nil, err
-		}
 		if privKey, err = cert.ExportPrivateKeyAsPem(); err != nil {
-			return nil, err
+			return "", err
 		}
-
-		values[corev1.TLSCertKey] = string(pubKey)
-		values[corev1.TLSPrivateKeyKey] = string(privKey)
-	} else {
-		if pubKey, err = cert.ExportPublicKeyAsPem(); err != nil {
-			return nil, err
-		}
-		values[h.secretSpec.Spec.Output.Secret.DataKey] = string(pubKey)
+		return string(privKey), nil
 	}
 
-	return values, nil
+	if pubKey, err = cert.ExportPublicKeyAsPem(); err != nil {
+		return "", err
+	}
+	return string(pubKey), nil
 }
 
 // Handle getting and formating Azure Key Vault Key from Azure Key Vault to Kubernetes
-func (h *AzureKeyVaultKeyHandler) Handle() (map[string]string, error) {
+func (h *AzureKeyVaultKeyHandler) Handle() (string, error) {
 	key, err := h.vaultService.GetKey(&h.secretSpec.Spec.Vault)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	values := make(map[string]string)
-	values[h.secretSpec.Spec.Output.Secret.DataKey] = key
-	return values, nil
+	return key, nil
 }
 
 // Handle getting and formating Azure Key Vault Secret containing mulitple values from Azure Key Vault to Kubernetes
-func (h *AzureKeyVaultMultiValueSecretHandler) Handle() (map[string]string, error) {
-	values := make(map[string]string)
-
+func (h *AzureKeyVaultMultiValueSecretHandler) Handle() (string, error) {
 	if h.secretSpec.Spec.Vault.Object.ContentType == "" {
-		return nil, fmt.Errorf("cannot use '%s' without also specifying content type", azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret)
+		return "", fmt.Errorf("cannot use '%s' without also specifying content type", azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret)
 	}
 
 	secret, err := h.vaultService.GetSecret(&h.secretSpec.Spec.Vault)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	var dat map[string]string
@@ -204,19 +178,19 @@ func (h *AzureKeyVaultMultiValueSecretHandler) Handle() (map[string]string, erro
 	switch h.secretSpec.Spec.Vault.Object.ContentType {
 	case akvsv1alpha1.AzureKeyVaultObjectContentTypeJSON:
 		if err := json.Unmarshal([]byte(secret), &dat); err != nil {
-			return nil, err
+			return "", err
 		}
 	case akvsv1alpha1.AzureKeyVaultObjectContentTypeYaml:
 		if err := yaml.Unmarshal([]byte(secret), &dat); err != nil {
-			return nil, err
+			return "", err
 		}
 	default:
-		return nil, fmt.Errorf("content type '%s' not supported", h.secretSpec.Spec.Vault.Object.ContentType)
+		return "", fmt.Errorf("content type '%s' not supported", h.secretSpec.Spec.Vault.Object.ContentType)
 	}
 
-	for k, v := range dat {
-		values[k] = v
+	if val, ok := dat[h.query]; ok {
+		return val, nil
 	}
 
-	return values, nil
+	return "", fmt.Errorf("key '%s' not found in azure key vault secret '%s' of type '%s'", h.query, h.secretSpec.Spec.Vault.Object.Name, h.secretSpec.Spec.Vault.Object.ContentType)
 }

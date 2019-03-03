@@ -19,29 +19,61 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 
-	vaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/apis/azurekeyvaultcontroller/v1alpha1"
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault"
-	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	vaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
+	yaml "gopkg.in/yaml.v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth"
 )
 
 func main() {
-	namespace := os.Getenv("POD_NAMESPACE")
+	var vaultService vault.Service
+
+	namespace := os.Getenv("ENV_INJECTOR_POD_NAMESPACE")
 	if namespace == "" {
 		fmt.Fprintf(os.Stderr, "Current namespace not provided in environment variable POD_NAMESPACE")
 		os.Exit(1)
 	}
 
-	clientID := os.Getenv("AZURE_CLIENT_ID")
+	defaultAuth := strings.ToLower(os.Getenv("ENV_INJECTOR_DEFAULT_AUTH"))
 
-	vaultService := vault.NewService()
-	fmt.Fprintf(os.Stdout, "Azure client ID: '%s'\n", clientID)
+	if defaultAuth == "true" {
+		bytes, err := ioutil.ReadFile("/etc/kubernetes/azure.json")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to read cloud config file in an effort to get credentials for azure key vault, error: %+v", err)
+			os.Exit(1)
+		}
+
+		azureConfig := auth.AzureAuthConfig{}
+		if err = yaml.Unmarshal(bytes, &azureConfig); err != nil {
+			fmt.Fprintf(os.Stderr, "Unmarshall error: %v", err)
+			os.Exit(1)
+		}
+
+		azureEnv, err := auth.ParseAzureEnvironment(azureConfig.Cloud)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to parse azure environment, error: %+v", err)
+			os.Exit(1)
+		}
+
+		token, err := auth.GetServicePrincipalToken(&azureConfig, azureEnv)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to get service principal from azure config, error: %+v", err)
+			os.Exit(1)
+		}
+
+		vaultService = vault.NewServiceWithTokenCredentials(token)
+	} else {
+		vaultService = vault.NewService()
+	}
 
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
@@ -62,37 +94,42 @@ func main() {
 		name := split[0]
 		value := split[1]
 
-		if strings.HasPrefix(value, "azurekeyvault#") {
+		if strings.HasPrefix(value, "azurekeyvault@") {
 
-			secretName := strings.TrimPrefix(value, "azurekeyvault#")
+			secretName := strings.TrimPrefix(value, "azurekeyvault@")
 
 			if secretName == "" {
 				fmt.Fprintf(os.Stderr, "Error extracting secret name from environment: '%s' not properly formatted", value)
 				os.Exit(1)
 			}
 
-			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultcontrollerV1alpha1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
+			var secretQuery string
+			if query := strings.Split(secretName, "?"); len(query) > 1 {
+				if len(query) > 2 {
+					fmt.Fprintf(os.Stderr, "Error extracting secret name from environment: '%s' has multiple query elements defined with '?'", secretName)
+					os.Exit(1)
+				}
+				secretName = query[0]
+				secretQuery = query[1]
+			}
+
+			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1alpha1().AzureKeyVaultEnvSecrets(namespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error getting AzureKeyVaultSecret resource '%s', error: %s", secretName, err.Error())
 				os.Exit(1)
 			}
 
-			secret, err := getSecretFromKeyVault(keyVaultSecretSpec, vaultService)
+			secret, err := getSecretFromKeyVault(keyVaultSecretSpec, secretQuery, vaultService)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "failed to read secret '%s', error %+v\n", keyVaultSecretSpec.Spec.Vault.Object.Name, err)
 				// os.Exit(1)
 			}
 
-			if secret == nil {
+			if secret == "" {
 				fmt.Fprintf(os.Stderr, "secret not found in azure key vault: %s\n", keyVaultSecretSpec.Spec.Vault.Object.Name)
 				// os.Exit(1)
 			} else {
-				if value, ok := secret["key"]; ok {
-					environ[i] = fmt.Sprintf("%s=%s", name, value)
-				} else {
-					fmt.Fprintf(os.Stderr, "key not found: %s\n", "key")
-					os.Exit(1)
-				}
+				environ[i] = fmt.Sprintf("%s=%s", name, secret)
 			}
 		}
 	}
@@ -114,20 +151,20 @@ func main() {
 	}
 }
 
-func getSecretFromKeyVault(azureKeyVaultSecret *vaultSecretv1alpha1.AzureKeyVaultSecret, vaultService vault.Service) (map[string]string, error) {
+func getSecretFromKeyVault(azureKeyVaultSecret *vaultSecretv1alpha1.AzureKeyVaultEnvSecret, query string, vaultService vault.Service) (string, error) {
 	var secretHandler EnvSecretHandler
 
 	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
 	case vaultSecretv1alpha1.AzureKeyVaultObjectTypeSecret:
-		secretHandler = NewAzureKeyVaultSecretHandler(azureKeyVaultSecret, vaultService)
+		secretHandler = NewAzureKeyVaultSecretHandler(azureKeyVaultSecret, query, vaultService)
 	case vaultSecretv1alpha1.AzureKeyVaultObjectTypeCertificate:
-		secretHandler = NewAzureKeyVaultCertificateHandler(azureKeyVaultSecret, vaultService)
+		secretHandler = NewAzureKeyVaultCertificateHandler(azureKeyVaultSecret, query, vaultService)
 	case vaultSecretv1alpha1.AzureKeyVaultObjectTypeKey:
-		secretHandler = NewAzureKeyVaultKeyHandler(azureKeyVaultSecret, vaultService)
+		secretHandler = NewAzureKeyVaultKeyHandler(azureKeyVaultSecret, query, vaultService)
 	case vaultSecretv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret:
-		secretHandler = NewAzureKeyVaultMultiKeySecretHandler(azureKeyVaultSecret, vaultService)
+		secretHandler = NewAzureKeyVaultMultiKeySecretHandler(azureKeyVaultSecret, query, vaultService)
 	default:
-		return nil, fmt.Errorf("azure key vault object type '%s' not currently supported", azureKeyVaultSecret.Spec.Vault.Object.Type)
+		return "", fmt.Errorf("azure key vault object type '%s' not currently supported", azureKeyVaultSecret.Spec.Vault.Object.Type)
 	}
 
 	fmt.Fprintln(os.Stdout, "Getting secret now 0!")

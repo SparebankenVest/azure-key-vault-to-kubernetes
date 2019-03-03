@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	whhttp "github.com/slok/kubewebhook/pkg/http"
@@ -36,21 +37,23 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	credprovider "k8s.io/kubernetes/pkg/credentialprovider"
 
 	dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
 )
 
-type vaultConfig struct {
-	addr       string
-	role       string
-	path       string
-	skipVerify string
-	useAgent   bool
+type azureKeyVaultConfig struct {
+	defaultAuth        bool
+	injectSecret       bool
+	credentials        *AzureKeyVaultCredentials
+	namespace          string
+	aadPodBindingLabel string
 }
 
-func getInitContainers(secret *corev1.Secret) []corev1.Container {
-	fmt.Fprintln(os.Stdout, "Getting init containers...")
+var config azureKeyVaultConfig
+
+func getInitContainers() []corev1.Container {
 	return []corev1.Container{
 		{
 			Name:            "copy-azurekeyvault-env",
@@ -67,8 +70,7 @@ func getInitContainers(secret *corev1.Secret) []corev1.Container {
 	}
 }
 
-func getVolume() []corev1.Volume {
-	fmt.Fprintln(os.Stdout, "Getting volumes...")
+func getVolumes() []corev1.Volume {
 	return []corev1.Volume{
 		{
 			Name: "azure-keyvault-env",
@@ -78,29 +80,31 @@ func getVolume() []corev1.Volume {
 				},
 			},
 		},
+		{
+			Name: "azure-config",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/etc/kubernetes/azure.json",
+				},
+			},
+		},
 	}
 }
 
 func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
-	var podSpec *corev1.PodSpec
-
 	req := whcontext.GetAdmissionRequest(ctx)
-
-	namespace := req.Namespace
+	config.namespace = req.Namespace
 
 	switch v := obj.(type) {
 	case *corev1.Pod:
-		fmt.Fprintf(os.Stdout, "Found pod '%s' to mutate in namespace '%s'\n", obj.GetName(), namespace)
-		podSpec = &v.Spec
+		fmt.Fprintf(os.Stdout, "Found pod '%s' to mutate in namespace '%s'\n", obj.GetName(), config.namespace)
+		return false, mutatePod(*v)
 	default:
 		return false, nil
 	}
-
-	fmt.Fprintln(os.Stdout, "Mutating pod...")
-	return false, mutatePodSpec(obj, podSpec, namespace)
 }
 
-func mutateContainers(containers []corev1.Container, secret *corev1.Secret, registryCreds map[string]string) bool {
+func mutateContainers(containers []corev1.Container, registryCreds map[string]string) bool {
 	fmt.Fprintln(os.Stdout, "Mutating containers...")
 	mutated := false
 	for i, container := range containers {
@@ -143,8 +147,6 @@ func mutateContainers(containers []corev1.Container, secret *corev1.Secret, regi
 
 		mutated = true
 
-		// args := append(container.Command, container.Args...)
-
 		container.Command = []string{"/azure-keyvault/azure-keyvault-env"}
 		container.Args = autoArgs
 
@@ -155,9 +157,19 @@ func mutateContainers(containers []corev1.Container, secret *corev1.Secret, regi
 			},
 		}...)
 
+		if config.defaultAuth {
+			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
+				{
+					Name:      "azure-config",
+					MountPath: "/etc/kubernetes/azure.json",
+					ReadOnly:  true,
+				},
+			}...)
+		}
+
 		container.Env = append(container.Env, []corev1.EnvVar{
 			{
-				Name: "POD_NAMESPACE",
+				Name: "ENV_INJECTOR_POD_NAMESPACE",
 				ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{
 						FieldPath: "metadata.namespace",
@@ -165,39 +177,14 @@ func mutateContainers(containers []corev1.Container, secret *corev1.Secret, regi
 				},
 			},
 			{
-				Name: "AZURE_TENANT_ID",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: secret.Name,
-						},
-						Key: "tenant-id",
-					},
-				},
-			},
-			{
-				Name: "AZURE_CLIENT_ID",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: secret.Name,
-						},
-						Key: "client-id",
-					},
-				},
-			},
-			{
-				Name: "AZURE_CLIENT_SECRET",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: secret.Name,
-						},
-						Key: "client-secret",
-					},
-				},
+				Name:  "ENV_INJECTOR_DEFAULT_AUTH",
+				Value: strconv.FormatBool(config.defaultAuth),
 			},
 		}...)
+
+		if config.injectSecret && config.credentials.CredentialsType != CredentialsTypeManagedIdentitiesForAzureResources {
+			container.Env = append(container.Env, *config.credentials.GetEnvVarFromSecret("adsf")...)
+		}
 
 		containers[i] = container
 	}
@@ -261,44 +248,37 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 	return cmd, nil
 }
 
-func getCredentialsForAzureKeyVault() (*corev1.Secret, error) {
-	fmt.Fprintln(os.Stdout, "Getting secret for azure key vault...")
-
-	tenantID := viper.GetString("azure_tenant_id")
-	clientID := viper.GetString("azure_client_id")
-	clientSecret := viper.GetString("azure_client_secret")
-	outputSecretName := viper.GetString("azure_keyvault_secret_name")
-
-	if tenantID == "" || clientID == "" || clientSecret == "" || outputSecretName == "" {
-		return nil, fmt.Errorf("env variables for azure key vault credentials not found")
-	}
-
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: outputSecretName,
-		},
-		StringData: map[string]string{
-			"client-id":     clientID,
-			"client-secret": clientSecret,
-			"tenant-id":     tenantID,
-		},
-	}, nil
-}
-
-func getRegistryCreds(clientset kubernetes.Clientset, podSpec *corev1.PodSpec, namespace string) (map[string]string, error) {
+func getRegistryCreds(clientset kubernetes.Clientset, podSpec corev1.PodSpec) (map[string]string, error) {
 	creds := make(map[string]string)
 
-	var config struct {
+	var conf struct {
 		Auths map[string]struct {
 			Auth string
 		}
+	}
+
+	dockerConfigs, err := credprovider.ReadDockerConfigFile()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read docker config file, error: %+v", err)
+	}
+
+	for host, entry := range dockerConfigs {
+		credsValue := dockertypes.AuthConfig{
+			Username: entry.Username,
+			Password: entry.Password,
+		}
+		encodedJSON, err := json.Marshal(credsValue)
+		if err != nil {
+			return creds, err
+		}
+		creds[host] = base64.URLEncoding.EncodeToString(encodedJSON)
 	}
 
 	var decoded []byte
 	var ok bool
 	if podSpec.ImagePullSecrets != nil {
 		for _, secret := range podSpec.ImagePullSecrets {
-			secret, err := clientset.CoreV1().Secrets(namespace).Get(secret.Name, metav1.GetOptions{})
+			secret, err := clientset.CoreV1().Secrets(config.namespace).Get(secret.Name, metav1.GetOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -314,18 +294,18 @@ func getRegistryCreds(clientset kubernetes.Clientset, podSpec *corev1.PodSpec, n
 				return creds, nil
 			}
 
-			if err := json.Unmarshal(decoded, &config); err != nil {
+			if err := json.Unmarshal(decoded, &conf); err != nil {
 				return creds, err
 			}
 
 			// If it's in k8s format, it won't have the surrounding "Auth". Try that too.
-			if len(config.Auths) == 0 {
-				if err := json.Unmarshal(decoded, &config.Auths); err != nil {
+			if len(conf.Auths) == 0 {
+				if err := json.Unmarshal(decoded, &conf.Auths); err != nil {
 					return creds, err
 				}
 			}
 
-			for host, entry := range config.Auths {
+			for host, entry := range conf.Auths {
 				decodedAuth, err := base64.StdEncoding.DecodeString(entry.Auth)
 				if err != nil {
 					return creds, err
@@ -351,7 +331,7 @@ func getRegistryCreds(clientset kubernetes.Clientset, podSpec *corev1.PodSpec, n
 	return creds, nil
 }
 
-func mutatePodSpec(obj metav1.Object, podSpec *corev1.PodSpec, namespace string) error {
+func mutatePod(pod corev1.Pod) error {
 	kubeConfig, err := rest.InClusterConfig()
 	if err != nil {
 		return err
@@ -362,37 +342,45 @@ func mutatePodSpec(obj metav1.Object, podSpec *corev1.PodSpec, namespace string)
 		return err
 	}
 
-	keyVaultSecret, err := getCredentialsForAzureKeyVault()
+	registryCreds, err := getRegistryCreds(*clientset, pod.Spec)
 	if err != nil {
 		return err
 	}
 
-	registryCreds, err := getRegistryCreds(*clientset, podSpec, namespace)
-	if err != nil {
-		return err
-	}
-
-	initContainersMutated := mutateContainers(podSpec.InitContainers, keyVaultSecret, registryCreds)
-	containersMutated := mutateContainers(podSpec.Containers, keyVaultSecret, registryCreds)
+	initContainersMutated := mutateContainers(pod.Spec.InitContainers, registryCreds)
+	containersMutated := mutateContainers(pod.Spec.Containers, registryCreds)
 
 	if initContainersMutated || containersMutated {
-		if namespace != "" {
-			fmt.Fprintf(os.Stdout, "Creating secret in new namespace '%s'...\n", namespace)
-			_, err = clientset.CoreV1().Secrets(namespace).Create(keyVaultSecret)
-			if err != nil {
-				if errors.IsAlreadyExists(err) {
-					_, err = clientset.CoreV1().Secrets(namespace).Update(keyVaultSecret)
-					if err != nil {
+		if config.namespace != "" && config.injectSecret {
+			if config.credentials.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
+				if pod.Labels == nil {
+					pod.Labels = make(map[string]string)
+					pod.Labels["aadpodidbinding"] = config.aadPodBindingLabel
+				}
+			} else {
+				fmt.Fprintf(os.Stdout, "Creating secret in new namespace '%s'...\n", config.namespace)
+
+				keyVaultSecret, err := config.credentials.GetKubernetesSecret("asljf")
+				if err != nil {
+					return err
+				}
+
+				_, err = clientset.CoreV1().Secrets(config.namespace).Create(keyVaultSecret)
+				if err != nil {
+					if errors.IsAlreadyExists(err) {
+						_, err = clientset.CoreV1().Secrets(config.namespace).Update(keyVaultSecret)
+						if err != nil {
+							return err
+						}
+					} else {
 						return err
 					}
-				} else {
-					return err
 				}
 			}
 		}
 
-		podSpec.InitContainers = append(getInitContainers(keyVaultSecret), podSpec.InitContainers...)
-		podSpec.Volumes = append(podSpec.Volumes, getVolume()...)
+		pod.Spec.InitContainers = append(getInitContainers(), pod.Spec.InitContainers...)
+		pod.Spec.Volumes = append(pod.Spec.Volumes, getVolumes()...)
 	}
 
 	return nil
@@ -400,6 +388,7 @@ func mutatePodSpec(obj metav1.Object, podSpec *corev1.PodSpec, namespace string)
 
 func initConfig() {
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azurekeyvault-env:latest")
+	viper.SetDefault("auth_auto_inject", true)
 	viper.AutomaticEnv()
 }
 
@@ -420,12 +409,30 @@ func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, log
 }
 
 func main() {
-
 	fmt.Fprintln(os.Stdout, "Initializing config...")
 	initConfig()
 	fmt.Fprintln(os.Stdout, "Config initialized")
 
 	logger := &log.Std{Debug: viper.GetBool("debug")}
+
+	config = azureKeyVaultConfig{
+		injectSecret: viper.GetBool("auth_auto_inject"),
+		defaultAuth:  viper.GetBool("auth_default"),
+	}
+
+	if config.injectSecret {
+		azureCreds, err := NewCredentials()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error getting credentials: %s", err)
+			os.Exit(1)
+		}
+
+		config.credentials = azureCreds
+
+		if azureCreds.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
+			config.aadPodBindingLabel = viper.GetString("aad_pod_binding_label")
+		}
+	}
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 

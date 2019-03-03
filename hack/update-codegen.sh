@@ -26,8 +26,8 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 ${GOPATH}/src/k8s.io/co
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
-  github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/apis \
-  azurekeyvaultcontroller:v1alpha1 \
+  github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis \
+  azurekeyvault:v1alpha1 \
   --go-header-file ${SCRIPT_ROOT}/hack/custom-boilerplate.go.txt
 
 # To use your own boilerplate text use:

@@ -10,9 +10,10 @@
   version = "v0.2.0"
 
 [[projects]]
-  digest = "1:3d33e7a174e15b183d9a13dbbc27af8e4aa7cfb883b6d6d01f8041241bebd97f"
+  digest = "1:3affbcdcff05adaafe18ee9ff614ed0458b94283565bd49907c83bd07c96ab8a"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
+    "services/containerregistry/mgmt/2017-10-01/containerregistry",
     "services/keyvault/2016-10-01/keyvault",
     "version",
   ]
@@ -21,7 +22,7 @@
   version = "v24.1.0"
 
 [[projects]]
-  digest = "1:b2d0957dbb392add5dfaf0a9257a6cc7910a64e723972611debc38a9a8082248"
+  digest = "1:3e2466e723d6389928886962cb9b7efbcbd0c0307259928ddb1ec247bfab83b6"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
@@ -36,8 +37,8 @@
     "tracing",
   ]
   pruneopts = "NUT"
-  revision = "7324aa01f00acb1ae6e502ac06e0213cfdf09bdb"
-  version = "v11.3.2"
+  revision = "f4369d4c79bf40df5e86def1e0f54c7ef261a51c"
+  version = "v11.5.0"
 
 [[projects]]
   digest = "1:2be791e7b333ff7c06f8fb3dc18a7d70580e9399dbdffd352621d067ff260b6e"
@@ -1026,12 +1027,25 @@
   pruneopts = "NUT"
   revision = "ced9eb3070a5f1c548ef46e8dfe2a97c208d9f03"
 
+[[projects]]
+  branch = "release-1.12"
+  digest = "1:62fc25c970e3d768f6f7a089524d92666583800266c382cbe3fdd4d641c193b5"
+  name = "k8s.io/kubernetes"
+  packages = [
+    "pkg/cloudprovider/providers/azure/auth",
+    "pkg/credentialprovider",
+    "pkg/credentialprovider/azure",
+  ]
+  pruneopts = "NUT"
+  revision = "b17cdb9d0b95c4812325739f5fd40edd9e3daa4d"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
     "github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault",
     "github.com/Azure/go-autorest/autorest",
+    "github.com/Azure/go-autorest/autorest/adal",
     "github.com/Azure/go-autorest/autorest/azure/auth",
     "github.com/docker/docker/api/types",
     "github.com/docker/docker/client",
@@ -1070,6 +1084,8 @@
     "k8s.io/client-go/util/flowcontrol",
     "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/cmd/client-gen",
+    "k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth",
+    "k8s.io/kubernetes/pkg/credentialprovider/azure",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

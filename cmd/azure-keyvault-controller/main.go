@@ -36,10 +36,10 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-controller/controller"
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault"
-	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned"
-	informers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/informers/externalversions"
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/signals"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
+	informers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/signals"
 )
 
 var (
@@ -112,11 +112,11 @@ func main() {
 
 	vaultService := vault.NewService()
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
-	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvaultcontroller().V1alpha1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
+	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V1alpha1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
 
 	controller := controller.NewController(handler,
 		kubeInformerFactory.Core().V1().Secrets(),
-		azureKeyVaultSecretInformerFactory.Azurekeyvaultcontroller().V1alpha1().AzureKeyVaultSecrets(),
+		azureKeyVaultSecretInformerFactory.Azurekeyvault().V1alpha1().AzureKeyVaultSecrets(),
 		azurePollFrequency)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)

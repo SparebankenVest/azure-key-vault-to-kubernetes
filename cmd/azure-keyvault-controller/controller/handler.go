@@ -39,10 +39,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 
-	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/apis/azurekeyvaultcontroller/v1alpha1"
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault"
-	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned"
-	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/listers/azurekeyvaultcontroller/v1alpha1"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
+	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/listers/azurekeyvault/v1alpha1"
 )
 
 // Handler process work on workqueues
@@ -202,11 +202,7 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 
 	secretName := azureKeyVaultSecret.Spec.Output.Secret.Name
 	if secretName == "" {
-		secretName = azureKeyVaultSecret.Name
-	}
-
-	if secretName == "" {
-		return nil, fmt.Errorf("%s: secret name must be specified", azureKeyVaultSecret.Name)
+		return nil, fmt.Errorf("output secret name must be specified using spec.output.secret.name")
 	}
 
 	if secret, err = h.secretsLister.Secrets(azureKeyVaultSecret.Namespace).Get(secretName); err != nil {
@@ -284,7 +280,7 @@ func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyV
 	// we must use Update instead of UpdateStatus to update the Status block of the AzureKeyVaultSecret resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := h.azureKeyvaultClientset.AzurekeyvaultcontrollerV1alpha1().AzureKeyVaultSecrets(azureKeyVaultSecret.Namespace).UpdateStatus(azureKeyVaultSecretCopy)
+	_, err := h.azureKeyvaultClientset.AzurekeyvaultV1alpha1().AzureKeyVaultSecrets(azureKeyVaultSecret.Namespace).UpdateStatus(azureKeyVaultSecretCopy)
 	return err
 }
 

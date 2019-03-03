@@ -33,9 +33,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/apis/azurekeyvaultcontroller/v1alpha1"
-	keyvaultScheme "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/clientset/versioned/scheme"
-	informers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/client/informers/externalversions/azurekeyvaultcontroller/v1alpha1"
+	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	keyvaultScheme "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/scheme"
+	informers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions/azurekeyvault/v1alpha1"
 )
 
 const (
@@ -104,9 +104,12 @@ func NewController(handler *Handler, secretInformer coreinformers.SecretInformer
 	azureKeyVaultSecretsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			secret := obj.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
-			log.Debugf("AzureKeyVaultSecret '%s' added. Adding to queue.", secret.Name)
-			controller.enqueueAzureKeyVaultSecret(obj)
-			controller.enqueueAzurePoll(obj)
+
+			if secret.Spec.Output.Secret.Name != "" {
+				log.Debugf("AzureKeyVaultSecret '%s' added. Adding to queue.", secret.Name)
+				controller.enqueueAzureKeyVaultSecret(obj)
+				controller.enqueueAzurePoll(obj)
+			}
 		},
 		UpdateFunc: func(old, new interface{}) {
 			newSecret := new.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
