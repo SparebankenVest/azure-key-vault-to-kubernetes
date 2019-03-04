@@ -340,7 +340,7 @@ func getAcrCreds(host string) (string, bool) {
 
 	var credsValue dockertypes.AuthConfig
 	if azureConfig.AADClientID != "" {
-		fmt.Fprintf(os.Stdout, "using default credentials with clientid: %s\n", azureConfig.AADClientID)
+		fmt.Fprintf(os.Stdout, "using default credentials for docker registry with clientid: %s\n", azureConfig.AADClientID)
 		credsValue = dockertypes.AuthConfig{
 			Username: azureConfig.AADClientID,
 			Password: azureConfig.AADClientSecret,

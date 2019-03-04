@@ -21,8 +21,6 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/Azure/go-autorest/autorest/adal"
-
 	"github.com/Azure/go-autorest/autorest"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
@@ -51,7 +49,6 @@ type Service interface {
 
 type azureKeyVaultService struct {
 	credentials *ServiceCredentials
-	token       *adal.ServicePrincipalToken
 }
 
 // NewService creates a new AzureKeyVaultService using built in Managed Service Identity for authentication
@@ -59,16 +56,10 @@ func NewService() Service {
 	return &azureKeyVaultService{}
 }
 
-// NewServiceFromCredentials creates a new AzureKeyVaultService using service principal provided
+// NewServiceWithClientCredentials creates a new AzureKeyVaultService using service principal provided
 func NewServiceWithClientCredentials(credentials *ServiceCredentials) Service {
 	return &azureKeyVaultService{
 		credentials: credentials,
-	}
-}
-
-func NewServiceWithTokenCredentials(token *adal.ServicePrincipalToken) Service {
-	return &azureKeyVaultService{
-		token: token,
 	}
 }
 
@@ -158,10 +149,10 @@ func (a *azureKeyVaultService) getClient(resource string) (*keyvault.BaseClient,
 	var authorizer autorest.Authorizer
 	var err error
 
-	if a.token != nil {
-		authorizer = autorest.NewBearerAuthorizer(a.token)
-	} else if a.credentials != nil {
+	if a.credentials != nil {
 		cred := auth.NewClientCredentialsConfig(a.credentials.ClientID, a.credentials.ClientSecret, a.credentials.TenantID)
+		cred.Resource = resource // resource must be Azure Key Vault resource
+
 		if authorizer, err = cred.Authorizer(); err != nil {
 			return nil, fmt.Errorf("failed to create authorizer based on service principal credentials, err: %+v", err)
 		}

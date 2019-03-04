@@ -58,19 +58,13 @@ func main() {
 			os.Exit(1)
 		}
 
-		azureEnv, err := auth.ParseAzureEnvironment(azureConfig.Cloud)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to parse azure environment, error: %+v", err)
-			os.Exit(1)
+		creds := &vault.ServiceCredentials{
+			ClientID:     azureConfig.AADClientID,
+			ClientSecret: azureConfig.AADClientSecret,
+			TenantID:     azureConfig.TenantID,
 		}
 
-		token, err := auth.GetServicePrincipalToken(&azureConfig, azureEnv)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to get service principal from azure config, error: %+v", err)
-			os.Exit(1)
-		}
-
-		vaultService = vault.NewServiceWithTokenCredentials(token)
+		vaultService = vault.NewServiceWithClientCredentials(creds)
 	} else {
 		vaultService = vault.NewService()
 	}
