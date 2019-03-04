@@ -8,16 +8,16 @@
 
 - [Requirements](#requirements)
 - [Overview](#overview)
-  - [When to use the Azure Key Vault Controller](#when-to-use-the-azure-key-vault-controller)
-  - [When to use the Azure Key Vault Env Injector?](#when-to-use-the-azure-key-vault-env-injector)
+  - [When to use the Controller](#when-to-use-the-controller)
+  - [When to use the Env Injector?](#when-to-use-the-env-injector)
   - [When to use both the Controller and the Env Injector](#when-to-use-both-the-controller-and-the-env-injector)
 - [How it works](#how-it-works)
-  - [Azure Key Vault Controller](#azure-key-vault-controller)
-  - [Azure Key Vault Env Injector](#azure-key-vault-env-injector)
+  - [Controller](#controller)
+  - [Env Injector](#env-injector)
 - [Authentication](#authentication)
   - [Override default authentication](#override-default-authentication)
-    - [Override Authentication for Azure Key Vault Controller](#override-authentication-for-azure-key-vault-controller)
-    - [Override Authentication for Azure Key Vault Env Injector](#override-authentication-for-azure-key-vault-env-injector)
+    - [Override Authentication for Controller](#override-authentication-for-controller)
+    - [Override Authentication for Env Injector](#override-authentication-for-env-injector)
     - [Authentication override options](#authentication-override-options)
 - [Authorization](#authorization)
 - [Installation](#installation)
@@ -42,24 +42,24 @@ This project offer two components/options for handling Azure Key Vault Secrets i
 * Azure Key Vault Controller
 * Azure Key Vault Env Injector
 
-The **Azure Key Vault Controller** is for synchronizing Secrets, Certificates and Keys from Azure Key Vault to native `Secret`'s in Kubernetes.
+The **Azure Key Vault Controller** (Controller for short) is for synchronizing Secrets, Certificates and Keys from Azure Key Vault to native `Secret`'s in Kubernetes.
 
-The **Azure Key Vault Env Injector** is a Kubernetes Mutating Web Hook that transparently injects Azure Key Vault secrets as environment variables into containers without touching disk or in any other way expose the actual secret content outside the container.
+The **Azure Key Vault Env Injector** (Env Injector for short) is a Kubernetes Mutating Web Hook that transparently injects Azure Key Vault secrets as environment variables into containers without touching disk or in any other way expose the actual secret content outside the container.
 
 **Credit goes to Banzai Cloud for coming up with the [original idea](https://banzaicloud.com/blog/inject-secrets-into-pods-vault/) of environment injection for their [`bank-vaults`](https://github.com/banzaicloud/bank-vaults) solution, which use this principal to inject Hashicorp Vault secrets into Pods.**
 
-### When to use the Azure Key Vault Controller 
+### When to use the Controller 
 
-Use the Azure Key Vault Controller if:
+Use the Controller if:
 
 * the [risks documented with Secrets in Kubernetes](https://kubernetes.io/docs/concepts/configuration/secret/#risks) is acceptable
 * there are no concerns about storing Azure Key Vault secrets as base64 encoded plain text values in Kubernetes `Secret` resources
 * it is OK that anyone with read access to `Secret` resources in the Kubernetes cluster can read the content of the secrets
 * the native `Secret` support in Kubernetes is desired
 
-### When to use the Azure Key Vault Env Injector? 
+### When to use the Env Injector? 
 
-Use the Azure Key Vault Env Injector if:
+Use the Env Injector if:
 
 * any of the [risks documented with Secrets in Kubernetes](https://kubernetes.io/docs/concepts/configuration/secret/#risks) is not acceptable
 * there are concerns about storing and exposing base64 encoded Azure Key Vault secrets as Kubernetes `Secret` resources
@@ -69,15 +69,15 @@ Use the Azure Key Vault Env Injector if:
 
 ### When to use both the Controller and the Env Injector
 
-Install both the Azure Key Vault Controller and the Azure Key Vault Env Injector if:
+Install both the Controller and the Env Injector if:
 
 * Users of the Kubernetes cluster should be able to choose which one to use
 
 ## How it works
 
-### Azure Key Vault Controller
+### Controller
 
-The Azure Key Vault Controller works like this:
+The Controller works like this:
 
 1. Create a `AzureKeyVaultSecret` resource, containing information of how to get a secret from Azure Key Vault (see [Usage](#usage) below)
 2. When the `AzureKeyVaultSecret` resource above is created, the `azure-keyvault-controller` controller discovers the newly created `AzureKeyVaultSecret` resource and use its information to get the secret from Azure Key Vault, and create a native Kubernetes `Secret`
@@ -87,18 +87,18 @@ The Azure Key Vault Controller works like this:
 
 **Note: By default the `azure-keyvault-controller` controller auto sync Secrets every 10 minutes (configurable) and depending on how many secrets are synchronized can cause extra usage costs of Azure Key Vault.**
 
-### Azure Key Vault Env Injector
+### Env Injector
 
-The Azure Key Vault Env Injector works like this:
+The Env Injector works like this:
 
-1. Create a `AzureKeyVaultEnvSecret` resource, containing information the Azure Key Vault Env Injector can use later to retrieve a secret from Azure Key Vault
+1. Create a `AzureKeyVaultSecret` resource, containing information the Env Injector can use later to retrieve a secret from Azure Key Vault
 2. Create a Pod (typically using `Deployment` or anything else that creates a Pod in Kubernetes) containing environment variable placeholders as below:
 ```
 env:
 - name: <name of environment variable>
-  value: azurekeyvault@<name of AzureKeyVaultEnvSecret>?<optional field query>
+  value: azurekeyvault@<name of AzureKeyVaultSecret>?<optional field query>
 - name: <name of another environment variable>
-  value: azurekeyvault@<name of another AzureKeyVaultEnvSecret>?<optional field query>
+  value: azurekeyvault@<name of another AzureKeyVaultSecret>?<optional field query>
 ...
 ```
 3. Just before the pod gets created, a Mutating Web Hook is triggered which injects a init-container into the Pod
@@ -125,17 +125,17 @@ It is possible to give the Controller and/or the Env Injector specific credentia
 
 The authentication requirements for the Key Vault Controller and Env Injector are covered below.
 
-#### Override Authentication for Azure Key Vault Controller 
+#### Override Authentication for Controller 
 
-The Azure Key Vault Controller will need Azure Key Vault credentials to get Secrets from Azure Key Vault and store them as Kubernetes Secrets. See [Authentication options](#authentication-options) below.
+The Controller will need Azure Key Vault credentials to get Secrets from Azure Key Vault and store them as Kubernetes Secrets. See [Authentication options](#authentication-options) below.
 
-#### Override Authentication for Azure Key Vault Env Injector
+#### Override Authentication for Env Injector
 
-The Azure Key Vault Env Injector can be configured to authenticate with Azure Key vault in two ways:
+The Env Injector can be configured to authenticate with Azure Key vault in two ways:
 
 1) By default each Pod using env variables with the Env Injector pattern must also provide credentials for Azure Key Vault using [Authentication options](#authentication-options) below
 
-2) Azure Key Vault Env Injector can be configured to inject Azure Key Vault credentials to all Pods using the Env Injector pattern
+2) Env Injector can be configured to inject Azure Key Vault credentials to all Pods using the Env Injector pattern
 
 Option 2 is most convenient, but option 1 allows for better control. Which one is right for your organization depends on the size of the Kubernetes cluster, what access rights users of the cluster have, and other factors specific to your organization.   
 
@@ -188,9 +188,9 @@ Azure Key Vault Keys:
 
 It's recommended to use Helm charts for installation:
 
-Azure Key Vault Controller: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-controller
+Controller: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-controller
 
-Azure Key Vault Env Injector: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector
+Env Injector: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector
 
 If Helm is not an option, follow these procedures:
 
@@ -200,9 +200,9 @@ If Helm is not an option, follow these procedures:
 kubectl apply -f ./installation/1-crd.yaml
 ```
 
-**2. Deploy Azure Key Vault Controller**
+**2. Deploy Controller**
 
-Optional. Read [When to use the Azure Key Vault Controller](#when-to-use-the-azure-key-vault-controller) before installing. 
+Optional. Read [When to use the Controller](#when-to-use-the-azure-key-vault-controller) before installing. 
 
 ```bash
 kubectl apply -f ./installation/1-crd.yaml
@@ -252,7 +252,7 @@ spec:
       type: <object type in azure key vault to sync>
       version: <optional - version of object to sync>
       contentType: <only used when type is the special multi-key-value-secret - either application/x-json or application/x-yaml>
-  output: # ignored by env injector, required by azure key vault controller
+  output: # ignored by env injector, required by Controller
     secret: 
       name: <name of the kubernetes secret to create>
       dataKey: <required when type is opaque - name of the kubernetes secret data key to assign value to - ignored for all other types>
@@ -355,7 +355,7 @@ metadata:
 type: opaque
 ```
 
-If Env Injector is installed, inject secret by referencing the **AzureKeyVaultEnvSecret** above using a replacement marker (`azurekeyvault@<AzureKeyVaultEnvSecret>`)`:
+If Env Injector is installed, inject secret by referencing the **AzureKeyVaultSecret** above using a replacement marker (`<AzureKeyVaultSecret>@azurekeyvault`)`:
 
 ```yaml
 ...
@@ -363,7 +363,7 @@ containers:
 - name: alpine
   env:
   - name: MY_SECRET
-    value: azurekeyvault@my-first-azure-keyvault-env-secret
+    value: my-first-azure-keyvault-env-secret@azurekeyvault
 ...
 ```
 
@@ -405,7 +405,7 @@ type: kubernetes/tls
 
 Note that since `spec.output.secret.type=kubernetes/tls` a Kubernetes Secret of type `kubernetes/tls` was created.
 
-If Env Injector is installed, inject secret by referencing the **AzureKeyVaultEnvSecret** above using a replacement marker (`azurekeyvault@<AzureKeyVaultEnvSecret>`) and query (`?`) to point to private/public key:
+If Env Injector is installed, inject secret by referencing the **AzureKeyVaultSecret** above using a replacement marker (`azurekeyvault@<AzureKeyVaultSecret>`) and query (`?`) to point to private/public key:
 
 ```yaml
 ...
@@ -413,8 +413,8 @@ containers:
 - name: alpine
   env:
   - name: PUBLIC_KEY
-    value: azurekeyvault@my-first-azure-keyvault-env-certificate?tls.crt
+    value: my-first-azure-keyvault-env-certificate@azurekeyvault?tls.crt
   - name: PRIVATE_KEY
-    value: azurekeyvault@my-first-azure-keyvault-env-certificate?tls.key
+    value: my-first-azure-keyvault-env-certificate@azurekeyvault?tls.key
 ...
 ```

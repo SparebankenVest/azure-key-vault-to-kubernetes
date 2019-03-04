@@ -35,7 +35,10 @@ import (
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth"
 )
 
-const logPrefix = "env-injector:"
+const (
+	logPrefix    = "env-injector:"
+	envLookupKey = "azurekeyvault@"
+)
 
 func setLogLevel() {
 	var logLevel string
@@ -117,8 +120,10 @@ func main() {
 		name := split[0]
 		value := split[1]
 
-		if strings.HasPrefix(value, "azurekeyvault@") {
-			secretName := strings.TrimPrefix(value, "azurekeyvault@")
+		// e.g. my-akv-secret-name@azurekeyvault?some-sub-key
+		if strings.Contains(value, envLookupKey) {
+			// e.g. my-akv-secret-name?some-sub-key
+			secretName := strings.Join(strings.Split(value, envLookupKey), "")
 
 			if secretName == "" {
 				log.Fatalf("%s error extracting secret name from env variable '%s' - not properly formatted", logPrefix, value)

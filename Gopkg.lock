@@ -10,10 +10,9 @@
   version = "v0.2.0"
 
 [[projects]]
-  digest = "1:3affbcdcff05adaafe18ee9ff614ed0458b94283565bd49907c83bd07c96ab8a"
+  digest = "1:3d33e7a174e15b183d9a13dbbc27af8e4aa7cfb883b6d6d01f8041241bebd97f"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
-    "services/containerregistry/mgmt/2017-10-01/containerregistry",
     "services/keyvault/2016-10-01/keyvault",
     "version",
   ]
@@ -1029,13 +1028,9 @@
 
 [[projects]]
   branch = "release-1.12"
-  digest = "1:62fc25c970e3d768f6f7a089524d92666583800266c382cbe3fdd4d641c193b5"
+  digest = "1:9c9aa34247c9d54d399af3a3050914e77f8f4706e5136dab00264b91c4cb062b"
   name = "k8s.io/kubernetes"
-  packages = [
-    "pkg/cloudprovider/providers/azure/auth",
-    "pkg/credentialprovider",
-    "pkg/credentialprovider/azure",
-  ]
+  packages = ["pkg/cloudprovider/providers/azure/auth"]
   pruneopts = "NUT"
   revision = "b17cdb9d0b95c4812325739f5fd40edd9e3daa4d"
 
@@ -1045,7 +1040,6 @@
   input-imports = [
     "github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault",
     "github.com/Azure/go-autorest/autorest",
-    "github.com/Azure/go-autorest/autorest/adal",
     "github.com/Azure/go-autorest/autorest/azure/auth",
     "github.com/docker/docker/api/types",
     "github.com/docker/docker/client",
@@ -1085,7 +1079,6 @@
     "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth",
-    "k8s.io/kubernetes/pkg/credentialprovider/azure",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
