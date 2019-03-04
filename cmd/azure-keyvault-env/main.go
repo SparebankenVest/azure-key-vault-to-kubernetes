@@ -50,7 +50,6 @@ func setLogLevel() {
 		log.Fatalf("%s Error setting log level: %s", logPrefix, err.Error())
 	}
 	log.SetLevel(logrusLevel)
-	log.Printf("%s Log level set to '%s'", logPrefix, logrusLevel.String())
 }
 
 func main() {
@@ -69,7 +68,6 @@ func main() {
 		log.Fatalf("%s current namespace not provided in environment variable env_injector_pod_namespace", logPrefix)
 	}
 
-	log.Debugf("%s azure key vault env injector config:", logPrefix)
 	log.Debugf("%s namespace: %s", logPrefix, namespace)
 
 	defaultAuth := strings.ToLower(os.Getenv("ENV_INJECTOR_DEFAULT_AUTH"))
@@ -162,6 +160,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("%s binary not found: %s", logPrefix, os.Args[1])
 		}
+		log.Infof("starting process %s %v", binary, os.Args[1:])
 		err = syscall.Exec(binary, os.Args[1:], environ)
 		if err != nil {
 			log.Fatalf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
