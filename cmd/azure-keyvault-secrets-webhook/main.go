@@ -55,6 +55,8 @@ type azureKeyVaultConfig struct {
 
 var config azureKeyVaultConfig
 
+const envVarReplacementKey = "azurekeyvault@"
+
 func getInitContainers() []corev1.Container {
 	return []corev1.Container{
 		{
@@ -115,7 +117,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 		var envVars []corev1.EnvVar
 		fmt.Fprintf(os.Stdout, "Checking for env vars with right prefix in container %s\n", container.Name)
 		for _, env := range container.Env {
-			if strings.HasPrefix(env.Value, "azurekeyvault#") {
+			if strings.HasPrefix(env.Value, envVarReplacementKey) {
 				fmt.Fprintf(os.Stdout, "Found env var: %s\n", env.Value)
 				envVars = append(envVars, env)
 			}
