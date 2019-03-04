@@ -198,7 +198,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 }
 
 func getContainerCmd(container corev1.Container, creds string) ([]string, error) {
-	cmd := []string{"/azure-keyvault/azure-keyvault-env"}
+	cmd := make([]string, 0)
 
 	cli, err := dockerclient.NewEnvClient()
 	if err != nil {
