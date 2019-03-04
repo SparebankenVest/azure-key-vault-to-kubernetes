@@ -35,7 +35,6 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -101,14 +100,17 @@ func getVolumes() []corev1.Volume {
 func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 	req := whcontext.GetAdmissionRequest(ctx)
 	config.namespace = req.Namespace
+	var podSpec *corev1.PodSpec
 
 	switch v := obj.(type) {
 	case *corev1.Pod:
 		fmt.Fprintf(os.Stdout, "Found pod '%s' to mutate in namespace '%s'\n", obj.GetName(), config.namespace)
-		return false, mutatePod(*v)
+		podSpec = &v.Spec
 	default:
 		return false, nil
 	}
+
+	return false, mutatePodSpec(obj, podSpec)
 }
 
 func mutateContainers(containers []corev1.Container, creds map[string]string) bool {
@@ -251,7 +253,7 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 	return cmd, nil
 }
 
-func getRegistryCreds(clientset kubernetes.Clientset, podSpec corev1.PodSpec) (map[string]string, error) {
+func getRegistryCreds(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (map[string]string, error) {
 	creds := make(map[string]string)
 
 	var conf struct {
@@ -365,7 +367,7 @@ func hostIsAzureContainerRegistry(host string) bool {
 	return false
 }
 
-func mutatePod(pod corev1.Pod) error {
+func mutatePodSpec(obj metav1.Object, podSpec *corev1.PodSpec) error {
 	kubeConfig, err := rest.InClusterConfig()
 	if err != nil {
 		return err
@@ -376,45 +378,45 @@ func mutatePod(pod corev1.Pod) error {
 		return err
 	}
 
-	regCred, err := getRegistryCreds(*clientset, pod.Spec)
+	regCred, err := getRegistryCreds(*clientset, podSpec)
 	if err != nil {
 		return err
 	}
 
-	initContainersMutated := mutateContainers(pod.Spec.InitContainers, regCred)
-	containersMutated := mutateContainers(pod.Spec.Containers, regCred)
+	initContainersMutated := mutateContainers(podSpec.InitContainers, regCred)
+	containersMutated := mutateContainers(podSpec.Containers, regCred)
 
 	if initContainersMutated || containersMutated {
-		if config.namespace != "" && config.injectSecret {
-			if config.credentials.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
-				if pod.Labels == nil {
-					pod.Labels = make(map[string]string)
-					pod.Labels["aadpodidbinding"] = config.aadPodBindingLabel
-				}
-			} else {
-				fmt.Fprintf(os.Stdout, "Creating secret in new namespace '%s'...\n", config.namespace)
+		// if config.namespace != "" && config.injectSecret {
+		// 	if config.credentials.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
+		// 		if pod.Labels == nil {
+		// 			pod.Labels = make(map[string]string)
+		// 			pod.Labels["aadpodidbinding"] = config.aadPodBindingLabel
+		// 		}
+		// 	} else {
+		// 		fmt.Fprintf(os.Stdout, "Creating secret in new namespace '%s'...\n", config.namespace)
 
-				keyVaultSecret, err := config.credentials.GetKubernetesSecret("asljf")
-				if err != nil {
-					return err
-				}
+		// 		keyVaultSecret, err := config.credentials.GetKubernetesSecret("asljf")
+		// 		if err != nil {
+		// 			return err
+		// 		}
 
-				_, err = clientset.CoreV1().Secrets(config.namespace).Create(keyVaultSecret)
-				if err != nil {
-					if errors.IsAlreadyExists(err) {
-						_, err = clientset.CoreV1().Secrets(config.namespace).Update(keyVaultSecret)
-						if err != nil {
-							return err
-						}
-					} else {
-						return err
-					}
-				}
-			}
-		}
+		// 		_, err = clientset.CoreV1().Secrets(config.namespace).Create(keyVaultSecret)
+		// 		if err != nil {
+		// 			if errors.IsAlreadyExists(err) {
+		// 				_, err = clientset.CoreV1().Secrets(config.namespace).Update(keyVaultSecret)
+		// 				if err != nil {
+		// 					return err
+		// 				}
+		// 			} else {
+		// 				return err
+		// 			}
+		// 		}
+		// 	}
+		// }
 
-		pod.Spec.InitContainers = append(getInitContainers(), pod.Spec.InitContainers...)
-		pod.Spec.Volumes = append(pod.Spec.Volumes, getVolumes()...)
+		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
+		podSpec.Volumes = append(podSpec.Volumes, getVolumes()...)
 	}
 
 	return nil
