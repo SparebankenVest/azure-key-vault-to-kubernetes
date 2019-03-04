@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -32,12 +33,13 @@ import (
 	whcontext "github.com/slok/kubewebhook/pkg/webhook/context"
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	credprovider "k8s.io/kubernetes/pkg/credentialprovider"
+	"k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth"
 
 	dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
@@ -104,7 +106,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 	}
 }
 
-func mutateContainers(containers []corev1.Container, registryCreds map[string]string) bool {
+func mutateContainers(containers []corev1.Container, creds map[string]string) bool {
 	fmt.Fprintln(os.Stdout, "Mutating containers...")
 	mutated := false
 	for i, container := range containers {
@@ -129,12 +131,13 @@ func mutateContainers(containers []corev1.Container, registryCreds map[string]st
 			registryName = imgParts[0]
 		}
 
-		regCred, ok := registryCreds[registryName]
+		regCred, ok := creds[registryName]
 
 		if ok {
 			fmt.Fprintf(os.Stdout, "found credentials to use with registry '%s'\n", registryName)
 		} else {
-			fmt.Fprintf(os.Stdout, "did not find credentials to use with registry '%s'\n", registryName)
+			fmt.Fprintf(os.Stdout, "did not find credentials to use with registry '%s' - using default credentials\n", registryName)
+			regCred, ok = getAcrCreds(registryName)
 		}
 
 		autoArgs, err := getContainerCmd(container, regCred)
@@ -257,41 +260,24 @@ func getRegistryCreds(clientset kubernetes.Clientset, podSpec corev1.PodSpec) (m
 		}
 	}
 
-	dockerConfigs, err := credprovider.ReadDockerConfigFile()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read docker config file, error: %+v", err)
-	}
-
-	for host, entry := range dockerConfigs {
-		credsValue := dockertypes.AuthConfig{
-			Username: entry.Username,
-			Password: entry.Password,
-		}
-		encodedJSON, err := json.Marshal(credsValue)
-		if err != nil {
-			return creds, err
-		}
-		creds[host] = base64.URLEncoding.EncodeToString(encodedJSON)
-	}
-
 	var decoded []byte
 	var ok bool
 	if podSpec.ImagePullSecrets != nil {
 		for _, secret := range podSpec.ImagePullSecrets {
 			secret, err := clientset.CoreV1().Secrets(config.namespace).Get(secret.Name, metav1.GetOptions{})
 			if err != nil {
-				return nil, err
+				return creds, err
 			}
 
 			switch secret.Type {
 			case corev1.SecretTypeDockerConfigJson:
 				decoded, ok = secret.Data[corev1.DockerConfigJsonKey]
 			default:
-				return nil, fmt.Errorf("unable to load image pull secret '%s', only type '%s' is supported", secret.Name, secret.Type)
+				return creds, fmt.Errorf("unable to load image pull secret '%s', only type '%s' is supported", secret.Name, secret.Type)
 			}
 
 			if !ok {
-				return creds, nil
+				continue
 			}
 
 			if err := json.Unmarshal(decoded, &conf); err != nil {
@@ -324,11 +310,53 @@ func getRegistryCreds(clientset kubernetes.Clientset, podSpec corev1.PodSpec) (m
 				if err != nil {
 					return creds, err
 				}
+
 				creds[host] = base64.URLEncoding.EncodeToString(encodedJSON)
 			}
 		}
 	}
 	return creds, nil
+}
+
+func getAcrCreds(host string) (string, bool) {
+	if !hostIsAzureContainerRegistry(host) {
+		return "", false
+	}
+
+	bytes, err := ioutil.ReadFile("/etc/kubernetes/azure.json")
+	if err != nil {
+		return "", false //creds, fmt.Errorf("failed to read cloud config file in an effort to get credentials for azure key vault, error: %+v", err)
+	}
+
+	azureConfig := auth.AzureAuthConfig{}
+	if err = yaml.Unmarshal(bytes, &azureConfig); err != nil {
+		return "", false // creds, fmt.Errorf("Unmarshall error: %v", err)
+	}
+
+	var credsValue dockertypes.AuthConfig
+	if azureConfig.AADClientID != "" {
+		credsValue = dockertypes.AuthConfig{
+			Username: azureConfig.AADClientID,
+			Password: azureConfig.AADClientSecret,
+		}
+	} else {
+		return "", false // nil, fmt.Errorf("Failed to find credentials for docker registry '%s'", regHost)
+	}
+
+	encodedJSON, err := json.Marshal(credsValue)
+	if err != nil {
+		return "", false // creds, err
+	}
+	return base64.URLEncoding.EncodeToString(encodedJSON), true
+}
+
+func hostIsAzureContainerRegistry(host string) bool {
+	for _, v := range []string{".azurecr.io", ".azurecr.cn", ".azurecr.de", ".azurecr.us"} {
+		if strings.HasSuffix(host, v) {
+			return true
+		}
+	}
+	return false
 }
 
 func mutatePod(pod corev1.Pod) error {
@@ -342,13 +370,13 @@ func mutatePod(pod corev1.Pod) error {
 		return err
 	}
 
-	registryCreds, err := getRegistryCreds(*clientset, pod.Spec)
+	regCred, err := getRegistryCreds(*clientset, pod.Spec)
 	if err != nil {
 		return err
 	}
 
-	initContainersMutated := mutateContainers(pod.Spec.InitContainers, registryCreds)
-	containersMutated := mutateContainers(pod.Spec.Containers, registryCreds)
+	initContainersMutated := mutateContainers(pod.Spec.InitContainers, regCred)
+	containersMutated := mutateContainers(pod.Spec.Containers, regCred)
 
 	if initContainersMutated || containersMutated {
 		if config.namespace != "" && config.injectSecret {
