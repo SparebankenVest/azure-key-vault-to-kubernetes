@@ -322,31 +322,37 @@ func getRegistryCreds(clientset kubernetes.Clientset, podSpec corev1.PodSpec) (m
 
 func getAcrCreds(host string) (string, bool) {
 	if !hostIsAzureContainerRegistry(host) {
+		fmt.Fprintf(os.Stdout, "registry host '%s' is not a acr registry\n", host)
 		return "", false
 	}
 
 	bytes, err := ioutil.ReadFile("/etc/kubernetes/azure.json")
 	if err != nil {
+		fmt.Fprintf(os.Stdout, "failed to read azure.json to get default credentials, error: %v\n", err)
 		return "", false //creds, fmt.Errorf("failed to read cloud config file in an effort to get credentials for azure key vault, error: %+v", err)
 	}
 
 	azureConfig := auth.AzureAuthConfig{}
 	if err = yaml.Unmarshal(bytes, &azureConfig); err != nil {
+		fmt.Fprintf(os.Stdout, "failed to unmarshall azure config, error: %v\n", err)
 		return "", false // creds, fmt.Errorf("Unmarshall error: %v", err)
 	}
 
 	var credsValue dockertypes.AuthConfig
 	if azureConfig.AADClientID != "" {
+		fmt.Fprintf(os.Stdout, "using default credentials with clientid: %s\n", azureConfig.AADClientID)
 		credsValue = dockertypes.AuthConfig{
 			Username: azureConfig.AADClientID,
 			Password: azureConfig.AADClientSecret,
 		}
 	} else {
+		fmt.Fprintf(os.Stdout, "aadclientid is not set i azure config, so have no credentials to use\n")
 		return "", false // nil, fmt.Errorf("Failed to find credentials for docker registry '%s'", regHost)
 	}
 
 	encodedJSON, err := json.Marshal(credsValue)
 	if err != nil {
+		fmt.Fprintf(os.Stdout, "failed to marshall credentials, error: %v\n", err)
 		return "", false // creds, err
 	}
 	return base64.URLEncoding.EncodeToString(encodedJSON), true
