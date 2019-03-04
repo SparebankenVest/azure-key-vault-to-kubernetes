@@ -32,9 +32,10 @@ spec:
         hostPath:
           path: /var/run/docker.sock
           type: File
-      - name: dockercnf
+      - name: azureconf
         hostPath:
-          path: /root/.docker
+          path: /etc/kubernetes/azure.json
+          type: File
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -66,8 +67,8 @@ spec:
           - mountPath: /var/run/docker.sock
             name: dockersock
             readOnly: true
-          - mountPath: /root/.docker
-            name: dockercnf
+          - mountPath: /etc/kubernetes/azure.json
+            name: azureconf
             readOnly: true
           resources:
 {{ toYaml .Values.resources | indent 12 }}
