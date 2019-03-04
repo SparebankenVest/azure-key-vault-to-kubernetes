@@ -113,7 +113,7 @@ func main() {
 				secretQuery = query[1]
 			}
 
-			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1alpha1().AzureKeyVaultEnvSecrets(namespace).Get(secretName, v1.GetOptions{})
+			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1alpha1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error getting AzureKeyVaultSecret resource '%s', error: %s", secretName, err.Error())
 				os.Exit(1)
@@ -151,7 +151,7 @@ func main() {
 	}
 }
 
-func getSecretFromKeyVault(azureKeyVaultSecret *vaultSecretv1alpha1.AzureKeyVaultEnvSecret, query string, vaultService vault.Service) (string, error) {
+func getSecretFromKeyVault(azureKeyVaultSecret *vaultSecretv1alpha1.AzureKeyVaultSecret, query string, vaultService vault.Service) (string, error) {
 	var secretHandler EnvSecretHandler
 
 	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
