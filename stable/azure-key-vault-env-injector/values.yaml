@@ -5,7 +5,7 @@ debug: false
 
 image:
   repository: spvest/azure-keyvault-webhook
-  tag: 0.1.0-alpha.6
+  tag: 0.1.0-alpha.7
   pullPolicy: IfNotPresent
 
 service:
@@ -26,7 +26,7 @@ auth:
       selector: azure-key-vault
 
 env:
-  AZUREKEYVAULT_ENV_IMAGE: spvest/azure-keyvault-env:0.1.0-alpha.6
+  AZUREKEYVAULT_ENV_IMAGE: spvest/azure-keyvault-env:0.1.0-alpha.7
   AZURE_KEYVAULT_SECRET_NAME: azure-keyvault-credentials-secret
 
 resources: {}
