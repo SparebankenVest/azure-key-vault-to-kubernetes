@@ -75,6 +75,8 @@ func getInitContainers() []corev1.Container {
 }
 
 func getVolumes() []corev1.Volume {
+	hostPathFile := corev1.HostPathFile
+
 	return []corev1.Volume{
 		{
 			Name: "azure-keyvault-env",
@@ -89,6 +91,7 @@ func getVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
 					Path: "/etc/kubernetes/azure.json",
+					Type: &hostPathFile,
 				},
 			},
 		},
@@ -160,17 +163,12 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 				Name:      "azure-keyvault-env",
 				MountPath: "/azure-keyvault/",
 			},
+			{
+				Name:      "azure-config",
+				MountPath: "/etc/kubernetes/azure.json",
+				ReadOnly:  true,
+			},
 		}...)
-
-		if config.defaultAuth {
-			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
-				{
-					Name:      "azure-config",
-					MountPath: "/etc/kubernetes/azure.json",
-					ReadOnly:  true,
-				},
-			}...)
-		}
 
 		container.Env = append(container.Env, []corev1.EnvVar{
 			{
