@@ -1,8 +1,8 @@
 apiVersion: v1
-appVersion: "0.1.0-alpha.5"
+appVersion: "0.1.0-alpha.18"
 description: A Helm chart that deploys the azure-key-vault-env-injector Helm chart
 name: azure-key-vault-env-injector
-version: 0.0.9
+version: 0.0.10
 maintainers:
 - name: Sparebanken Vest
   email: jon.torresdal@spv.no

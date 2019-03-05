@@ -5,29 +5,24 @@ debug: false
 
 image:
   repository: spvest/azure-keyvault-webhook
-  tag: 0.1.0-alpha.7
+  tag: 0.1.0-alpha.18
   pullPolicy: IfNotPresent
 
+envImage:
+  repository: spvest/azure-keyvault-env
+  tag: 0.1.0-alpha.18
+  
 service:
   name: azure-keyvault-secrets-webhook
   type: ClusterIP
   externalPort: 443
   internalPort: 443
 
-auth:
-  default: true
-  autoInject: true 
-
-  override:
-
-    # Automatically inject Key Vault credentials into containers
-    # Setting this to false means every container using env-injections must provide credentials for Azure Key Vault
-    podIdentity:
-      selector: azure-key-vault
-
-env:
-  AZUREKEYVAULT_ENV_IMAGE: spvest/azure-keyvault-env:0.1.0-alpha.7
-  AZURE_KEYVAULT_SECRET_NAME: azure-keyvault-credentials-secret
+customAuth:
+  enabled: false
+  autoInject: true
+  autoInjectSecretName: env-injector-secret-name
+  podIdentitySelector: azure-key-vault
 
 resources: {}
 

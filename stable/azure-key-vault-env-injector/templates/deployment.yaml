@@ -48,10 +48,12 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath:  metadata.labels['aadpodidbinding']
-          - name: AUTH_DEFAULT
-            value: {{ .Values.auth.default | quote }}
-          - name: AUTH_AUTO_INJECT
-            value: {{ .Values.auth.autoInject | quote }}
+          - name: CUSTOM_AUTH
+            value: {{ .Values.customAuth.enabled | quote }}
+          - name: CUSTOM_AUTH_INJECT
+            value: {{ .Values.customAuth.autoInject | quote }}
+          - NAME: CUSTOM_AUTH_INJECT_SECRET_NAME
+            VALUE: {{ .Values.customAuth.autoInjectSecretName | quote }}
           - name: DEBUG
             value: {{ .Values.debug | quote }}
           {{- range $key, $value := .Values.env }}
