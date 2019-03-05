@@ -104,17 +104,19 @@ func NewController(handler *Handler, secretInformer coreinformers.SecretInformer
 	azureKeyVaultSecretsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			secret := obj.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
-
-			if secret.Spec.Output.Secret.Name != "" {
-				log.Debugf("AzureKeyVaultSecret '%s' added. Adding to queue.", secret.Name)
-				controller.enqueueAzureKeyVaultSecret(obj)
-				controller.enqueueAzurePoll(obj)
+			if secret.Spec.Output.Secret.Name == "" {
+				return
 			}
+			log.Debugf("AzureKeyVaultSecret '%s' added. Adding to queue.", secret.Name)
+			controller.enqueueAzureKeyVaultSecret(obj)
+			controller.enqueueAzurePoll(obj)
 		},
 		UpdateFunc: func(old, new interface{}) {
 			newSecret := new.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
 			oldSecret := old.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
-
+			if oldSecret.Spec.Output.Secret.Name == "" {
+				return
+			}
 			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
 				log.Debugf("AzureKeyVaultSecret '%s' added to Azure queue to check if changed in Azure.", newSecret.Name)
 				// Check if secret has changed in Azure
@@ -127,6 +129,9 @@ func NewController(handler *Handler, secretInformer coreinformers.SecretInformer
 		},
 		DeleteFunc: func(obj interface{}) {
 			secret := obj.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
+			if secret.Spec.Output.Secret.Name == "" {
+				return
+			}
 			log.Debugf("AzureKeyVaultSecret '%s' deleted. Adding to delete queue.", secret.Name)
 			controller.enqueueDeleteAzureKeyVaultSecret(obj)
 		},
