@@ -2,7 +2,7 @@
 
 image:
   repository: spvest/azure-keyvault-controller
-  tag: 0.1.0-alpha.17
+  tag: 0.1.0-alpha.19
 
 keyVault:
   customAuth:
