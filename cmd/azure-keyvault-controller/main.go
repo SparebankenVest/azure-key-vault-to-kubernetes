@@ -119,11 +119,11 @@ func main() {
 
 	var vaultAuth *vault.AzureKeyVaultCredentials
 	if customAuth {
-		if vaultAuth, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig(); err != nil {
+		if vaultAuth, err = vault.NewAzureKeyVaultCredentialsFromEnvironment(); err != nil {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
 		}
 	} else {
-		if vaultAuth, err = vault.NewAzureKeyVaultCredentialsFromEnvironment(); err != nil {
+		if vaultAuth, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig(); err != nil {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
 		}
 	}
