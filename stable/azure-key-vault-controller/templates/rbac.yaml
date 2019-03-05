@@ -7,6 +7,11 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
   name: {{ template "azure-key-vault-controller.fullname" . }}
+  labels:
+    app: {{ template "azure-key-vault-controller.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
 rules:
 - apiGroups:
   - spv.no
@@ -48,6 +53,11 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
   name: {{ template "azure-key-vault-controller.fullname" . }}-reader
+  labels:
+    app: {{ template "azure-key-vault-controller.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
 rules:
 - apiGroups:
   - spv.no
@@ -61,12 +71,16 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: azure-keyvault-controller
   name: {{ template "azure-key-vault-controller.fullname" . }}
+  labels:
+    app: {{ template "azure-key-vault-controller.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
 subjects:
 - kind: ServiceAccount
   name: {{ template "azure-key-vault-controller.fullname" . }}
-  namespace: spv-system
+  namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
   name: {{ template "azure-key-vault-controller.fullname" . }}
@@ -76,6 +90,11 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: {{ template "azure-key-vault-controller.fullname" . }}-reader
+  labels:
+    app: {{ template "azure-key-vault-controller.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
 subjects:
 - kind: Group
   name: system:serviceaccounts

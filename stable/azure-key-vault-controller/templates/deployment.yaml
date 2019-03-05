@@ -8,7 +8,6 @@ metadata:
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
-    component: controller
 spec:
   selector:
     matchLabels:
@@ -25,31 +24,32 @@ spec:
       - name: azure-keyvault-controller
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: Always
+        args:
+          - "--cloudconfig={{ .Values.cloudConfig }}"
         env:
-        - name: AZURE_TENANT_ID
-          valueFrom:
-            secretKeyRef:
-              name: {{ .Values.keyVault.secret.name }}
-              key: {{ .Values.keyVault.secret.tenantKey }}
-        - name: AZURE_CLIENT_ID
-          valueFrom:
-            secretKeyRef:
-              name: {{ .Values.keyVault.secret.name }}
-              key: {{ .Values.keyVault.secret.clientIdKey }}
-        - name: AZURE_CLIENT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: {{ .Values.keyVault.secret.name }}
-              key: {{ .Values.keyVault.secret.clientSecretKey }}
         - name: AZURE_VAULT_NORMAL_POLL_INTERVALS
           value: "{{ .Values.keyVault.polling.normalInterval }}"
         - name: AZURE_VAULT_EXCEPTION_POLL_INTERVALS
           value: "{{ .Values.keyVault.polling.failureInterval }}"
         - name: AZURE_VAULT_MAX_FAILURE_ATTEMPTS
           value: "{{ .Values.keyVault.polling.failureAttempts }}"
+        - name: AAD_POD_BINDING_LABEL
+          valueFrom:
+            fieldRef:
+              fieldPath:  metadata.labels['aadpodidbinding']
+        - name: CUSTOM_AUTH
+          value: {{ .Values.keyVault.customAuth.enabled | quote }}
         - name: LOG_LEVEL
           value: "{{ .Values.logLevel }}"
+        volumeMounts:
+          - name: azure-config
+            mountPath: "{{ .Values.cloudConfig }}"
+            readOnly: true
       {{- if .Values.image.pullSecret }}
       imagePullSecrets:
       - name: "{{ .Values.image.pullSecret }}"
       {{- end }}
+      volumes:
+      - name: azure-config
+        hostPath:
+          path: "{{ .Values.cloudConfig }}"

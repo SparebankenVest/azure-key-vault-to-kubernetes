@@ -2,14 +2,14 @@
 
 image:
   repository: spvest/azure-keyvault-controller
-  tag: 0.1.0-alpha.5
+  tag: 0.1.0-alpha.17
 
 keyVault:
-  secret:
-    name: azure-keyvault-credentials
-    tenantKey: tenant-id
-    clientIdKey: client-id
-    clientSecretKey: client-secret
+  customAuth:
+    # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
+    enabled: false
+    # Uncomment to use aad-pod-identity (MSI) and point to a selector
+    # podIdentitySelector: azure-key-vault
 
   polling:
     normalInterval: 1m
@@ -17,3 +17,4 @@ keyVault:
     failureAttempts: 5
 
 logLevel: info
+cloudConfig: /etc/kubernetes/azure.json
