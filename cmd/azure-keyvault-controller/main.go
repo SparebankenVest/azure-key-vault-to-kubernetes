@@ -43,9 +43,10 @@ import (
 )
 
 var (
-	masterURL  string
-	kubeconfig string
-	logLevel   string
+	masterURL   string
+	kubeconfig  string
+	cloudconfig string
+	logLevel    string
 
 	azureVaultFastRate        time.Duration
 	azureVaultSlowRate        time.Duration
@@ -150,6 +151,7 @@ func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&logLevel, "log-level", "", "log level")
+	flag.StringVar(&cloudconfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
 }
 
 func setLogLevel() {
