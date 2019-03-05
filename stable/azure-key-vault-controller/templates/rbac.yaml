@@ -68,23 +68,6 @@ rules:
   - list
   - watch
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRole
-metadata:
-  name: {{ template "azure-key-vault-controller.fullname" . }}-cloudconfig
-  labels:
-    app: {{ template "azure-key-vault-controller.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    heritage: {{ .Release.Service }}
-    release: {{ .Release.Name }}
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - get
----
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
@@ -120,34 +103,3 @@ roleRef:
   kind: ClusterRole
   name: {{ template "azure-key-vault-controller.fullname" . }}-reader
   apiGroup: rbac.authorization.k8s.io
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: {{ template "azure-key-vault-controller.fullname" . }}-cloudconfig
-  labels:
-    app: {{ template "azure-key-vault-controller.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    heritage: {{ .Release.Service }}
-    release: {{ .Release.Name }}
-subjects:
-- kind: ServiceAccount
-  name: {{ template "azure-key-vault-controller.fullname" . }}
-  namespace: {{ .Release.Namespace }}
-roleRef:
-  kind: ClusterRole
-  name: {{ template "azure-key-vault-controller.fullname" . }}-cloudconfig
-  apiGroup: rbac.authorization.k8s.io
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: {{ template "azure-key-vault-controller.fullname" . }}-admin
-roleRef:
-  kind: ClusterRole
-  apiGroup: rbac.authorization.k8s.io
-  name: cluster-admin
-subjects:
-- kind: ServiceAccount
-  namespace: {{ .Release.Namespace }}
-  name: {{ template "azure-key-vault-controller.fullname" . }}
