@@ -35,6 +35,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -45,11 +46,12 @@ import (
 )
 
 type azureKeyVaultConfig struct {
-	defaultAuth        bool
-	injectSecret       bool
-	credentials        *AzureKeyVaultCredentials
-	namespace          string
-	aadPodBindingLabel string
+	customAuth            bool
+	customAuthAutoInject  bool
+	credentials           *AzureKeyVaultCredentials
+	credentialsSecretName string
+	namespace             string
+	aadPodBindingLabel    string
 }
 
 var config azureKeyVaultConfig
@@ -100,17 +102,17 @@ func getVolumes() []corev1.Volume {
 func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 	req := whcontext.GetAdmissionRequest(ctx)
 	config.namespace = req.Namespace
-	var podSpec *corev1.PodSpec
+	var pod *corev1.Pod
 
 	switch v := obj.(type) {
 	case *corev1.Pod:
 		fmt.Fprintf(os.Stdout, "Found pod '%s' to mutate in namespace '%s'\n", obj.GetName(), config.namespace)
-		podSpec = &v.Spec
+		pod = v
 	default:
 		return false, nil
 	}
 
-	return false, mutatePodSpec(obj, podSpec)
+	return false, mutatePodSpec(pod)
 }
 
 func mutateContainers(containers []corev1.Container, creds map[string]string) bool {
@@ -165,12 +167,17 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 				Name:      "azure-keyvault-env",
 				MountPath: "/azure-keyvault/",
 			},
-			{
-				Name:      "azure-config",
-				MountPath: "/etc/kubernetes/azure.json",
-				ReadOnly:  true,
-			},
 		}...)
+
+		if !config.customAuth {
+			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
+				{
+					Name:      "azure-config",
+					MountPath: "/etc/kubernetes/azure.json",
+					ReadOnly:  true,
+				},
+			}...)
+		}
 
 		container.Env = append(container.Env, []corev1.EnvVar{
 			{
@@ -182,13 +189,13 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 				},
 			},
 			{
-				Name:  "ENV_INJECTOR_DEFAULT_AUTH",
-				Value: strconv.FormatBool(config.defaultAuth),
+				Name:  "ENV_INJECTOR_CUSTOM_AUTH",
+				Value: strconv.FormatBool(config.customAuth),
 			},
 		}...)
 
-		if config.injectSecret && config.credentials.CredentialsType != CredentialsTypeManagedIdentitiesForAzureResources {
-			container.Env = append(container.Env, *config.credentials.GetEnvVarFromSecret("adsf")...)
+		if config.customAuth && config.customAuthAutoInject && config.credentials.CredentialsType != CredentialsTypeManagedIdentitiesForAzureResources {
+			container.Env = append(container.Env, *config.credentials.GetEnvVarFromSecret(config.credentialsSecretName)...)
 		}
 
 		containers[i] = container
@@ -367,7 +374,9 @@ func hostIsAzureContainerRegistry(host string) bool {
 	return false
 }
 
-func mutatePodSpec(obj metav1.Object, podSpec *corev1.PodSpec) error {
+func mutatePodSpec(pod *corev1.Pod) error {
+	podSpec := &pod.Spec
+
 	kubeConfig, err := rest.InClusterConfig()
 	if err != nil {
 		return err
@@ -387,33 +396,33 @@ func mutatePodSpec(obj metav1.Object, podSpec *corev1.PodSpec) error {
 	containersMutated := mutateContainers(podSpec.Containers, regCred)
 
 	if initContainersMutated || containersMutated {
-		// if config.namespace != "" && config.injectSecret {
-		// 	if config.credentials.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
-		// 		if pod.Labels == nil {
-		// 			pod.Labels = make(map[string]string)
-		// 			pod.Labels["aadpodidbinding"] = config.aadPodBindingLabel
-		// 		}
-		// 	} else {
-		// 		fmt.Fprintf(os.Stdout, "Creating secret in new namespace '%s'...\n", config.namespace)
+		if config.namespace != "" && config.customAuth && config.customAuthAutoInject {
+			if config.credentials.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
+				if pod.Labels == nil {
+					pod.Labels = make(map[string]string)
+					pod.Labels["aadpodidbinding"] = config.aadPodBindingLabel
+				}
+			} else {
+				fmt.Fprintf(os.Stdout, "Creating secret in new namespace '%s'...\n", config.namespace)
 
-		// 		keyVaultSecret, err := config.credentials.GetKubernetesSecret("asljf")
-		// 		if err != nil {
-		// 			return err
-		// 		}
+				keyVaultSecret, err := config.credentials.GetKubernetesSecret(config.credentialsSecretName)
+				if err != nil {
+					return err
+				}
 
-		// 		_, err = clientset.CoreV1().Secrets(config.namespace).Create(keyVaultSecret)
-		// 		if err != nil {
-		// 			if errors.IsAlreadyExists(err) {
-		// 				_, err = clientset.CoreV1().Secrets(config.namespace).Update(keyVaultSecret)
-		// 				if err != nil {
-		// 					return err
-		// 				}
-		// 			} else {
-		// 				return err
-		// 			}
-		// 		}
-		// 	}
-		// }
+				_, err = clientset.CoreV1().Secrets(config.namespace).Create(keyVaultSecret)
+				if err != nil {
+					if errors.IsAlreadyExists(err) {
+						_, err = clientset.CoreV1().Secrets(config.namespace).Update(keyVaultSecret)
+						if err != nil {
+							return err
+						}
+					} else {
+						return err
+					}
+				}
+			}
+		}
 
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
 		podSpec.Volumes = append(podSpec.Volumes, getVolumes()...)
@@ -424,7 +433,6 @@ func mutatePodSpec(obj metav1.Object, podSpec *corev1.PodSpec) error {
 
 func initConfig() {
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azurekeyvault-env:latest")
-	viper.SetDefault("auth_auto_inject", true)
 	viper.AutomaticEnv()
 }
 
@@ -452,11 +460,12 @@ func main() {
 	logger := &log.Std{Debug: viper.GetBool("debug")}
 
 	config = azureKeyVaultConfig{
-		injectSecret: viper.GetBool("auth_auto_inject"),
-		defaultAuth:  viper.GetBool("auth_default"),
+		customAuth:            viper.GetBool("CUSTOM_AUTH"),
+		customAuthAutoInject:  viper.GetBool("CUSTOM_AUTH_INJECT"),
+		credentialsSecretName: viper.GetString("CUSTOM_AUTH_INJECT_SECRET_NAME"),
 	}
 
-	if config.injectSecret {
+	if config.customAuth {
 		azureCreds, err := NewCredentials()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error getting credentials: %s", err)

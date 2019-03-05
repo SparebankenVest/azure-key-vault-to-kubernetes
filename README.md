@@ -16,8 +16,8 @@
   - [Env Injector](#env-injector)
 - [Authentication](#authentication)
   - [Override default authentication](#override-default-authentication)
-    - [Override Authentication for Controller](#override-authentication-for-controller)
-    - [Override Authentication for Env Injector](#override-authentication-for-env-injector)
+    - [Custom Authentication for Controller](#custom-authentication-for-controller)
+    - [Custom Authentication for Env Injector](#custom-authentication-for-env-injector)
     - [Authentication override options](#authentication-override-options)
 - [Authorization](#authorization)
 - [Installation](#installation)
@@ -33,7 +33,8 @@
 
 ## Requirements
 
-* Kubernetes version >= 1.9 running in Azure
+* Kubernetes version >= 1.9 
+* Default [authentication](#authentication) requires Kubernetes cluster running in Azure - use custom authentication outside Azure
 
 ## Overview
 
@@ -45,6 +46,12 @@ This project offer two components/options for handling Azure Key Vault Secrets i
 The **Azure Key Vault Controller** (Controller for short) is for synchronizing Secrets, Certificates and Keys from Azure Key Vault to native `Secret`'s in Kubernetes.
 
 The **Azure Key Vault Env Injector** (Env Injector for short) is a Kubernetes Mutating Web Hook that transparently injects Azure Key Vault secrets as environment variables into containers without touching disk or in any other way expose the actual secret content outside the container.
+
+The motivation behind this project was:
+
+1. Avoid a anti-pattern where applications have a direct dependency on Azure Key Vault for getting secrets
+2. Make it simple, secure and low risk to transfer Azure Key Vault secrets into Kubernetes as native Kubernetes secrets
+3. Securely and transparently be able to inject Azure Key Vault secrets as environment variables to applications, without having to use native Kubernetes secrets
 
 **Credit goes to Banzai Cloud for coming up with the [original idea](https://banzaicloud.com/blog/inject-secrets-into-pods-vault/) of environment injection for their [`bank-vaults`](https://github.com/banzaicloud/bank-vaults) solution, which use this principal to inject Hashicorp Vault secrets into Pods.**
 
@@ -91,8 +98,17 @@ The Controller works like this:
 
 The Env Injector works like this:
 
-1. Create a `AzureKeyVaultSecret` resource, containing information the Env Injector can use later to retrieve a secret from Azure Key Vault
-2. Create a Pod (typically using `Deployment` or anything else that creates a Pod in Kubernetes) containing environment variable placeholders as below:
+1. Env Injector must be enabled per namespace:
+```
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: akv-test
+  labels:
+    azure-key-vault-env-injection: enabled
+```
+2. Create a `AzureKeyVaultSecret` resource, containing information the Env Injector can use later to retrieve a secret from Azure Key Vault
+3. Create a Pod (typically using `Deployment` or anything else that creates a Pod in Kubernetes) containing environment variable placeholders as below:
 ```
 env:
 - name: <name of environment variable>
@@ -101,13 +117,13 @@ env:
   value: azurekeyvault@<name of another AzureKeyVaultSecret>?<optional field query>
 ...
 ```
-3. Just before the pod gets created, a Mutating Web Hook is triggered which injects a init-container into the Pod
-4. The init-container copies over the `azure-keyvault-env` executable to the original container, which will download any Azure Key Vault secrets, identified in the environment placeholders above, and pass them on as environment variables to the original executable (the container's original CMD or ENTRYPOINT)
-5. This way all secrets gets injected transparently in-memory during Pod startup, and not reveal any secret content to the Pod spec, disk or logs
+4. Just before the pod gets created, a Mutating Web Hook is triggered which injects a init-container into the Pod
+5. The init-container copies over the `azure-keyvault-env` executable to the original container, which will download any Azure Key Vault secrets, identified in the environment placeholders above, and pass them on as environment variables to the original executable (the container's original CMD or ENTRYPOINT)
+6. This way all secrets gets injected transparently in-memory during Pod startup, and not reveal any secret content to the Pod spec, disk or logs
 
 ## Authentication
 
-By default both the Controller and the Env Injector will use the cluster infrastructure Service Principal to authenticate with Azure Key Vault. This is the same Service Principal as the Kubernetes cluster use to create VM's, Load Balancers and other cloud infrastructure in Azure. 
+By default both the Controller and the Env Injector will use the cluster infrastructure Service Principal to authenticate with Azure Key Vault (cloud config found in `/etc/kubernetes/azure.json`). This is the same Service Principal as the Kubernetes cluster use to create VM's, Load Balancers and other cloud infrastructure in Azure. 
 
 The creators of Azure Key Vault to Kubernetes intended to use Azure Key Vault as a Vault extension to Kubernetes, effectively giving the whole Kubernetes cluster access to Azure Key Vault. This also implies there should be a dedicated Azure Key Vault per Kubernetes cluster.
 
@@ -125,11 +141,11 @@ It is possible to give the Controller and/or the Env Injector specific credentia
 
 The authentication requirements for the Key Vault Controller and Env Injector are covered below.
 
-#### Override Authentication for Controller 
+#### Custom Authentication for Controller 
 
 The Controller will need Azure Key Vault credentials to get Secrets from Azure Key Vault and store them as Kubernetes Secrets. See [Authentication options](#authentication-options) below.
 
-#### Override Authentication for Env Injector
+#### Custom Authentication for Env Injector
 
 The Env Injector can be configured to authenticate with Azure Key vault in two ways:
 

@@ -50,6 +50,7 @@ var (
 	azureVaultFastRate        time.Duration
 	azureVaultSlowRate        time.Duration
 	azureVaultMaxFastAttempts int
+	customAuth                bool
 )
 
 const controllerAgentName = "azurekeyvaultcontroller"
@@ -82,6 +83,11 @@ func main() {
 		log.Fatalf("Error parsing env var AZURE_VAULT_MAX_FAILURE_ATTEMPTS: %s", err.Error())
 	}
 
+	customAuth, err = getEnvBool("CUSTOM_AUTH", false)
+	if err != nil {
+		log.Fatalf("Error parsing env var AZURE_VAULT_MAX_FAILURE_ATTEMPTS: %s", err.Error())
+	}
+
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
 		log.Fatalf("Error building kubeconfig: %s", err.Error())
@@ -110,7 +116,18 @@ func main() {
 	eventBroadcaster.StartLogging(log.Tracef)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
-	vaultService := vault.NewService()
+	var vaultAuth *vault.AzureKeyVaultCredentials
+	if customAuth {
+		if vaultAuth, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig(); err != nil {
+			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
+		}
+	} else {
+		if vaultAuth, err = vault.NewAzureKeyVaultCredentialsFromEnvironment(); err != nil {
+			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
+		}
+	}
+
+	vaultService := vault.NewService(vaultAuth)
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V1alpha1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
 
@@ -163,6 +180,22 @@ func getEnvInt(key string, fallback int) (int, error) {
 	if value, ok := os.LookupEnv(key); ok {
 		intVal, err := strconv.Atoi(value)
 		return intVal, err
+	}
+	return fallback, nil
+}
+
+func getEnvStr(key string, fallback string) (string, error) {
+	if value, ok := os.LookupEnv(key); ok {
+		return value, nil
+	}
+	return fallback, nil
+}
+
+func getEnvBool(key string, fallback bool) (bool, error) {
+	if value, ok := os.LookupEnv(key); ok {
+		if booVal, err := strconv.ParseBool(value); ok {
+			return booVal, err
+		}
 	}
 	return fallback, nil
 }

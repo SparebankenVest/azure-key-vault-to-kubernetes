@@ -19,7 +19,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -29,10 +28,8 @@ import (
 	vaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
-	yaml "gopkg.in/yaml.v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth"
 )
 
 const (
@@ -64,8 +61,6 @@ func main() {
 	setLogLevel()
 
 	log.Debugf("%s azure key vault env injector initializing", logPrefix)
-	var vaultService vault.Service
-
 	namespace := os.Getenv("ENV_INJECTOR_POD_NAMESPACE")
 	if namespace == "" {
 		log.Fatalf("%s current namespace not provided in environment variable env_injector_pod_namespace", logPrefix)
@@ -76,31 +71,25 @@ func main() {
 	defaultAuth := strings.ToLower(os.Getenv("ENV_INJECTOR_DEFAULT_AUTH"))
 	log.Debugf("%s inject default auth: %s", logPrefix, defaultAuth)
 
+	var creds *vault.AzureKeyVaultCredentials
+	var err error
+
 	if defaultAuth == "true" {
-		log.Debugf("%s reading default auth from host", logPrefix)
-		bytes, err := ioutil.ReadFile("/etc/kubernetes/azure.json")
+		log.Debugf("%s getting credentials for azure key vault using azure credentials from cloud config", logPrefix)
+		creds, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig()
 		if err != nil {
-			log.Fatalf("%s failed to read cloud config file in an effort to get credentials for azure key vault, error: %+v", logPrefix, err)
+			log.Fatalf("%s failed to get credentials for azure key vault, error %+v", logPrefix, err)
 		}
-
-		azureConfig := auth.AzureAuthConfig{}
-		if err = yaml.Unmarshal(bytes, &azureConfig); err != nil {
-			log.Fatalf("%s Unmarshall error: %v", logPrefix, err)
-		}
-
-		creds := &vault.ServiceCredentials{
-			ClientID:     azureConfig.AADClientID,
-			ClientSecret: azureConfig.AADClientSecret,
-			TenantID:     azureConfig.TenantID,
-		}
-
-		log.Debugf("%s creating client for azure key vault using default auth with clientid '%s'", logPrefix, azureConfig.AADClientID)
-
-		vaultService = vault.NewServiceWithClientCredentials(creds)
 	} else {
-		log.Debugf("%s creating client for azure key vault using azure credentials supplied to pod", logPrefix)
-		vaultService = vault.NewService()
+		log.Debugf("%s getting credentials for azure key vault using azure credentials supplied to pod", logPrefix)
+
+		creds, err = vault.NewAzureKeyVaultCredentialsFromEnvironment()
+		if err != nil {
+			log.Fatalf("%s failed to get credentials for azure key vault, error %+v", logPrefix, err)
+		}
 	}
+
+	vaultService := vault.NewService(creds)
 
 	log.Debugf("%s reading azurekeyvaultsecret's referenced in env variables", logPrefix)
 	cfg, err := rest.InClusterConfig()

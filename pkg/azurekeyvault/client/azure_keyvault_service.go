@@ -21,10 +21,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/Azure/go-autorest/autorest"
-
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	akvsv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
 )
 
@@ -32,13 +29,6 @@ const (
 	certificateTypePem string = "application/x-pem-file"
 	certificateTypePfx        = "application/x-pkcs12"
 )
-
-// ServiceCredentials for service principal
-type ServiceCredentials struct {
-	ClientID     string
-	ClientSecret string
-	TenantID     string
-}
 
 // Service is an interface for implementing vaults
 type Service interface {
@@ -48,16 +38,11 @@ type Service interface {
 }
 
 type azureKeyVaultService struct {
-	credentials *ServiceCredentials
+	credentials *AzureKeyVaultCredentials
 }
 
-// NewService creates a new AzureKeyVaultService using built in Managed Service Identity for authentication
-func NewService() Service {
-	return &azureKeyVaultService{}
-}
-
-// NewServiceWithClientCredentials creates a new AzureKeyVaultService using service principal provided
-func NewServiceWithClientCredentials(credentials *ServiceCredentials) Service {
+// NewService creates a new AzureKeyVaultService using crednetials found in cloud config
+func NewService(credentials *AzureKeyVaultCredentials) Service {
 	return &azureKeyVaultService{
 		credentials: credentials,
 	}
@@ -146,20 +131,9 @@ func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvsv1alpha1.AzureKeyVa
 }
 
 func (a *azureKeyVaultService) getClient(resource string) (*keyvault.BaseClient, error) {
-	var authorizer autorest.Authorizer
-	var err error
-
-	if a.credentials != nil {
-		cred := auth.NewClientCredentialsConfig(a.credentials.ClientID, a.credentials.ClientSecret, a.credentials.TenantID)
-		cred.Resource = resource // resource must be Azure Key Vault resource
-
-		if authorizer, err = cred.Authorizer(); err != nil {
-			return nil, fmt.Errorf("failed to create authorizer based on service principal credentials, err: %+v", err)
-		}
-	} else {
-		if authorizer, err = auth.NewAuthorizerFromEnvironmentWithResource(resource); err != nil {
-			return nil, fmt.Errorf("failed to create authorizer from environment, err: %+v", err)
-		}
+	authorizer, err := a.credentials.Authorizer()
+	if err != nil {
+		return nil, err
 	}
 
 	keyClient := keyvault.New()
