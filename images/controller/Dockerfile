@@ -11,9 +11,6 @@ LABEL org.label-schema.description="A Kubernetes controller to sync Azure Key Va
 LABEL org.label-schema.vendor="Sparebanken Vest"      
 LABEL org.label-schema.author="Jon Arild Tørresdal"
 
-RUN addgroup -g 1000 -S akvcontroller && \
-    adduser -u 1000 -S akvcontroller -G akvcontroller
-
 # install without cache
 RUN apk update && apk add --no-cache \
     ca-certificates \
@@ -22,5 +19,4 @@ RUN apk update && apk add --no-cache \
 
 COPY --from=build /go/bin/azure-keyvault-controller /usr/local/bin/azure-keyvault-controller
 
-USER akvcontroller
 ENTRYPOINT ["azure-keyvault-controller"]
