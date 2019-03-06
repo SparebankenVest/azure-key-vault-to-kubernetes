@@ -19,9 +19,9 @@ spec:
       labels:
         app: {{ template "azure-key-vault-to-kubernetes.name" . }}
         release: {{ .Release.Name }}
-        {{ -if and .Values.customAuth.enabled .Values.customAuth.autoInject.enabled .Values.customAuth.autoInject.podIdentitySelector }}
+        {{- if and .Values.customAuth.enabled .Values.customAuth.autoInject.enabled .Values.customAuth.autoInject.podIdentitySelector }}
         aadpodidbinding: {{ .Values.customAuth.autoInject.podIdentitySelector }}
-        {{ -end}}
+        {{- end}}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/apiservice.yaml") . | sha256sum }}
     spec:
