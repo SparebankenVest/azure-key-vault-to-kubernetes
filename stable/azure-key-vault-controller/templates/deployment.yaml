@@ -41,6 +41,10 @@ spec:
           value: {{ .Values.keyVault.customAuth.enabled | quote }}
         - name: LOG_LEVEL
           value: "{{ .Values.logLevel }}"
+        {{- range $key, $value := .Values.env }}
+        - name: {{ $key }}
+          value: {{ $value }}
+        {{- end }}
         volumeMounts:
           - name: azure-config
             mountPath: "{{ .Values.cloudConfig }}"

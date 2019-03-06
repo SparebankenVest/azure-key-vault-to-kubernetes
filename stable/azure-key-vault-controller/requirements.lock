@@ -1,9 +1,6 @@
 dependencies:
-- name: aad-pod-identity
-  repository: https://charts.spvapi.no
-  version: 0.1.0
 - name: azure-key-vault-crd
   repository: https://charts.spvapi.no
   version: 0.1.0
-digest: sha256:232319001bb263fd4101465880966103ce10181485756c04cbbf71d9b311ddd9
-generated: 2019-03-02T16:50:57.017801+01:00
+digest: sha256:5118f23dcf5d8b142c6267b397263988b1243ee4b680611d8ff0e4761f545015
+generated: 2019-03-06T10:15:15.061846+01:00

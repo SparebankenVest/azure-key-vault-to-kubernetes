@@ -2,4 +2,4 @@ dependencies:
 - name: azure-key-vault-crd
   version: "0.1.0"
   repository: "https://charts.spvapi.no"
-  
+  condition: installCrd

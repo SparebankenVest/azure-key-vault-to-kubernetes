@@ -1,16 +1,17 @@
 # Default values 
-replicaCount: 1
 
+installCrd: true # if installing both controller and env injector, only one can install CRD
+replicaCount: 1
 debug: false
 
 image:
   repository: spvest/azure-keyvault-webhook
-  tag: 0.1.0-alpha.18
+  tag: 0.1.0-alpha.20
   pullPolicy: IfNotPresent
 
 envImage:
   repository: spvest/azure-keyvault-env
-  tag: 0.1.0-alpha.18
+  tag: 0.1.0-alpha.20
   
 service:
   name: azure-keyvault-secrets-webhook
@@ -18,11 +19,25 @@ service:
   externalPort: 443
   internalPort: 443
 
+# Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
 customAuth:
   enabled: false
-  autoInject: true
-  autoInjectSecretName: env-injector-secret-name
-  podIdentitySelector: azure-key-vault
+
+  # uncomment to enable auto injection of credentials
+
+  # autoInject: 
+    # enabled: <true | false>
+
+    # if credentials are env vars, spesify name of the 
+    # secret the env injector should create for
+    # storing the credentials
+    
+    # secretName: <secret name>
+    
+    # uncomment to use aad-pod-identity (MSI) and point to a selector
+    # if used, secretName must not be set
+    
+    # podIdentitySelector: <selector name>
 
 resources: {}
 
@@ -31,10 +46,3 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
-
-aad-pod-identity:
-  enabled: false # set to true and uncomment below to install pod-identity
-  # azureIdentity:
-  #   type: 0 # type 0: MSI, type 1: Service Principal
-  #   resourceID: "" # /subscriptions/subscription-id/resourcegroups/resource-group/providers/Microsoft.ManagedIdentity/userAssignedIdentities/identity-name
-  #   clientID: ""

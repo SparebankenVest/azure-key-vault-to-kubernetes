@@ -1,13 +1,15 @@
 # Default values 
 
+installCrd: true # if installing both controller and env injector, only one can install CRD
 image:
   repository: spvest/azure-keyvault-controller
-  tag: 0.1.0-alpha.19
+  tag: 0.1.0-alpha.20
 
 keyVault:
+  # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
   customAuth:
-    # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
     enabled: false
+
     # Uncomment to use aad-pod-identity (MSI) and point to a selector
     # podIdentitySelector: azure-key-vault
 
@@ -16,6 +18,5 @@ keyVault:
     failureInterval: 10m
     failureAttempts: 5
 
-installCrd: true
 logLevel: info
 cloudConfig: /etc/kubernetes/azure.json

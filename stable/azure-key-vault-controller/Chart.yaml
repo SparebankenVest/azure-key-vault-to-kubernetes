@@ -1,8 +1,8 @@
 apiVersion: v1
-appVersion: "0.1.0-alpha.19"
+appVersion: "0.1.0-alpha.20"
 description: A Helm chart that deploys a Kubernetes controller that transform Azure Key Vault Secrets into Kubernetes Secrets
 name: azure-key-vault-controller
-version: 0.1.12
+version: 0.1.13
 maintainers:
 - name: Sparebanken Vest
   email: jon.torresdal@spv.no
