@@ -16,9 +16,9 @@
   - [Env Injector](#env-injector)
 - [Authentication](#authentication)
   - [Override default authentication](#override-default-authentication)
-    - [Custom Authentication for Controller](#custom-authentication-for-controller)
+    - [Custom Authentication for the Controller](#custom-authentication-for-the-controller)
     - [Custom Authentication for Env Injector](#custom-authentication-for-env-injector)
-    - [Authentication override options](#authentication-override-options)
+    - [Custom Authentication Options](#custom-authentication-options)
 - [Authorization](#authorization)
 - [Installation](#installation)
   - [Transparant mode](#transparant-mode)
@@ -123,41 +123,33 @@ env:
 
 ## Authentication
 
-By default both the Controller and the Env Injector will use the cluster infrastructure Service Principal to authenticate with Azure Key Vault (cloud config found in `/etc/kubernetes/azure.json`). This is the same Service Principal as the Kubernetes cluster use to create VM's, Load Balancers and other cloud infrastructure in Azure. 
+By default both the Controller and the Env Injector will use the credentials found in Cloud Config on the host to authenticate with Azure Key Vault. This is the same credentials as the Kubernetes cluster use when interacting with Azure to create VM's, Load Balancers and other cloud infrastructure.
 
-The creators of Azure Key Vault to Kubernetes intended to use Azure Key Vault as a Vault extension to Kubernetes, effectively giving the whole Kubernetes cluster access to Azure Key Vault. This also implies there should be a dedicated Azure Key Vault per Kubernetes cluster.
+**Note: if you do not run Kubernetes on Azure, [override default authentication](#override-default-authentication)**  
 
-The cluster infrastructure Service Principal is read from the Node hosting the Pod at `/etc/kubernetes/azure.json`. For the Env Injector this means it will try to map this file as a Volume on the Pod. If the Pod's Service Account does not have permissions to read from this Volume, an exception will be visible in Events and the Pod will be prevented from bootstrapping. If this happens, make sure the Pod has RBAC permissions to read this file or override default credentials to authenticate with Azure Key Vault.
+Cloud Config for Azure is located at `/etc/kubernetes/azure.json`. For the Env Injector this means it will try to map this file as a read only Volume on each Pod using env injection. By default this should work, but if the Kubernetes cluster have configured [Pod Security Policy](https://kubernetes.io/docs/concepts/policy/pod-security-policy/) it might be prevented from reading from host. If that is the case, either change the Pod Security Policy to list `/etc/kubernetes/azure.json` under [AllowedHostPaths](https://kubernetes.io/docs/concepts/policy/pod-security-policy/#volumes-and-file-systems) or [override default authentication](#override-default-authentication). 
 
-**Unless the default authentication is not wanted, move to the next section about [Authorization](#authorization)).**
-
-To override default authentication, read on.
+**For default authentication move to the next section about [Authorization](#authorization). To override default authentication, read on.**
 
 ### Override default authentication
 
 It is possible to give the Controller and/or the Env Injector specific credentials to authenticate with Azure Key Vault.
 
-**Note: To avoid exposing Azure Key Vault credentials inside the Kubernetes clusters (as Secrets or env variables), _Managed identities for Azure resources_ is recommended. Details is covered under [Installation](#installation). For other options see [Authentication options](#authentication-options) below.**
-
 The authentication requirements for the Key Vault Controller and Env Injector are covered below.
 
-#### Custom Authentication for Controller 
+#### Custom Authentication for the Controller 
 
 The Controller will need Azure Key Vault credentials to get Secrets from Azure Key Vault and store them as Kubernetes Secrets. See [Authentication options](#authentication-options) below.
 
 #### Custom Authentication for Env Injector
 
-The Env Injector can be configured to authenticate with Azure Key vault in two ways:
+To use custom authentication for the Env Injector, set  `CUSTOM_AUTH` to `true`.
 
-1) By default each Pod using env variables with the Env Injector pattern must also provide credentials for Azure Key Vault using [Authentication options](#authentication-options) below
+By default each Pod using the Env Injector pattern must provide their own credentials for Azure Key Vault using [Authentication options](#authentication-options) below.
 
-2) Env Injector can be configured to inject Azure Key Vault credentials to all Pods using the Env Injector pattern
+A more convenient solution is to provide Azure Key Vault credentials to the Env Injector (using [Authentication options](#authentication-options) below) and have it "forward" the credentials to the Pods. This is enabled by setting the env var `CUSTOM_AUTH_INJECT` to `true` and the Env Injector will create a Kubernetes Secret containing the credentials and modify the Pod's env section to reference the credentials in the Secret. 
 
-Option 2 is most convenient, but option 1 allows for better control. Which one is right for your organization depends on the size of the Kubernetes cluster, what access rights users of the cluster have, and other factors specific to your organization.   
-
-See [Installation](#installation) for how to setup option 2.
-
-#### Authentication override options
+#### Custom Authentication Options
 
 The following authentication options are available:
 
@@ -268,7 +260,7 @@ spec:
       type: <object type in azure key vault to sync>
       version: <optional - version of object to sync>
       contentType: <only used when type is the special multi-key-value-secret - either application/x-json or application/x-yaml>
-  output: # ignored by env injector, required by Controller
+  output: # ignored by env injector, required by controller to output kubernetes secret
     secret: 
       name: <name of the kubernetes secret to create>
       dataKey: <required when type is opaque - name of the kubernetes secret data key to assign value to - ignored for all other types>
