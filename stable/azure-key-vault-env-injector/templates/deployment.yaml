@@ -53,12 +53,18 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath:  metadata.labels['aadpodidbinding']
+          {{- if .Values.customAuth.enabled }}
           - name: CUSTOM_AUTH
             value: {{ .Values.customAuth.enabled | quote }}
+            {{- if .Values.customAuth.autoInject.enabled }}
           - name: CUSTOM_AUTH_INJECT
             value: {{ .Values.customAuth.autoInject.enabled | quote }}
+            {{- end}}
+            {{- if .Values.customAuth.autoInject.secretName }}
           - NAME: CUSTOM_AUTH_INJECT_SECRET_NAME
             VALUE: {{ .Values.customAuth.autoInject.secretName | quote }}
+            {{- end}}
+          {{- end}}
           - name: DEBUG
             value: {{ .Values.debug | quote }}
           {{- range $key, $value := .Values.env }}

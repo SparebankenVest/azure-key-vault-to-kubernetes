@@ -23,10 +23,9 @@ service:
 customAuth:
   enabled: false
 
-  # uncomment to enable auto injection of credentials
-
-  # autoInject: 
-    # enabled: <true | false>
+  # set to true to enable auto injection of credentials
+  autoInject: 
+    enabled: false
 
     # if credentials are env vars, spesify name of the 
     # secret the env injector should create for
