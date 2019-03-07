@@ -13,34 +13,33 @@ If installing both the [Env Injector](../azure-key-vault-env-injector) and the C
 ## Installing the Chart
 
 ```bash
-$ helm repo add spv-charts http://charts.spvapi.no
-$ helm repo update
+helm repo add spv-charts http://charts.spvapi.no
+helm repo update
 ```
 
 ```bash
-$ helm install spv-charts/azure-key-vault-env-injector
+helm install spv-charts/azure-key-vault-env-injector
 ```
 
 **Installation of both Env Injector and Controller**
 ```bash
-$ helm install spv-charts/azure-key-vault-env-injector \
+helm install spv-charts/azure-key-vault-env-injector \
     --set installCrd=false
 
-$ helm install spv-charts/azure-key-vault-controller
+helm install spv-charts/azure-key-vault-controller
 ```
 
 **Using custom authentication with credential injection enabled**
 
 ```bash
-$ helm install spv-charts/azure-key-vault-env-injector \
-    --set customAuth.enabled=true \
-    --set customAuth.autoInject.enabled=true \
-    --set customAuth.autoInject.secretName=azure-key-vault-secret \
-    --set env.AZURE_TENANT_ID=... \
-    --set env.AZURE_CLIENT_ID=... \
-    --set env.AZURE_CLIENT_SECRET=...
+helm install spv-charts/azure-key-vault-env-injector \
+  --set customAuth.enabled=true \
+  --set customAuth.autoInject.enabled=true \
+  --set customAuth.autoInject.secretName=azure-key-vault-secret \
+  --set env.AZURE_TENANT_ID=... \
+  --set env.AZURE_CLIENT_ID=... \
+  --set env.AZURE_CLIENT_SECRET=...
 ```
-
 
 ## Configuration
 
