@@ -76,7 +76,7 @@ func main() {
 
 	if defaultAuth == "true" {
 		log.Debugf("%s getting credentials for azure key vault using azure credentials from cloud config", logPrefix)
-		creds, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig()
+		creds, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig("/azure-keyvault/azure.json")
 		if err != nil {
 			log.Fatalf("%s failed to get credentials for azure key vault, error %+v", logPrefix, err)
 		}

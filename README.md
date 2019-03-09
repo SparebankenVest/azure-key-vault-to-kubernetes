@@ -8,7 +8,7 @@
 - [Overview](#overview)
   - [When to use the Controller](#when-to-use-the-controller)
   - [When to use the Env Injector?](#when-to-use-the-env-injector)
-  - [When to use both the Controller and the Env Injector](#when-to-use-both-the-controller-and-the-env-injector)
+  - [Recommendation is to install both](#recommendation-is-to-install-both)
 - [How it works](#how-it-works)
   - [Controller](#controller)
   - [Env Injector](#env-injector)
@@ -19,7 +19,7 @@
     - [Custom Authentication Options](#custom-authentication-options)
 - [Authorization](#authorization)
 - [Installation](#installation)
-  - [Transparant mode](#transparant-mode)
+  - [Installation without Helm](#installation-without-helm)
 - [Usage](#usage)
   - [Vault object types](#vault-object-types)
   - [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)
@@ -38,20 +38,22 @@
 
 ## Overview
 
-This project offer two components/options for handling Azure Key Vault Secrets in Kubernetes:
+This project offer two components for handling Azure Key Vault Secrets in Kubernetes:
 
 * Azure Key Vault Controller
 * Azure Key Vault Env Injector
 
 The **Azure Key Vault Controller** (Controller for short) is for synchronizing Secrets, Certificates and Keys from Azure Key Vault to native `Secret`'s in Kubernetes.
 
-The **Azure Key Vault Env Injector** (Env Injector for short) is a Kubernetes Mutating Web Hook that transparently injects Azure Key Vault secrets as environment variables into containers without touching disk or in any other way expose the actual secret content outside the container.
+The **Azure Key Vault Env Injector** (Env Injector for short) is a Kubernetes Mutating Webhook that transparently injects Azure Key Vault secrets as environment variables into programs running in containers, without touching disk or in any other way expose the actual secret content outside the program.
 
 The motivation behind this project was:
 
-1. Avoid a anti-pattern where applications have a direct dependency on Azure Key Vault for getting secrets
+1. Avoid a direct program dependency on Azure Key Vault for getting secrets, and adhere to the 12 Factor App principle for configuration (https://12factor.net/config)
 2. Make it simple, secure and low risk to transfer Azure Key Vault secrets into Kubernetes as native Kubernetes secrets
 3. Securely and transparently be able to inject Azure Key Vault secrets as environment variables to applications, without having to use native Kubernetes secrets
+
+All of these goals are met.
 
 ### When to use the Controller 
 
@@ -72,11 +74,9 @@ Use the Env Injector if:
 * the application running in the container support getting secrets as environment variables
 * secret environment variable values should not be revealed to Kubernetes resources like Pod specs, stored on disks, visible in logs or exposed in any way other than in-memory for the application 
 
-### When to use both the Controller and the Env Injector
+### Recommendation is to install both
 
-Install both the Controller and the Env Injector if:
-
-* Users of the Kubernetes cluster should be able to choose which one to use
+The recommendation is to install both the Controller and the Env Injector, enabling native Kubernetes secrets when needed and transparently injecting environment variables for all other cases.
 
 ## How it works
 
@@ -84,19 +84,22 @@ Install both the Controller and the Env Injector if:
 
 The Controller works like this:
 
-1. Create a `AzureKeyVaultSecret` resource, containing information of how to get a secret from Azure Key Vault (see [Usage](#usage) below)
-2. When the `AzureKeyVaultSecret` resource above is created, the `azure-keyvault-controller` controller discovers the newly created `AzureKeyVaultSecret` resource and use its information to get the secret from Azure Key Vault, and create a native Kubernetes `Secret`
-3. `azure-keyvault-controller` controller will periodically poll Azure Key Vault for version changes of the secret and apply any changes to the Kubernetes native `Secret`
+By creating a `AzureKeyVaultSecret` resource (a Custom Resource Definition provided by this project) the Controller has everything needed to know which Azure Key Vault and Object it is going to sync.
 
-**Note: Pods in Kubernetes currently don't get notifications when Secret resources change, and Pods will have to be re-created or use something like the Wave controller (https://github.com/pusher/wave) to get the changes**
+When created, the Controller kicks in and use the information to download the secret from Azure Key Vault and create a native Kubernetes secret containing the secret from Azure Key Vault.
 
-**Note: By default the `azure-keyvault-controller` controller auto sync Secrets every 10 minutes (configurable) and depending on how many secrets are synchronized can cause extra usage costs of Azure Key Vault.**
+Periodically the Controller will poll Azure Key Vault for version changes of the secret and apply any changes to the Kubernetes native secret.
+
+See [Usage](#usage) for more details.
+
+**Note-1: Pods in Kubernetes currently do not get notifications when Secret resources change, and Pods will have to be re-created or use something like the Wave controller (https://github.com/pusher/wave) to get the changes**
+
+**Note-2: By default the Controller auto sync secrets every 10 minutes (configurable) and depending on how many secrets are synchronized can cause extra usage costs of Azure Key Vault.**
 
 ### Env Injector
 
-The Env Injector works like this:
+The Env Injector is developed using a Mutating Admission Webhook that triggers just before every Pod gets created. To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the `azure-key-vault-env-injection` label, like in the example below:
 
-1. Env Injector must be enabled per namespace:
 ```
 apiVersion: v1
 kind: Namespace
@@ -105,19 +108,20 @@ metadata:
   labels:
     azure-key-vault-env-injection: enabled
 ```
-2. Create a `AzureKeyVaultSecret` resource, containing information the Env Injector can use later to retrieve a secret from Azure Key Vault
-3. Create a Pod (typically using `Deployment` or anything else that creates a Pod in Kubernetes) containing environment variable placeholders as below:
+
+As with the Controller, the Env Injector relies on `AzureKeyVaultSecret` resources to provide information about the Azure Key Vault secrets. 
+
+The Env Injector will start processing containers containing one or more environment placeholders like below: 
 ```
 env:
 - name: <name of environment variable>
-  value: azurekeyvault@<name of AzureKeyVaultSecret>?<optional field query>
-- name: <name of another environment variable>
-  value: azurekeyvault@<name of another AzureKeyVaultSecret>?<optional field query>
+  value: <name of AzureKeyVaultSecret>@azurekeyvault?<optional field query>
 ...
 ```
-4. Just before the pod gets created, a Mutating Web Hook is triggered which injects a init-container into the Pod
-5. The init-container copies over the `azure-keyvault-env` executable to the original container, which will download any Azure Key Vault secrets, identified in the environment placeholders above, and pass them on as environment variables to the original executable (the container's original CMD or ENTRYPOINT)
-6. This way all secrets gets injected transparently in-memory during Pod startup, and not reveal any secret content to the Pod spec, disk or logs
+
+It will start by injecting a init-container into the Pod. This init-container copies over the `azure-keyvault-env` executable to a share volume between the init-container and the original container. It then changes either the CMD or ENTRYPOINT, depending on which was used by the original container, to use the `azure-keyvault-env` executable instead, and pass on the "old" command as parameters to this new executable. The init-container will then complete and the original container will start.
+
+When the original container starts it will execute the `azure-keyvault-env` command which will download any Azure Key Vault secrets, identified by the environment placeholders above. The remaining step is for `azure-keyvault-env` to execute the original command and params, pass on the updated environment variables with real secret values. This way all secrets gets injected transparently in-memory during container startup, and not reveal any secret content to the container spec, disk or logs.
 
 ## Authentication
 
@@ -125,7 +129,13 @@ By default both the Controller and the Env Injector will use the credentials fou
 
 **Note: if you do not run Kubernetes on Azure, [override default authentication](#override-default-authentication)**  
 
-Cloud Config for Azure is located at `/etc/kubernetes/azure.json`. For the Env Injector this means it will try to map this file as a read only Volume on each Pod using env injection. By default this should work, but if the Kubernetes cluster have configured [Pod Security Policy](https://kubernetes.io/docs/concepts/policy/pod-security-policy/) it might be prevented from reading from host. If that is the case, either change the Pod Security Policy to list `/etc/kubernetes/azure.json` under [AllowedHostPaths](https://kubernetes.io/docs/concepts/policy/pod-security-policy/#volumes-and-file-systems) or [override default authentication](#override-default-authentication). 
+Cloud Config for Azure is located at `/etc/kubernetes/azure.json`. The Controller will map this as a read only volume and read the credentials. For the Env Injector it's a bit different. Since the Env Injector is not in full control over how the original container is setup, it will copy the azure.json to a local shared volume, chmod `azure.json` to 444 in case the original container is running under a less privileged user (which is a good practice) and not get access to the credentials.
+
+Currently only one situations has been identified, where the above does not work:
+
+* When a [Pod Security Policy](https://kubernetes.io/docs/concepts/policy/pod-security-policy/) is configured in the cluster, preventing containers from reading from the host, two solutions exists:  
+  1. Change the Pod Security Policy to list `/etc/kubernetes/azure.json` under [AllowedHostPaths](https://kubernetes.io/docs/concepts/policy/pod-security-policy/#volumes-and-file-systems) 
+  2. Or [override default authentication](#override-default-authentication). 
 
 **For default authentication move to the next section about [Authorization](#authorization). To override default authentication, read on.**
 
@@ -133,7 +143,7 @@ Cloud Config for Azure is located at `/etc/kubernetes/azure.json`. For the Env I
 
 It is possible to give the Controller and/or the Env Injector specific credentials to authenticate with Azure Key Vault.
 
-The authentication requirements for the Key Vault Controller and Env Injector are covered below.
+The authentication requirements for the Controller and Env Injector are covered below.
 
 #### Custom Authentication for the Controller 
 
@@ -141,11 +151,11 @@ The Controller will need Azure Key Vault credentials to get Secrets from Azure K
 
 #### Custom Authentication for Env Injector
 
-To use custom authentication for the Env Injector, set  `CUSTOM_AUTH` to `true`.
+To use custom authentication for the Env Injector, set  the environment variable `CUSTOM_AUTH` to `true`.
 
 By default each Pod using the Env Injector pattern must provide their own credentials for Azure Key Vault using [Authentication options](#authentication-options) below.
 
-A more convenient solution is to provide Azure Key Vault credentials to the Env Injector (using [Authentication options](#authentication-options) below) and have it "forward" the credentials to the Pods. This is enabled by setting the env var `CUSTOM_AUTH_INJECT` to `true` and the Env Injector will create a Kubernetes Secret containing the credentials and modify the Pod's env section to reference the credentials in the Secret. 
+To avoid that, support for a more convenient solution is added where the Azure Key Vault credentials in the Env Injector (using [Authentication options](#authentication-options) below) is "forwarded" to the the Pods. This is enabled by setting the environment variable `CUSTOM_AUTH_INJECT` to `true`. Env Injector will then create a Kubernetes Secret containing the credentials and modify the Pod's env section to reference the credentials in the Secret. 
 
 #### Custom Authentication Options
 
@@ -198,46 +208,16 @@ Controller: https://github.com/SparebankenVest/public-helm-charts/tree/master/st
 
 Env Injector: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector
 
-If Helm is not an option, follow these procedures:
+### Installation without Helm
 
-**1. Install the Custom Resource Definition**
+If Helm is not an option, use Helm on a local computer to generate the Kubernetes templates like below:
 
-```bash
-kubectl apply -f ./installation/1-crd.yaml
-```
+`helm install --debug --dry-run <options>`
 
-**2. Deploy Controller**
-
-Optional. Read [When to use the Controller](#when-to-use-the-azure-key-vault-controller) before installing. 
-
-```bash
-kubectl apply -f ./installation/1-crd.yaml
-```
-
-The RBAC can be found here: [artifacts/controller-rbac.yaml](artifacts/controller-rbac.yaml)
-
-**3. Deploy controller**
-
-An example deployment definition can be found here: [artifacts/example-controller-deployment.yaml](artifacts/example-controller-deployment.yaml)
-
-Optional environment variables:
-
-| Env var                              | Description | Default |
-| ------------------------------------ | ----------- | ------- |
-| AZURE_VAULT_NORMAL_POLL_INTERVALS    | Duration to wait between polls to Azure Key Vault for changes | 1m |
-| AZURE_VAULT_EXCEPTION_POLL_INTERVALS | Duration to wait between polls to Azure Key Vault for changes, after AZURE_VAULT_MAX_FAILURE_ATTEMPTS is reached | 5m |
-| AZURE_VAULT_MAX_FAILURE_ATTEMPTS     | How many failures are accepted before reducing the frequency to Slow | "5" |
-| LOG_LEVEL                            | Log level to use for output logs. Options are `trace`, `debug`, `info`, `warning`, `error`, `fatal` or `panic`. | info |
-
-In addition there are environment variables for controlling authentication which is [documented above](#authentication-options).
-
-### Transparant mode
-
-The Transparant mode requires everything in Basic mode, plus:
-
-**4. TBD**
+See the individual Helm charts for `<options>`.
 
 ## Usage
+
 After you have installed `azure-key-vault-to-kubernetes`, you can create `AzureKeyVaultSecret` resources and take advantage of either Kubernetes Secrets (Basic) or referencing `AzureKeyVaultSecret` resources from Pods.
 
 **NB! `output` is only used in Basic mode - the controller wil create the Azure Key Vault secret as a Kubernetes Secret - in Transparant mode `output` must be undefined.**

@@ -123,7 +123,7 @@ func main() {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
 		}
 	} else {
-		if vaultAuth, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig(); err != nil {
+		if vaultAuth, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig("/etc/kubernetes/azure.json"); err != nil {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
 		}
 	}

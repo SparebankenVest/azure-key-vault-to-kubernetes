@@ -46,33 +46,55 @@ import (
 )
 
 type azureKeyVaultConfig struct {
-	customAuth            bool
-	customAuthAutoInject  bool
-	credentials           *AzureKeyVaultCredentials
-	credentialsSecretName string
-	namespace             string
-	aadPodBindingLabel    string
+	customAuth               bool
+	customAuthAutoInject     bool
+	credentials              *AzureKeyVaultCredentials
+	credentialsSecretName    string
+	namespace                string
+	aadPodBindingLabel       string
+	cloudConfigHostPath      string
+	cloudConfigContainerPath string
 }
 
 var config azureKeyVaultConfig
 
 const envVarReplacementKey = "azurekeyvault@"
 
+// This init-container copies a program to /azure-keyvault and
+// if default auth copies a read only version of azure config into
+// the /azure-keyvault/ folder to use as auth
 func getInitContainers() []corev1.Container {
-	return []corev1.Container{
-		{
-			Name:            "copy-azurekeyvault-env",
-			Image:           viper.GetString("azurekeyvault_env_image"),
-			ImagePullPolicy: corev1.PullIfNotPresent,
-			Command:         []string{"sh", "-c", "cp /usr/local/bin/azure-keyvault-env /azure-keyvault/"},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "azure-keyvault-env",
-					MountPath: "/azure-keyvault/",
-				},
+	cmd := "cp /usr/local/bin/azure-keyvault-env /azure-keyvault/"
+
+	if !config.customAuth {
+		cmd = cmd + fmt.Sprintf(" && cp %s %s && ", config.cloudConfigHostPath, config.cloudConfigContainerPath)
+		cmd = cmd + fmt.Sprintf("chmod 444 %s", config.cloudConfigContainerPath)
+	}
+
+	container := corev1.Container{
+		Name:            "copy-azurekeyvault-env",
+		Image:           viper.GetString("azurekeyvault_env_image"),
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Command:         []string{"sh", "-c", cmd},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "azure-keyvault-env",
+				MountPath: "/azure-keyvault/",
 			},
 		},
 	}
+
+	if !config.customAuth {
+		container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
+			{
+				Name:      "azure-config",
+				MountPath: config.cloudConfigHostPath,
+				ReadOnly:  true,
+			},
+		}...)
+	}
+
+	return []corev1.Container{container}
 }
 
 func getVolumes() []corev1.Volume {
@@ -91,7 +113,7 @@ func getVolumes() []corev1.Volume {
 			Name: "azure-config",
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/etc/kubernetes/azure.json",
+					Path: config.cloudConfigHostPath,
 					Type: &hostPathFile,
 				},
 			},
@@ -168,16 +190,6 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 				MountPath: "/azure-keyvault/",
 			},
 		}...)
-
-		if !config.customAuth {
-			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
-				{
-					Name:      "azure-config",
-					MountPath: "/etc/kubernetes/azure.json",
-					ReadOnly:  true,
-				},
-			}...)
-		}
 
 		container.Env = append(container.Env, []corev1.EnvVar{
 			{
@@ -333,7 +345,7 @@ func getAcrCreds(host string) (string, bool) {
 		return "", false
 	}
 
-	bytes, err := ioutil.ReadFile("/etc/kubernetes/azure.json")
+	bytes, err := ioutil.ReadFile(config.cloudConfigHostPath)
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "failed to read azure.json to get default credentials, error: %v\n", err)
 		return "", false //creds, fmt.Errorf("failed to read cloud config file in an effort to get credentials for azure key vault, error: %+v", err)
@@ -460,9 +472,11 @@ func main() {
 	logger := &log.Std{Debug: viper.GetBool("debug")}
 
 	config = azureKeyVaultConfig{
-		customAuth:            viper.GetBool("CUSTOM_AUTH"),
-		customAuthAutoInject:  viper.GetBool("CUSTOM_AUTH_INJECT"),
-		credentialsSecretName: viper.GetString("CUSTOM_AUTH_INJECT_SECRET_NAME"),
+		customAuth:               viper.GetBool("CUSTOM_AUTH"),
+		customAuthAutoInject:     viper.GetBool("CUSTOM_AUTH_INJECT"),
+		credentialsSecretName:    viper.GetString("CUSTOM_AUTH_INJECT_SECRET_NAME"),
+		cloudConfigHostPath:      "/etc/kubernetes/azure.json",
+		cloudConfigContainerPath: "/azure-keyvault/azure.json",
 	}
 
 	if config.customAuth {

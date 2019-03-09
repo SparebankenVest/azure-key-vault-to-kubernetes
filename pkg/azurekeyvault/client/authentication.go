@@ -20,8 +20,8 @@ type AzureKeyVaultCredentials struct {
 }
 
 // NewAzureKeyVaultCredentialsFromCloudConfig gets a credentials object from cloud config to use with Azure Key Vault
-func NewAzureKeyVaultCredentialsFromCloudConfig() (*AzureKeyVaultCredentials, error) {
-	config, err := readCloudConfig()
+func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (*AzureKeyVaultCredentials, error) {
+	config, err := readCloudConfig(cloudConfigPath)
 	if err != nil {
 		return nil, err
 	}
@@ -63,8 +63,8 @@ func (c AzureKeyVaultCredentials) Authorizer() (autorest.Authorizer, error) {
 	return c.getAuthorizer()
 }
 
-func readCloudConfig() (*cloudAuth.AzureAuthConfig, error) {
-	bytes, err := ioutil.ReadFile("/etc/kubernetes/azure.json")
+func readCloudConfig(path string) (*cloudAuth.AzureAuthConfig, error) {
+	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read cloud config file in an effort to get credentials for azure key vault, error: %+v", err)
 	}
