@@ -28,8 +28,6 @@
   - [Certificate with exportable key](#certificate-with-exportable-key)
 - [Credits](#credits)
 - [Contributing](#contributing)
-  - [[Code of Conduct](CODE_OF_CONDUCT.md)](#code-of-conductcode_of_conductmd)
-  - [[License](LICENSE)](#licenselicense)
 
 <!-- /TOC -->
 
@@ -441,10 +439,10 @@ Development of Azure Key Vault for Kubernetes happens in the open on GitHub, and
 * Help new users with issues they may encounter
 * Support the development of this project and star this repo!
 
-### [Code of Conduct](CODE_OF_CONDUCT.md)
+**[Code of Conduct](CODE_OF_CONDUCT.md)**
 
 Sparebanken Vest has adopted a Code of Conduct that we expect project participants to adhere to. Please read the full text so that you can understand what actions will and will not be tolerated.
 
-### [License](LICENSE)
+**[License](LICENSE)**
 
 Azure Key Vault to Kubernetes is licensed under Apache License 2.0.
