@@ -2,8 +2,6 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes) [![CircleCI](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes.svg?style=shield)](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes)
 
-**This project is currently in Alpha and not yet ready for public consumption**
-
 <!-- TOC depthFrom:2 -->
 
 - [Requirements](#requirements)
@@ -28,13 +26,17 @@
 - [Examples](#examples)
   - [Plain secret](#plain-secret)
   - [Certificate with exportable key](#certificate-with-exportable-key)
+- [Credits](#credits)
+- [Contributing](#contributing)
+  - [[Code of Conduct](CODE_OF_CONDUCT.md)](#code-of-conductcode_of_conductmd)
+  - [[License](LICENSE)](#licenselicense)
 
 <!-- /TOC -->
 
 ## Requirements
 
 * Kubernetes version >= 1.9 
-* Default [authentication](#authentication) requires Kubernetes cluster running in Azure - use custom authentication outside Azure
+* Default [authentication](#authentication) requires Kubernetes cluster running in Azure - use custom authentication if running outside Azure
 
 ## Overview
 
@@ -52,8 +54,6 @@ The motivation behind this project was:
 1. Avoid a anti-pattern where applications have a direct dependency on Azure Key Vault for getting secrets
 2. Make it simple, secure and low risk to transfer Azure Key Vault secrets into Kubernetes as native Kubernetes secrets
 3. Securely and transparently be able to inject Azure Key Vault secrets as environment variables to applications, without having to use native Kubernetes secrets
-
-**Credit goes to Banzai Cloud for coming up with the [original idea](https://banzaicloud.com/blog/inject-secrets-into-pods-vault/) of environment injection for their [`bank-vaults`](https://github.com/banzaicloud/bank-vaults) solution, which use this principal to inject Hashicorp Vault secrets into Pods.**
 
 ### When to use the Controller 
 
@@ -426,3 +426,25 @@ containers:
     value: my-first-azure-keyvault-env-certificate@azurekeyvault?tls.key
 ...
 ```
+
+## Credits
+
+Credit goes to Banzai Cloud for coming up with the [original idea](https://banzaicloud.com/blog/inject-secrets-into-pods-vault/) of environment injection for their [bank-vaults](https://github.com/banzaicloud/bank-vaults) solution, which they use to inject Hashicorp Vault secrets into Pods.
+
+## Contributing
+
+Development of Azure Key Vault for Kubernetes happens in the open on GitHub, and encourage users to:
+
+* Send a pull request with any security issues found and fixed
+* Send a pull request with your new features and bug fixes
+* Report issues on security or other issues you have come across
+* Help new users with issues they may encounter
+* Support the development of this project and star this repo!
+
+### [Code of Conduct](CODE_OF_CONDUCT.md)
+
+Sparebanken Vest has adopted a Code of Conduct that we expect project participants to adhere to. Please read the full text so that you can understand what actions will and will not be tolerated.
+
+### [License](LICENSE)
+
+Azure Key Vault to Kubernetes is licensed under Apache License 2.0.
