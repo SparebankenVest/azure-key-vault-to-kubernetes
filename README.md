@@ -26,6 +26,7 @@
   - [The Controller](#the-controller)
     - [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)
   - [The Env Injector](#the-env-injector)
+    - [Using queries with the Env Injector](#using-queries-with-the-env-injector)
 - [Examples](#examples)
   - [Plain secret](#plain-secret)
   - [Certificate with exportable key](#certificate-with-exportable-key)
@@ -255,13 +256,15 @@ spec:
 | `secret`      | Azure Key Vault Secret - can contain any secret data |
 | `certificate` | Azure Key Vault Certificate - A TLS certificate with just the public key or both public and private key if exportable |
 | `key`         | Azure Key Vault Key - A RSA or EC key used for signing |
-| `multi-key-value-secret`  | A special kind of Azure Key Vault Secret only understood by the Controller and the Env Injector. For cases where a secret contains `json` or `yaml` key/value items that will be directly exported as key/value items in the Kubernetes secret. When `multi-key-value-secret` type is used, the `contentType` property MUST also be set to either `application/x-json` or `application/x-yaml`. |
+| `multi-key-value-secret`  | A special kind of Azure Key Vault Secret only understood by the Controller and the Env Injector. For cases where a secret contains `json` or `yaml` key/value items that will be directly exported as key/value items in the Kubernetes secret, or access with queries in the Evn Injector. When `multi-key-value-secret` type is used, the `contentType` property MUST also be set to either `application/x-json` or `application/x-yaml`. |
 
 See [Examples](#examples) for different usages.
 
 ### The Controller
 
-After the Controller is installed, create `AzureKeyVaultSecret` resources to synchronize into native Kubernetes secrets. For the Controller, the `output` section is mandatory:
+Make sure the Controller is installed in the Kubernetes cluster, then:
+
+Create `AzureKeyVaultSecret` resources to synchronize into native Kubernetes secrets. Note that the `output` section is mandatory:
 
 ```yaml
   output: 
@@ -270,6 +273,7 @@ After the Controller is installed, create `AzureKeyVaultSecret` resources to syn
       dataKey: <required when type is opaque - name of the kubernetes secret data key to assign value to - ignored for all other types>
       type: <optional - kubernetes secret type - defaults to opaque>
 ```
+
 
 #### Commonly used Kubernetes secret types
 
@@ -322,8 +326,85 @@ This must be a properly formatted **Private** SSH Key stored in a Secret object.
 
 ### The Env Injector
 
-TBD
+Make sure the Env Injector is installed in the Kubernetes cluster, then:
 
+1. Create `AzureKeyVaultSecret` resources references secrets in Azure Key Vault
+2. Inject into applications using syntax below, referencing to the `AzureKeyVaultSecret` in 1.
+
+```yaml
+env:
+- name: <name of environment variable>
+  value: <name of AzureKeyVaultSecret>@azurekeyvault?<optional field query>
+...
+```
+
+**Example:**
+
+```yaml 
+# my-azure-keyvault-secret.yaml
+apiVersion: spv.no/v1alpha1
+kind: AzureKeyVaultSecret
+metadata:
+  name: my-azure-keyvault-secret
+  namespace: default
+spec:
+  vault:
+    name: my-kv # name of key vault
+    object:
+      type: secret # object type
+      name: test-secret # name of the object
+```
+
+```yaml
+# my-deployment.yaml
+...
+env:
+- name: MY_SECRET
+  value: my-azure-keyvault-secret@azurekeyvault
+...
+```
+
+Apply the resources to Kubernetes:
+
+```bash
+kubectl apply -f my-azure-keyvault-secret.yaml
+kubectl apply -f my-deployment.yaml
+```
+
+**Note: For the Env Injector, the `output` section of the `AzureKeyVaultSecret` is ignored, but if `output` is provided AND the Controller is also installed, it WILL create a Kubernetes secret, which is probably not the intention when using the Env Injector.**
+
+#### Using queries with the Env Injector
+
+The syntax used with environment variables for the Env Injector is:
+
+`<name of AzureKeyVaultSecret>@azurekeyvault?<optional field query>`
+
+There is currently only two cases where using a query is valid:
+
+1. For the Azure Key Vault type `certificate`
+2. For the special Env Injector/Azure Key Vault type `multi-key-value-secret` 
+
+For `certificate`, the available keys to query are `tls.key` (private key) and `tls.crt` (public key).
+
+The `multi-key-value-secret` is either a json or yaml document, containing `<key>: <value>` (yaml) or `"<key>": "<value>"` (json) elements only. See [Vault object types](#vault-object-types) for details. Only top level key/value is supported. Here is an example to illustrate:
+
+yaml:
+```yaml
+key1: my key 1 value
+key2: my key 2 value
+```
+
+json:
+```yaml
+{
+  "key1": "my key 1 value",
+  "key2": "my key 2 value"
+}
+```
+
+To get `key2` using query:
+
+`xxx@azurekeyvault?key2` which will return `my key 2 value`.
 
 ## Examples
 
@@ -347,10 +428,9 @@ spec:
     secret:
       name: keyvault-secret
       dataKey: azuresecret # key to store object value in kubernetes secret
-
 ```
 
-If Controller is installed the following Kubernetes Secret will be created:
+If the Controller is installed the following Kubernetes Secret will be created:
 
 ```yaml
 apiVersion: v1
