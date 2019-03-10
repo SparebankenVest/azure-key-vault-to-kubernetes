@@ -58,7 +58,7 @@ type azureKeyVaultConfig struct {
 
 var config azureKeyVaultConfig
 
-const envVarReplacementKey = "azurekeyvault@"
+const envVarReplacementKey = "@azurekeyvault"
 
 // This init-container copies a program to /azure-keyvault and
 // if default auth copies a read only version of azure config into
