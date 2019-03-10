@@ -3,7 +3,7 @@
 installCrd: true # if installing both controller and env injector, only one can install CRD
 image:
   repository: spvest/azure-keyvault-controller
-  tag: 0.1.1
+  tag: 0.1.2
 
 keyVault:
   # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
