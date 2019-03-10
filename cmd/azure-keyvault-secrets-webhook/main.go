@@ -444,7 +444,7 @@ func mutatePodSpec(pod *corev1.Pod) error {
 }
 
 func initConfig() {
-	viper.SetDefault("azurekeyvault_env_image", "spvest/azurekeyvault-env:latest")
+	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
 	viper.AutomaticEnv()
 }
 
