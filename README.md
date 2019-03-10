@@ -21,8 +21,11 @@
 - [Installation](#installation)
   - [Installation without Helm](#installation-without-helm)
 - [Usage](#usage)
-  - [Vault object types](#vault-object-types)
-  - [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)
+  - [The AzureKeyVaultSecret resource](#the-azurekeyvaultsecret-resource)
+    - [Vault object types](#vault-object-types)
+  - [The Controller](#the-controller)
+    - [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)
+  - [The Env Injector](#the-env-injector)
 - [Examples](#examples)
   - [Plain secret](#plain-secret)
   - [Certificate with exportable key](#certificate-with-exportable-key)
@@ -210,17 +213,15 @@ Env Injector: https://github.com/SparebankenVest/public-helm-charts/tree/master/
 
 ### Installation without Helm
 
-If Helm is not an option, use Helm on a local computer to generate the Kubernetes templates like below:
+If Helm is not an option in Kubernetes, use Helm on a local computer to generate the Kubernetes templates like below:
 
 `helm install --debug --dry-run <options>`
 
-See the individual Helm charts for `<options>`.
+See the individual Helm charts above for `<options>`.
 
 ## Usage
 
-After you have installed `azure-key-vault-to-kubernetes`, you can create `AzureKeyVaultSecret` resources and take advantage of either Kubernetes Secrets (Basic) or referencing `AzureKeyVaultSecret` resources from Pods.
-
-**NB! `output` is only used in Basic mode - the controller wil create the Azure Key Vault secret as a Kubernetes Secret - in Transparant mode `output` must be undefined.**
+### The AzureKeyVaultSecret resource
 
 The `AzureKeyVaultSecret` is defined using this schema:
 
@@ -245,18 +246,34 @@ spec:
       type: <optional - kubernetes secret type - defaults to opaque>
 ```
 
-See [Examples](#examples) for different usages.
+**Note - the `output` is only used by the Controller to create the Azure Key Vault secret as a Kubernetes native Secret - it is ignored and not needed by the Env Injector.**
 
-### Vault object types
+#### Vault object types
 
 | Object type   | Description |
 | ------------- | ----------- |
 | `secret`      | Azure Key Vault Secret - can contain any secret data |
 | `certificate` | Azure Key Vault Certificate - A TLS certificate with just the public key or both public and private key if exportable |
 | `key`         | Azure Key Vault Key - A RSA or EC key used for signing |
-| `multi-key-value-secret`  | A special kind of Azure Key Vault Secret only understood by the controller - For cases where the Secret contains `json` or `yaml` key/value items that will be directly exported as key/value items in the Kubernetes secret. When `multi-key-value-secret` type is used, the `contentType` property MUST also be set to either `application/x-json` or `application/x-yaml`. |
+| `multi-key-value-secret`  | A special kind of Azure Key Vault Secret only understood by the Controller and the Env Injector. For cases where a secret contains `json` or `yaml` key/value items that will be directly exported as key/value items in the Kubernetes secret. When `multi-key-value-secret` type is used, the `contentType` property MUST also be set to either `application/x-json` or `application/x-yaml`. |
 
-### Commonly used Kubernetes secret types
+See [Examples](#examples) for different usages.
+
+### The Controller
+
+After the Controller is installed, create `AzureKeyVaultSecret` resources to synchronize into native Kubernetes secrets. For the Controller, the `output` section is mandatory:
+
+```yaml
+  output: 
+    secret: 
+      name: <required - name of the kubernetes secret to create>
+      dataKey: <required when type is opaque - name of the kubernetes secret data key to assign value to - ignored for all other types>
+      type: <optional - kubernetes secret type - defaults to opaque>
+```
+
+#### Commonly used Kubernetes secret types
+
+The default secret type (`spec.output.secret.type`) is `opaque`. Below is a list of supported Kubernetes secret types and which keys each secret type stores.
 
 For a complete list: https://github.com/kubernetes/api/blob/49be0e3344fe443eb3d23105225ed2f1ab1e6cab/core/v1/types.go#L4950
 
@@ -270,7 +287,7 @@ For a complete list: https://github.com/kubernetes/api/blob/49be0e3344fe443eb3d2
 | `kubernetes.io/ssh-auth`         | `ssh-privatekey` |
 
 
-With the exception of the `opaque` secret type, the controller will make a best effort to export the Azure Key Vault object into the secret type defined.
+With the exception of the `opaque` secret type, the Controller will make a best effort to export the Azure Key Vault object into the secret type defined.
 
 **kubernetes/tls**
 
@@ -302,6 +319,11 @@ The controller support two formats. Either `username:password` or pre-encoded wi
 __kubernetes.io/ssh-auth__
 
 This must be a properly formatted **Private** SSH Key stored in a Secret object.
+
+### The Env Injector
+
+TBD
+
 
 ## Examples
 
