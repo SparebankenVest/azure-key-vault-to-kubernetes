@@ -6,12 +6,12 @@ debug: false
 
 image:
   repository: spvest/azure-keyvault-webhook
-  tag: 0.1.0-alpha.20
+  tag: 0.1.0
   pullPolicy: IfNotPresent
 
 envImage:
   repository: spvest/azure-keyvault-env
-  tag: 0.1.0-alpha.20
+  tag: 0.1.0
   
 service:
   name: azure-keyvault-secrets-webhook

@@ -51,14 +51,14 @@ The following tables lists configurable parameters of the azure-key-vault-env-in
 |customAuth.enabled                       |if custom authentication with azure key vault is enabled |false                         |
 |customAuth.autoInject.enabled            |if auto injection of credentials to pods is enabled|false                               |
 |customAuth.autoInject.secretName         |name of secret to use to store credentials   |{}                                        |
-|customAuth.autoInject.podIdentitySelector|if using aad-pod-identity, which selector to reference|{}                                        |
+|customAuth.autoInject.podIdentitySelector|if using aad-pod-identity, which selector to reference|{}                               |
 |debug                                    |debug logs for webhook                       |false                                     |
 |env                                      |aditional env vars to send to pod            |{}                                        |
 |envImage.repository                      |image repo that contains the env image       |spvest/azure-keyvault-webhook             |
-|envImage.tag                             |image tag                                    |0.1.0-alpha.19                            |
+|envImage.tag                             |image tag                                    |0.1.0                                     |
 |image.pullPolicy                         |image pull policy                            |IfNotPresent                              |
 |image.repository                         |image repo that contains the controller      |spvest/azure-keyvault-webhook             |
-|image.tag                                |image tag                                    |0.1.0-alpha.19                            |
+|image.tag                                |image tag                                    |0.1.0                                     |
 |installCrd                               |install custom resource definition           |true                                      |
 |nodeSelector                             |node selector to use                         |{}                                        |
 |replicaCount                             |number of replicas                           |1                                         |
