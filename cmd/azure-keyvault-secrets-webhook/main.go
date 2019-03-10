@@ -146,7 +146,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 		var envVars []corev1.EnvVar
 		fmt.Fprintf(os.Stdout, "Checking for env vars with right prefix in container %s\n", container.Name)
 		for _, env := range container.Env {
-			if strings.HasPrefix(env.Value, envVarReplacementKey) {
+			if strings.Contains(env.Value, envVarReplacementKey) {
 				fmt.Fprintf(os.Stdout, "Found env var: %s\n", env.Value)
 				envVars = append(envVars, env)
 			}
