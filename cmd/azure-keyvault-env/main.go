@@ -34,7 +34,7 @@ import (
 
 const (
 	logPrefix    = "env-injector:"
-	envLookupKey = "azurekeyvault@"
+	envLookupKey = "@azurekeyvault"
 )
 
 func setLogLevel() {
