@@ -75,7 +75,7 @@ spec:
           {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.service.internalPort }}
+          - containerPort: {{ .Values.service.internalPort }}
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
