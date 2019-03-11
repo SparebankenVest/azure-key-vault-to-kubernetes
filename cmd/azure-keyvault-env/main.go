@@ -68,22 +68,22 @@ func main() {
 
 	log.Debugf("%s namespace: %s", logPrefix, namespace)
 
-	defaultAuth := strings.ToLower(os.Getenv("ENV_INJECTOR_DEFAULT_AUTH"))
-	log.Debugf("%s inject default auth: %s", logPrefix, defaultAuth)
+	customAuth := strings.ToLower(os.Getenv("ENV_INJECTOR_CUSTOM_AUTH"))
+	log.Debugf("%s use custom auth: %s", logPrefix, customAuth)
 
 	var creds *vault.AzureKeyVaultCredentials
 	var err error
 
-	if defaultAuth == "true" {
-		log.Debugf("%s getting credentials for azure key vault using azure credentials from cloud config", logPrefix)
-		creds, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig("/azure-keyvault/azure.json")
+	if customAuth == "true" {
+		log.Debugf("%s getting credentials for azure key vault using azure credentials supplied to pod", logPrefix)
+
+		creds, err = vault.NewAzureKeyVaultCredentialsFromEnvironment()
 		if err != nil {
 			log.Fatalf("%s failed to get credentials for azure key vault, error %+v", logPrefix, err)
 		}
 	} else {
-		log.Debugf("%s getting credentials for azure key vault using azure credentials supplied to pod", logPrefix)
-
-		creds, err = vault.NewAzureKeyVaultCredentialsFromEnvironment()
+		log.Debugf("%s getting credentials for azure key vault using azure credentials from cloud config", logPrefix)
+		creds, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig("/azure-keyvault/azure.json")
 		if err != nil {
 			log.Fatalf("%s failed to get credentials for azure key vault, error %+v", logPrefix, err)
 		}
