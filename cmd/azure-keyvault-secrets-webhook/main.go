@@ -166,7 +166,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 		if ok {
 			fmt.Fprintf(os.Stdout, "found credentials to use with registry '%s'\n", registryName)
 		} else {
-			fmt.Fprintf(os.Stdout, "did not find credentials to use with registry '%s' - using default credentials\n", registryName)
+			fmt.Fprintf(os.Stdout, "did not find credentials to use with registry '%s' - getting default credentials\n", registryName)
 			regCred, ok = getAcrCreds(registryName)
 		}
 
@@ -229,12 +229,13 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 		RegistryAuth: creds,
 	})
 
+	defer imgReader.Close()
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", container.Image, err)
 	}
 
-	defer imgReader.Close()
-
+	fmt.Fprintf(os.Stdout, "Inspecting container image %s, looking for cmd\n", container.Image)
 	inspect, _, err := cli.ImageInspectWithRaw(context.Background(), container.Image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect docker image '%s', error: %+v", container.Image, err)
