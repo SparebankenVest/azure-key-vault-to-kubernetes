@@ -112,6 +112,7 @@ func main() {
 		// e.g. my-akv-secret-name@azurekeyvault?some-sub-key
 		if strings.Contains(value, envLookupKey) {
 			// e.g. my-akv-secret-name?some-sub-key
+			log.Debugf("%s found env var '%s' to get azure key vault secret for", logPrefix, value)
 			secretName := strings.Join(strings.Split(value, envLookupKey), "")
 
 			if secretName == "" {
@@ -125,6 +126,7 @@ func main() {
 				}
 				secretName = query[0]
 				secretQuery = query[1]
+				log.Debugf("%s found query in env var '%s', '%s'", logPrefix, value, secretQuery)
 			}
 
 			log.Debugf("%s getting azurekeyvaultsecret resource '%s' from kubernetes", logPrefix, secretName)

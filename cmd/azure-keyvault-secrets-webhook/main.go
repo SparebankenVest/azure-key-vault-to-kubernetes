@@ -138,7 +138,6 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 }
 
 func mutateContainers(containers []corev1.Container, creds map[string]string) bool {
-	fmt.Fprintln(os.Stdout, "Mutating containers...")
 	mutated := false
 	for i, container := range containers {
 		fmt.Fprintf(os.Stdout, "Found container '%s' to mutate\n", container.Name)
@@ -225,6 +224,7 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 	}
 
 	// pull image in case its not present on host yet
+	fmt.Fprintf(os.Stdout, "pulling image %s\n", container.Image)
 	imgReader, err := cli.ImagePull(context.Background(), container.Image, dockertypes.ImagePullOptions{
 		RegistryAuth: creds,
 	})
@@ -438,6 +438,9 @@ func mutatePodSpec(pod *corev1.Pod) error {
 
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
 		podSpec.Volumes = append(podSpec.Volumes, getVolumes()...)
+		fmt.Fprint(os.Stdout, "containers mutated and pod updated with init-container and volumes\n")
+	} else {
+		fmt.Fprint(os.Stdout, "no containers mutated\n")
 	}
 
 	return nil
