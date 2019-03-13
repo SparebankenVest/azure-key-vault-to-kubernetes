@@ -27,6 +27,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	whhttp "github.com/slok/kubewebhook/pkg/http"
 	"github.com/slok/kubewebhook/pkg/log"
@@ -143,7 +144,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 		fmt.Fprintf(os.Stdout, "Found container '%s' to mutate\n", container.Name)
 
 		var envVars []corev1.EnvVar
-		fmt.Fprintf(os.Stdout, "Checking for env vars with right prefix in container %s\n", container.Name)
+		fmt.Fprintf(os.Stdout, "Checking for env vars containing '%s' in container %s\n", envVarReplacementKey, container.Name)
 		for _, env := range container.Env {
 			if strings.Contains(env.Value, envVarReplacementKey) {
 				fmt.Fprintf(os.Stdout, "Found env var: %s\n", env.Value)
@@ -216,30 +217,9 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 }
 
 func getContainerCmd(container corev1.Container, creds string) ([]string, error) {
+	var image *dockertypes.ImageInspect
+	var err error
 	cmd := make([]string, 0)
-
-	cli, err := dockerclient.NewEnvClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create docker client, error: %+v", err)
-	}
-
-	// pull image in case its not present on host yet
-	fmt.Fprintf(os.Stdout, "pulling image %s\n", container.Image)
-	imgReader, err := cli.ImagePull(context.Background(), container.Image, dockertypes.ImagePullOptions{
-		RegistryAuth: creds,
-	})
-
-	defer imgReader.Close()
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", container.Image, err)
-	}
-
-	fmt.Fprintf(os.Stdout, "Inspecting container image %s, looking for cmd\n", container.Image)
-	inspect, _, err := cli.ImageInspectWithRaw(context.Background(), container.Image)
-	if err != nil {
-		return nil, fmt.Errorf("failed to inspect docker image '%s', error: %+v", container.Image, err)
-	}
 
 	// If container.Command is set it will override both image.Entrypoint AND image.Cmd
 	// https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
@@ -247,13 +227,19 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 		fmt.Fprintf(os.Stdout, "Found container command %v\n", container.Command)
 		cmd = append(cmd, container.Command...)
 	} else {
-		if inspect.Config.Entrypoint != nil {
-			fmt.Fprintf(os.Stdout, "Dit not find container command, using Entrypoint %v\n", []string(inspect.Config.Entrypoint))
-			cmd = append(cmd, []string(inspect.Config.Entrypoint)...)
+		fmt.Fprintf(os.Stdout, "Getting docker image %s\n", container.Image)
+		image, err = getDockerImage(container, creds)
+		if err != nil {
+			return nil, err
+		}
+
+		if image.Config.Entrypoint != nil {
+			fmt.Fprintf(os.Stdout, "Found Entrypoint %v\n", []string(image.Config.Entrypoint))
+			cmd = append(cmd, []string(image.Config.Entrypoint)...)
 		} else {
-			if inspect.Config.Cmd != nil {
-				fmt.Fprintf(os.Stdout, "Dit not find container command or image Entrypoint, using Cmd from image %v\n", []string(inspect.Config.Cmd))
-				cmd = append(cmd, []string(inspect.Config.Cmd)...)
+			if image.Config.Cmd != nil {
+				fmt.Fprintf(os.Stdout, "Using Cmd from image %v\n", []string(image.Config.Cmd))
+				cmd = append(cmd, []string(image.Config.Cmd)...)
 			}
 		}
 	}
@@ -263,14 +249,58 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 		fmt.Fprintf(os.Stdout, "Found container args (will override any cmd or args from image): %v\n", container.Args)
 		cmd = append(cmd, container.Args...)
 	} else {
+		if image == nil {
+			fmt.Fprintf(os.Stdout, "Getting docker image %s\n", container.Image)
+			image, err = getDockerImage(container, creds)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		// if container.Command is set it will override image.Cmd
-		if container.Command == nil && inspect.Config.Cmd != nil {
-			fmt.Fprintf(os.Stdout, "Did not find any container.Command or container.Args, using Cmd from image: %v\n", []string(inspect.Config.Cmd))
-			cmd = append(cmd, []string(inspect.Config.Cmd)...)
+		if container.Command == nil && image.Config.Cmd != nil {
+			fmt.Fprintf(os.Stdout, "Using Cmd from image: %v\n", []string(image.Config.Cmd))
+			cmd = append(cmd, []string(image.Config.Cmd)...)
 		}
 	}
 
 	return cmd, nil
+}
+
+func getDockerImage(container corev1.Container, creds string) (*dockertypes.ImageInspect, error) {
+	timeout := 30 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	opt := dockertypes.ImagePullOptions{}
+	// setting up privileges in case they are needed
+	if creds != "" {
+		opt.PrivilegeFunc = func() (string, error) {
+			return creds, nil
+		}
+	}
+
+	cli, err := dockerclient.NewEnvClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker client, error: %+v", err)
+	}
+
+	// pull image in case its not present on host yet
+	fmt.Fprintf(os.Stdout, "pulling image %s to get entrypoint and cmd, timeout is %d seconds\n", container.Image, timeout)
+	imgReader, err := cli.ImagePull(ctx, container.Image, opt)
+	defer imgReader.Close()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", container.Image, err)
+	}
+
+	fmt.Fprintf(os.Stdout, "Inspecting container image %s, looking for entrypoint and cmd\n", container.Image)
+	inspect, _, err := cli.ImageInspectWithRaw(context.Background(), container.Image)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect docker image '%s', error: %+v", container.Image, err)
+	}
+
+	return &inspect, nil
 }
 
 func getRegistryCreds(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (map[string]string, error) {
