@@ -29,8 +29,9 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	whhttp "github.com/slok/kubewebhook/pkg/http"
-	"github.com/slok/kubewebhook/pkg/log"
+	internalLog "github.com/slok/kubewebhook/pkg/log"
 	whcontext "github.com/slok/kubewebhook/pkg/webhook/context"
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
@@ -60,6 +61,18 @@ type azureKeyVaultConfig struct {
 var config azureKeyVaultConfig
 
 const envVarReplacementKey = "@azurekeyvault"
+
+func setLogLevel(logLevel string) {
+	if logLevel == "" {
+		logLevel = log.InfoLevel.String()
+	}
+
+	logrusLevel, err := log.ParseLevel(logLevel)
+	if err != nil {
+		log.Fatalf("Error setting log level: %s", err.Error())
+	}
+	log.SetLevel(logrusLevel)
+}
 
 // This init-container copies a program to /azure-keyvault and
 // if default auth copies a read only version of azure config into
@@ -129,7 +142,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 
 	switch v := obj.(type) {
 	case *corev1.Pod:
-		fmt.Fprintf(os.Stdout, "Found pod '%s' to mutate in namespace '%s'\n", obj.GetName(), config.namespace)
+		log.Infof("Found pod '%s' to mutate in namespace '%s'", obj.GetName(), config.namespace)
 		pod = v
 	default:
 		return false, nil
@@ -141,18 +154,18 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 func mutateContainers(containers []corev1.Container, creds map[string]string) bool {
 	mutated := false
 	for i, container := range containers {
-		fmt.Fprintf(os.Stdout, "Found container '%s' to mutate\n", container.Name)
+		log.Infof("Found container '%s' to mutate", container.Name)
 
 		var envVars []corev1.EnvVar
-		fmt.Fprintf(os.Stdout, "Checking for env vars containing '%s' in container %s\n", envVarReplacementKey, container.Name)
+		log.Infof("Checking for env vars containing '%s' in container %s", envVarReplacementKey, container.Name)
 		for _, env := range container.Env {
 			if strings.Contains(env.Value, envVarReplacementKey) {
-				fmt.Fprintf(os.Stdout, "Found env var: %s\n", env.Value)
+				log.Infof("Found env var: %s", env.Value)
 				envVars = append(envVars, env)
 			}
 		}
 		if len(envVars) == 0 {
-			fmt.Fprintln(os.Stdout, "Found no env vars in container")
+			log.Info("Found no env vars in container")
 			continue
 		}
 
@@ -165,19 +178,19 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 		regCred, ok := creds[registryName]
 
 		if ok {
-			fmt.Fprintf(os.Stdout, "found credentials to use with registry '%s'\n", registryName)
+			log.Infof("found credentials to use with registry '%s'", registryName)
 		} else {
-			fmt.Fprintf(os.Stdout, "did not find credentials to use with registry '%s' - getting default credentials\n", registryName)
+			log.Infof("did not find credentials to use with registry '%s' - getting default credentials", registryName)
 			regCred, ok = getAcrCreds(registryName)
 		}
 
 		autoArgs, err := getContainerCmd(container, regCred)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to get auto cmd, error: %+v", err)
+			log.Errorf("failed to get auto cmd, error: %+v", err)
 			continue
 		}
 
-		fmt.Fprintf(os.Stdout, "Auto args is %v\n", autoArgs)
+		log.Infof("Auto args is %v", autoArgs)
 
 		mutated = true
 
@@ -224,21 +237,21 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 	// If container.Command is set it will override both image.Entrypoint AND image.Cmd
 	// https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
 	if container.Command != nil {
-		fmt.Fprintf(os.Stdout, "Found container command %v\n", container.Command)
+		log.Infof("Found container command %v", container.Command)
 		cmd = append(cmd, container.Command...)
 	} else {
-		fmt.Fprintf(os.Stdout, "Getting docker image %s\n", container.Image)
+		log.Infof("Getting docker image %s", container.Image)
 		image, err = getDockerImage(container, creds)
 		if err != nil {
 			return nil, err
 		}
 
 		if image.Config.Entrypoint != nil {
-			fmt.Fprintf(os.Stdout, "Found Entrypoint %v\n", []string(image.Config.Entrypoint))
+			log.Infof("Found Entrypoint %v", []string(image.Config.Entrypoint))
 			cmd = append(cmd, []string(image.Config.Entrypoint)...)
 		} else {
 			if image.Config.Cmd != nil {
-				fmt.Fprintf(os.Stdout, "Using Cmd from image %v\n", []string(image.Config.Cmd))
+				log.Infof("Using Cmd from image %v", []string(image.Config.Cmd))
 				cmd = append(cmd, []string(image.Config.Cmd)...)
 			}
 		}
@@ -246,11 +259,11 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 
 	// If container.Args is set it will override image.Cmd
 	if container.Args != nil {
-		fmt.Fprintf(os.Stdout, "Found container args (will override any cmd or args from image): %v\n", container.Args)
+		log.Infof("Found container args (will override any cmd or args from image): %v", container.Args)
 		cmd = append(cmd, container.Args...)
 	} else {
 		if image == nil {
-			fmt.Fprintf(os.Stdout, "Getting docker image %s\n", container.Image)
+			log.Infof("Getting docker image %s", container.Image)
 			image, err = getDockerImage(container, creds)
 			if err != nil {
 				return nil, err
@@ -259,7 +272,7 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 
 		// if container.Command is set it will override image.Cmd
 		if container.Command == nil && image.Config.Cmd != nil {
-			fmt.Fprintf(os.Stdout, "Using Cmd from image: %v\n", []string(image.Config.Cmd))
+			log.Infof("Using Cmd from image: %v", []string(image.Config.Cmd))
 			cmd = append(cmd, []string(image.Config.Cmd)...)
 		}
 	}
@@ -286,7 +299,7 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 	}
 
 	// pull image in case its not present on host yet
-	fmt.Fprintf(os.Stdout, "pulling image %s to get entrypoint and cmd, timeout is %d seconds\n", container.Image, timeout)
+	log.Infof("pulling image %s to get entrypoint and cmd, timeout is %d seconds", container.Image, timeout)
 	imgReader, err := cli.ImagePull(ctx, container.Image, opt)
 	defer imgReader.Close()
 
@@ -294,7 +307,7 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", container.Image, err)
 	}
 
-	fmt.Fprintf(os.Stdout, "Inspecting container image %s, looking for entrypoint and cmd\n", container.Image)
+	log.Infof("Inspecting container image %s, looking for entrypoint and cmd", container.Image)
 	inspect, _, err := cli.ImageInspectWithRaw(context.Background(), container.Image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect docker image '%s', error: %+v", container.Image, err)
@@ -372,37 +385,37 @@ func getRegistryCreds(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (
 
 func getAcrCreds(host string) (string, bool) {
 	if !hostIsAzureContainerRegistry(host) {
-		fmt.Fprintf(os.Stdout, "registry host '%s' is not a acr registry\n", host)
+		log.Infof("registry host '%s' is not a acr registry", host)
 		return "", false
 	}
 
 	bytes, err := ioutil.ReadFile(config.cloudConfigHostPath)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "failed to read azure.json to get default credentials, error: %v\n", err)
+		log.Infof("failed to read azure.json to get default credentials, error: %v", err)
 		return "", false //creds, fmt.Errorf("failed to read cloud config file in an effort to get credentials for azure key vault, error: %+v", err)
 	}
 
 	azureConfig := auth.AzureAuthConfig{}
 	if err = yaml.Unmarshal(bytes, &azureConfig); err != nil {
-		fmt.Fprintf(os.Stdout, "failed to unmarshall azure config, error: %v\n", err)
+		log.Infof("failed to unmarshall azure config, error: %v", err)
 		return "", false // creds, fmt.Errorf("Unmarshall error: %v", err)
 	}
 
 	var credsValue dockertypes.AuthConfig
 	if azureConfig.AADClientID != "" {
-		fmt.Fprintf(os.Stdout, "using default credentials for docker registry with clientid: %s\n", azureConfig.AADClientID)
+		log.Infof("using default credentials for docker registry with clientid: %s", azureConfig.AADClientID)
 		credsValue = dockertypes.AuthConfig{
 			Username: azureConfig.AADClientID,
 			Password: azureConfig.AADClientSecret,
 		}
 	} else {
-		fmt.Fprintf(os.Stdout, "aadclientid is not set i azure config, so have no credentials to use\n")
+		log.Info("aadclientid is not set i azure config, so have no credentials to use")
 		return "", false // nil, fmt.Errorf("Failed to find credentials for docker registry '%s'", regHost)
 	}
 
 	encodedJSON, err := json.Marshal(credsValue)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "failed to marshall credentials, error: %v\n", err)
+		log.Errorf("failed to marshall credentials, error: %v\n", err)
 		return "", false // creds, err
 	}
 	return base64.URLEncoding.EncodeToString(encodedJSON), true
@@ -446,7 +459,7 @@ func mutatePodSpec(pod *corev1.Pod) error {
 					pod.Labels["aadpodidbinding"] = config.aadPodBindingLabel
 				}
 			} else {
-				fmt.Fprintf(os.Stdout, "Creating secret in new namespace '%s'...\n", config.namespace)
+				log.Infof("Creating secret in new namespace '%s'...", config.namespace)
 
 				keyVaultSecret, err := config.credentials.GetKubernetesSecret(config.credentialsSecretName)
 				if err != nil {
@@ -469,9 +482,9 @@ func mutatePodSpec(pod *corev1.Pod) error {
 
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
 		podSpec.Volumes = append(podSpec.Volumes, getVolumes()...)
-		fmt.Fprint(os.Stdout, "containers mutated and pod updated with init-container and volumes\n")
+		log.Info("containers mutated and pod updated with init-container and volumes")
 	} else {
-		fmt.Fprint(os.Stdout, "no containers mutated\n")
+		log.Info("no containers mutated")
 	}
 
 	return nil
@@ -482,16 +495,16 @@ func initConfig() {
 	viper.AutomaticEnv()
 }
 
-func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, logger log.Logger) http.Handler {
+func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, logger internalLog.Logger) http.Handler {
 	webhook, err := mutating.NewWebhook(config, mutator, nil, nil, logger)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating webhook: %s", err)
+		log.Errorf("error creating webhook: %s", err)
 		os.Exit(1)
 	}
 
 	handler, err := whhttp.HandlerFor(webhook)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating webhook: %s", err)
+		log.Errorf("error creating webhook: %s", err)
 		os.Exit(1)
 	}
 
@@ -503,7 +516,9 @@ func main() {
 	initConfig()
 	fmt.Fprintln(os.Stdout, "Config initialized")
 
-	logger := &log.Std{Debug: viper.GetBool("debug")}
+	logger := &internalLog.Std{Debug: viper.GetBool("debug")}
+
+	setLogLevel(viper.GetString("LOG_LEVEL"))
 
 	config = azureKeyVaultConfig{
 		customAuth:               viper.GetBool("CUSTOM_AUTH"),
