@@ -246,6 +246,10 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 			return nil, err
 		}
 
+		if image == nil {
+			return nil, fmt.Errorf("when getting docker image description for %s, an empty description was returned", container.Image)
+		}
+
 		if image.Config.Entrypoint != nil {
 			log.Infof("Found Entrypoint %v", []string(image.Config.Entrypoint))
 			cmd = append(cmd, []string(image.Config.Entrypoint)...)
@@ -267,6 +271,10 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 			image, err = getDockerImage(container, creds)
 			if err != nil {
 				return nil, err
+			}
+
+			if image == nil {
+				return nil, fmt.Errorf("when getting docker image description for %s, an empty description was returned", container.Image)
 			}
 		}
 
@@ -299,9 +307,12 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 	}
 
 	// pull image in case its not present on host yet
-	log.Infof("pulling image %s to get entrypoint and cmd, timeout is %d seconds", container.Image, timeout)
+	log.Infof("pulling docker image %s to get entrypoint and cmd, timeout is %d seconds", container.Image, timeout)
 	imgReader, err := cli.ImagePull(ctx, container.Image, opt)
+	defer cancel()
 	defer imgReader.Close()
+
+	log.Infof("docker image %s pulled successfully", container.Image)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", container.Image, err)
