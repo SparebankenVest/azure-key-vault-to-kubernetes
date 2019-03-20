@@ -300,24 +300,29 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 		return nil, fmt.Errorf("failed to create docker client, error: %+v", err)
 	}
 
+	imageName := container.Image
+	if !strings.Contains(imageName, "/") {
+		imageName = "docker.io/library/" + imageName
+	}
+
 	// pull image in case its not present on host yet
-	log.Infof("pulling docker image %s to get entrypoint and cmd, timeout is %d seconds", container.Image, timeout/time.Second)
-	imgReader, err := cli.ImagePull(ctx, container.Image, opt)
+	log.Infof("pulling docker image %s to get entrypoint and cmd, timeout is %d seconds", imageName, timeout/time.Second)
+	imgReader, err := cli.ImagePull(ctx, imageName, opt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", container.Image, err)
+		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", imageName, err)
 	}
 
 	imgPullOutput, err := ioutil.ReadAll(imgReader)
 	log.Debugf("docker pull image output: %s", imgPullOutput)
 	// io.Copy(os.Stdout, imgReader)
 
-	log.Infof("docker image %s pulled successfully", container.Image)
+	log.Infof("docker image %s pulled successfully", imageName)
 	defer imgReader.Close()
 
-	log.Infof("inspecting container image %s, looking for entrypoint and cmd", container.Image)
-	inspect, _, err := cli.ImageInspectWithRaw(ctx, container.Image)
+	log.Infof("inspecting container image %s, looking for entrypoint and cmd", imageName)
+	inspect, _, err := cli.ImageInspectWithRaw(ctx, imageName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to inspect docker image '%s', error: %+v", container.Image, err)
+		return nil, fmt.Errorf("failed to inspect docker image '%s', error: %+v", imageName, err)
 	}
 
 	return &inspect, nil
