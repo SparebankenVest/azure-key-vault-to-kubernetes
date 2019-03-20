@@ -190,7 +190,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 			continue
 		}
 
-		log.Infof("Auto args is %v", autoArgs)
+		log.Infof("using '%s' as arguments for env-injector", strings.Join(autoArgs, " "))
 
 		mutated = true
 
@@ -250,11 +250,11 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 		}
 
 		if image.Config.Entrypoint != nil {
-			log.Infof("Found Entrypoint %v", []string(image.Config.Entrypoint))
+			log.Infof("found Entrypoint %v", []string(image.Config.Entrypoint))
 			cmd = append(cmd, []string(image.Config.Entrypoint)...)
 		} else {
 			if image.Config.Cmd != nil {
-				log.Infof("Using Cmd from image %v", []string(image.Config.Cmd))
+				log.Infof("using Cmd from image %v", []string(image.Config.Cmd))
 				cmd = append(cmd, []string(image.Config.Cmd)...)
 			}
 		}
@@ -310,7 +310,7 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 	log.Infof("docker image %s pulled successfully", container.Image)
 	defer imgReader.Close()
 
-	log.Infof("Inspecting container image %s, looking for entrypoint and cmd", container.Image)
+	log.Infof("inspecting container image %s, looking for entrypoint and cmd", container.Image)
 	inspect, _, err := cli.ImageInspectWithRaw(context.Background(), container.Image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect docker image '%s', error: %+v", container.Image, err)
