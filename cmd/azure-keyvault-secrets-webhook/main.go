@@ -240,7 +240,6 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 		log.Infof("Found container command %v", container.Command)
 		cmd = append(cmd, container.Command...)
 	} else {
-		log.Infof("Getting docker image %s", container.Image)
 		image, err = getDockerImage(container, creds)
 		if err != nil {
 			return nil, err
