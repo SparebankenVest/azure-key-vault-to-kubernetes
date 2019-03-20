@@ -142,7 +142,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 
 	switch v := obj.(type) {
 	case *corev1.Pod:
-		log.Infof("Found pod '%s' to mutate in namespace '%s'", obj.GetName(), config.namespace)
+		log.Infof("Found pod to mutate in namespace '%s'", config.namespace)
 		pod = v
 	default:
 		return false, nil
