@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -306,11 +307,13 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", container.Image, err)
 	}
+	io.Copy(os.Stdout, imgReader)
+
 	log.Infof("docker image %s pulled successfully", container.Image)
 	defer imgReader.Close()
 
 	log.Infof("inspecting container image %s, looking for entrypoint and cmd", container.Image)
-	inspect, _, err := cli.ImageInspectWithRaw(context.Background(), container.Image)
+	inspect, _, err := cli.ImageInspectWithRaw(ctx, container.Image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect docker image '%s', error: %+v", container.Image, err)
 	}
