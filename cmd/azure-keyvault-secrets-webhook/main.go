@@ -293,12 +293,8 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	opt := dockertypes.ImagePullOptions{}
-	// setting up privileges in case they are needed
-	if creds != "" {
-		opt.PrivilegeFunc = func() (string, error) {
-			return creds, nil
-		}
+	opt := dockertypes.ImagePullOptions{
+		RegistryAuth: creds,
 	}
 
 	cli, err := dockerclient.NewEnvClient()
