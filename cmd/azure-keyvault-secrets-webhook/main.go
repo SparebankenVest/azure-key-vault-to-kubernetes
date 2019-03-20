@@ -69,7 +69,7 @@ func setLogLevel(logLevel string) {
 
 	logrusLevel, err := log.ParseLevel(logLevel)
 	if err != nil {
-		log.Fatalf("Error setting log level: %s", err.Error())
+		log.Fatalf("error setting log level: %s", err.Error())
 	}
 	log.SetLevel(logrusLevel)
 }
@@ -142,7 +142,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 
 	switch v := obj.(type) {
 	case *corev1.Pod:
-		log.Infof("Found pod to mutate in namespace '%s'", config.namespace)
+		log.Infof("found pod to mutate in namespace '%s'", config.namespace)
 		pod = v
 	default:
 		return false, nil
@@ -151,21 +151,21 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 	return false, mutatePodSpec(pod)
 }
 
-func mutateContainers(containers []corev1.Container, creds map[string]string) bool {
+func mutateContainers(containers []corev1.Container, creds map[string]string) (bool, error) {
 	mutated := false
 	for i, container := range containers {
-		log.Infof("Found container '%s' to mutate", container.Name)
+		log.Infof("found container '%s' to mutate", container.Name)
 
 		var envVars []corev1.EnvVar
-		log.Infof("Checking for env vars containing '%s' in container %s", envVarReplacementKey, container.Name)
+		log.Infof("checking for env vars containing '%s' in container %s", envVarReplacementKey, container.Name)
 		for _, env := range container.Env {
 			if strings.Contains(env.Value, envVarReplacementKey) {
-				log.Infof("Found env var: %s", env.Value)
+				log.Infof("found env var: %s", env.Value)
 				envVars = append(envVars, env)
 			}
 		}
 		if len(envVars) == 0 {
-			log.Info("Found no env vars in container")
+			log.Info("found no env vars in container")
 			continue
 		}
 
@@ -186,8 +186,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 
 		autoArgs, err := getContainerCmd(container, regCred)
 		if err != nil {
-			log.Errorf("failed to get auto cmd, error: %+v", err)
-			continue
+			return false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
 		}
 
 		log.Infof("using '%s' as arguments for env-injector", strings.Join(autoArgs, " "))
@@ -226,7 +225,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) bo
 		containers[i] = container
 	}
 
-	return mutated
+	return mutated, nil
 }
 
 func getContainerCmd(container corev1.Container, creds string) ([]string, error) {
@@ -451,8 +450,15 @@ func mutatePodSpec(pod *corev1.Pod) error {
 		return err
 	}
 
-	initContainersMutated := mutateContainers(podSpec.InitContainers, regCred)
-	containersMutated := mutateContainers(podSpec.Containers, regCred)
+	initContainersMutated, err := mutateContainers(podSpec.InitContainers, regCred)
+	if err != nil {
+		return err
+	}
+
+	containersMutated, err := mutateContainers(podSpec.Containers, regCred)
+	if err != nil {
+		return err
+	}
 
 	if initContainersMutated || containersMutated {
 		if config.namespace != "" && config.customAuth && config.customAuthAutoInject {
@@ -462,7 +468,7 @@ func mutatePodSpec(pod *corev1.Pod) error {
 					pod.Labels["aadpodidbinding"] = config.aadPodBindingLabel
 				}
 			} else {
-				log.Infof("Creating secret in new namespace '%s'...", config.namespace)
+				log.Infof("creating secret in new namespace '%s'...", config.namespace)
 
 				keyVaultSecret, err := config.credentials.GetKubernetesSecret(config.credentialsSecretName)
 				if err != nil {
@@ -515,9 +521,9 @@ func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, log
 }
 
 func main() {
-	fmt.Fprintln(os.Stdout, "Initializing config...")
+	fmt.Fprintln(os.Stdout, "initializing config...")
 	initConfig()
-	fmt.Fprintln(os.Stdout, "Config initialized")
+	fmt.Fprintln(os.Stdout, "config initialized")
 
 	logger := &internalLog.Std{Debug: viper.GetBool("debug")}
 
@@ -552,7 +558,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/pods", podHandler)
 
-	logger.Infof("Listening on :443")
+	logger.Infof("listening on :443")
 	err := http.ListenAndServeTLS(":443", viper.GetString("tls_cert_file"), viper.GetString("tls_private_key_file"), mux)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error serving webhook: %s", err)
