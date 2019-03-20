@@ -309,13 +309,11 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 	// pull image in case its not present on host yet
 	log.Infof("pulling docker image %s to get entrypoint and cmd, timeout is %d seconds", container.Image, timeout/time.Second)
 	imgReader, err := cli.ImagePull(ctx, container.Image, opt)
-	defer imgReader.Close()
-
-	log.Infof("docker image %s pulled successfully", container.Image)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", container.Image, err)
 	}
+	log.Infof("docker image %s pulled successfully", container.Image)
+	defer imgReader.Close()
 
 	log.Infof("Inspecting container image %s, looking for entrypoint and cmd", container.Image)
 	inspect, _, err := cli.ImageInspectWithRaw(context.Background(), container.Image)
