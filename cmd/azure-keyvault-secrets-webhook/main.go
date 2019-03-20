@@ -307,6 +307,8 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", container.Image, err)
 	}
 
+	imgPullOutput, err := ioutil.ReadAll(imgReader)
+	log.Debugf("docker pull image output: %s", imgPullOutput)
 	// io.Copy(os.Stdout, imgReader)
 
 	log.Infof("docker image %s pulled successfully", container.Image)
