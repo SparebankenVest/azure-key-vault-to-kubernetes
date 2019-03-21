@@ -519,7 +519,7 @@ containers:
 
 Doing HTTPS calls without CA certificates will make it impossible for the client to validate if a TLS certificate is signed by a trusted CA. 
 
-**Solution:** Make sure CA certificates are installed (eg. `apt-get install -y ca-certificates`)
+**Solution:** Make sure CA certificates are installed in the Docker image used by the container you are trying to inject env vars into (eg. `apt-get install -y ca-certificates`)
 
 ## Credits
 
