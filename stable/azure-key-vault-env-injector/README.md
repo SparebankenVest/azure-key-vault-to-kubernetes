@@ -54,11 +54,11 @@ The following tables lists configurable parameters of the azure-key-vault-env-in
 |customAuth.autoInject.podIdentitySelector|if using aad-pod-identity, which selector to reference|{}                               |
 |debug                                    |debug logs for webhook                       |false                                     |
 |env                                      |aditional env vars to send to pod            |{}                                        |
-|envImage.repository                      |image repo that contains the env image       |spvest/azure-keyvault-webhook             |
-|envImage.tag                             |image tag                                    |0.1.0                                     |
+|envImage.repository                      |image repo that contains the env image       |spvest/azure-keyvault-env                 |
+|envImage.tag                             |image tag                                    |0.1.10                                     |
 |image.pullPolicy                         |image pull policy                            |IfNotPresent                              |
 |image.repository                         |image repo that contains the controller      |spvest/azure-keyvault-webhook             |
-|image.tag                                |image tag                                    |0.1.0                                     |
+|image.tag                                |image tag                                    |0.1.10                                     |
 |installCrd                               |install custom resource definition           |true                                      |
 |nodeSelector                             |node selector to use                         |{}                                        |
 |replicaCount                             |number of replicas                           |1                                         |
