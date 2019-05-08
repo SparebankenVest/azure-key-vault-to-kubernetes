@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"strings"
 
 	"golang.org/x/crypto/pkcs12"
 )
@@ -135,11 +136,17 @@ func (cert *Certificate) ExportPublicKeyAsPem() ([]byte, error) {
 		return nil, fmt.Errorf("certificate has multiple public keys")
 	}
 
-	privKeyBlock := &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: cert.Certificates[0].Raw,
+	var certs strings.Builder
+	for _, pubCert := range cert.Certificates {
+		privKeyBlock := &pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: pubCert.Raw,
+		}
+
+		certs.Write(pem.EncodeToMemory(privKeyBlock))
 	}
-	return pem.EncodeToMemory(privKeyBlock), nil
+
+	return []byte(certs.String()), nil
 }
 
 func importPem(pemCert string) (*Certificate, error) {
