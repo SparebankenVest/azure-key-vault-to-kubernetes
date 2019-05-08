@@ -146,7 +146,10 @@ func (h *AzureCertificateHandler) Handle() (map[string][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if exportPrivateKey {
+
+	if h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeOpaque {
+		values[h.secretSpec.Spec.Output.Secret.DataKey] = cert.ExportRaw()
+	} else if exportPrivateKey {
 		if values[corev1.TLSCertKey], err = cert.ExportPublicKeyAsPem(); err != nil {
 			return nil, err
 		}
@@ -155,6 +158,9 @@ func (h *AzureCertificateHandler) Handle() (map[string][]byte, error) {
 		}
 	} else {
 		values[h.secretSpec.Spec.Output.Secret.DataKey], err = cert.ExportPublicKeyAsPem()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return values, nil

@@ -48,6 +48,8 @@ type Certificate struct {
 	PrivateKeyRsa   *rsa.PrivateKey
 	PrivateKeyEcdsa *ecdsa.PrivateKey
 
+	raw []byte
+
 	PrivateKeyType CertificateKeyType
 
 	// Indicate if Certificate has private key
@@ -65,6 +67,8 @@ func NewCertificateFromPem(pem string) (*Certificate, error) {
 		return nil, err
 	}
 
+	cert.raw = []byte(pem)
+
 	return cert, nil
 }
 
@@ -81,7 +85,13 @@ func NewCertificateFromPfx(pfx []byte) (*Certificate, error) {
 		mergedPems.WriteString(string(pem.EncodeToMemory(pemCert)))
 	}
 
-	return NewCertificateFromPem(mergedPems.String())
+	cert, err := importPem(mergedPems.String())
+	if err != nil {
+		return nil, err
+	}
+
+	cert.raw = pfx
+	return cert, nil
 }
 
 // NewCertificateFromDer creates a new Certificate from a public cer key
@@ -95,6 +105,7 @@ func NewCertificateFromDer(der []byte) (*Certificate, error) {
 	cert.HasPrivateKey = false
 	cert.Certificates = append(cert.Certificates, pubCerts...)
 
+	cert.raw = der
 	return &cert, nil
 }
 
@@ -132,10 +143,6 @@ func (cert *Certificate) ExportPublicKeyAsPem() ([]byte, error) {
 		return nil, fmt.Errorf("certificate has no public key")
 	}
 
-	if len(cert.Certificates) > 1 {
-		return nil, fmt.Errorf("certificate has multiple public keys")
-	}
-
 	var certs strings.Builder
 	for _, pubCert := range cert.Certificates {
 		privKeyBlock := &pem.Block{
@@ -147,6 +154,11 @@ func (cert *Certificate) ExportPublicKeyAsPem() ([]byte, error) {
 	}
 
 	return []byte(certs.String()), nil
+}
+
+// ExportRaw returns the raw format of the original certificate
+func (cert *Certificate) ExportRaw() []byte {
+	return cert.raw
 }
 
 func importPem(pemCert string) (*Certificate, error) {

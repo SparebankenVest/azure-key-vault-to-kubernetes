@@ -17,6 +17,7 @@ limitations under the License.
 package client
 
 import (
+	"bytes"
 	"encoding/base64"
 	"testing"
 )
@@ -109,5 +110,21 @@ func TestGetPublicKeyPem(t *testing.T) {
 
 	if len(pemCert) == 0 {
 		t.Error("Pem is empty")
+	}
+}
+
+func TestGetRawCert(t *testing.T) {
+	pfxRaw, _ := base64.StdEncoding.DecodeString(pfxTestCert)
+	cert, err := NewCertificateFromPfx(pfxRaw)
+	if err != nil {
+		t.Error(err)
+	}
+	rawCert := cert.ExportRaw()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !bytes.Equal(pfxRaw, rawCert) {
+		t.Error("Original cert does not match exported raw cert")
 	}
 }

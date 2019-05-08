@@ -219,6 +219,32 @@ func TestHandleCertificateWithOutputDataKey(t *testing.T) {
 	}
 }
 
+func TestHandleCertificateWithRawOutput(t *testing.T) {
+	fakeVault := &fakeVaultService{
+		fakeCertValue: pemCert,
+	}
+
+	secret := secret()
+	secret.Spec.Vault.Object.Type = "certificate"
+	secret.Spec.Output.Secret.DataKey = "my-key"
+	secret.Spec.Output.Secret.Type = corev1.SecretTypeOpaque
+
+	handler := NewAzureCertificateHandler(secret, fakeVault)
+	values, err := handler.Handle()
+	if err != nil {
+		t.Error(err)
+	}
+	if values == nil {
+		t.Error("handler should have returned values")
+	}
+	if len(values) != 1 {
+		t.Error("there should be only one value present")
+	}
+	if values[secret.Spec.Output.Secret.DataKey] == nil {
+		t.Errorf("there should be a value stored for key %s", secret.Spec.Output.Secret.DataKey)
+	}
+}
+
 func TestHandleSecretWithBasicAuthOutput(t *testing.T) {
 	fakeVault := &fakeVaultService{
 		fakeSecretValue: "myuser:mypassword",
