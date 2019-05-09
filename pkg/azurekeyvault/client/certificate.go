@@ -74,7 +74,7 @@ func NewCertificateFromPem(pem string) (*Certificate, error) {
 
 // NewCertificateFromPfx creates a new Certificate from a PFX certificate
 func NewCertificateFromPfx(pfx []byte) (*Certificate, error) {
-	pemList, err := pkcs12.ToPEM([]byte(pfx), "")
+	pemList, err := pkcs12.ToPEM(pfx, "")
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert pfx to pem, error: %+v", err)

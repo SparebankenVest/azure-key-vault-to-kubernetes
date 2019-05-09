@@ -137,7 +137,7 @@ func (h *AzureCertificateHandler) Handle() (map[string][]byte, error) {
 	values := make(map[string][]byte)
 	var err error
 
-	exportPrivateKey := h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeTLS
+	exportPrivateKey := h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeTLS || h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeOpaque
 	if !exportPrivateKey && h.secretSpec.Spec.Output.Secret.DataKey == "" {
 		return nil, fmt.Errorf("no datakey spesified for output secret")
 	}
