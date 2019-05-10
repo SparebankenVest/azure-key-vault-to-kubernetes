@@ -295,9 +295,9 @@ For a complete list: https://github.com/kubernetes/api/blob/49be0e3344fe443eb3d2
 
 With the exception of the `opaque` secret type, the Controller will make a best effort to export the Azure Key Vault object into the secret type defined.
 
-**kubernetes/tls**
+**kubernetes.io/tls**
 
-By pointing to a **exportable** Certificate object in Azure Key Vault AND setting the Kubernetes output secret type to `kubernetes/tls`, the controller will automatically format the Kubernetes secret accordingly both for pem and pfx certificates.
+By pointing to a **exportable** Certificate object in Azure Key Vault AND setting the Kubernetes output secret type to `kubernetes.io/tls`, the controller will automatically format the Kubernetes secret accordingly both for pem and pfx certificates.
 
 __kubernetes.io/dockerconfigjson__
 
@@ -476,7 +476,7 @@ spec:
   output:
     secret:
       name: keyvault-certificate
-      type: kubernetes/tls
+      type: kubernetes.io/tls
 ```
 
 If Controller is installed the following Kubernetes Secret will be created:
@@ -490,10 +490,10 @@ kind: Secret
 metadata:
   name: keyvault-certificate
   namespace: default
-type: kubernetes/tls
+type: kubernetes.io/tls
 ```
 
-Note that since `spec.output.secret.type=kubernetes/tls` a Kubernetes Secret of type `kubernetes/tls` was created.
+Note that since `spec.output.secret.type=kubernetes.io/tls` a Kubernetes Secret of type `kubernetes.io/tls` was created.
 
 If Env Injector is installed, inject secret by referencing the **AzureKeyVaultSecret** above using a replacement marker (`azurekeyvault@<AzureKeyVaultSecret>`) and query (`?`) to point to private/public key:
 
