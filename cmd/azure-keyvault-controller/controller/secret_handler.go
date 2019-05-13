@@ -142,6 +142,8 @@ func (h *AzureCertificateHandler) Handle() (map[string][]byte, error) {
 		return nil, fmt.Errorf("no datakey spesified for output secret")
 	}
 
+	log.Infof("Exporting certificate with private key: %t", exportPrivateKey)
+
 	cert, err := h.vaultService.GetCertificate(&h.secretSpec.Spec.Vault, exportPrivateKey)
 	if err != nil {
 		return nil, err
