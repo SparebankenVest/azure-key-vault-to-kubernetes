@@ -42,6 +42,7 @@ Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubern
 ## Requirements
 
 * Kubernetes version >= 1.9 
+* RBAC enabled
 * Default [authentication](#authentication) requires Kubernetes cluster running in Azure - use custom authentication if running outside Azure
 
 ## Overview
