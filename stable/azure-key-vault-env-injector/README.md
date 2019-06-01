@@ -21,7 +21,20 @@ helm repo update
 helm install spv-charts/azure-key-vault-env-injector
 ```
 
-**Installation of both Env Injector and Controller**
+**Note: The Env Injector needs to be anabled for each namespace**
+
+The Env Injector is developed using a Mutating Admission Webhook that triggers just before every Pod gets created. To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the `azure-key-vault-env-injection` label, like in the example below:
+
+```
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: akv-test
+  labels:
+    azure-key-vault-env-injection: enabled
+```
+
+### Installation of both Env Injector and Controller
 ```bash
 helm install spv-charts/azure-key-vault-env-injector \
     --set installCrd=false
@@ -29,7 +42,7 @@ helm install spv-charts/azure-key-vault-env-injector \
 helm install spv-charts/azure-key-vault-controller
 ```
 
-**Using custom authentication with credential injection enabled**
+### Using custom authentication with credential injection enabled
 
 ```bash
 helm install spv-charts/azure-key-vault-env-injector \
