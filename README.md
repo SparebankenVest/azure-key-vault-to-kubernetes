@@ -216,6 +216,19 @@ Controller: https://github.com/SparebankenVest/public-helm-charts/tree/master/st
 
 Env Injector: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector
 
+**Note: The Env Injector needs to be anabled for each namespace**
+
+The Env Injector is developed using a Mutating Admission Webhook that triggers just before every Pod gets created. To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the `azure-key-vault-env-injection` label, like in the example below:
+
+```
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: akv-test
+  labels:
+    azure-key-vault-env-injection: enabled
+```
+
 ### Installation without Helm
 
 If Helm is not an option in Kubernetes, use Helm on a local computer to generate the Kubernetes templates like below:
