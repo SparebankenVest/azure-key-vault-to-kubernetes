@@ -18,6 +18,9 @@ spec:
       labels:
         app: {{ template "azure-key-vault-controller.name" . }}
         release: {{ .Release.Name }}
+        {{- if and .Values.keyVault.customAuth.enabled .Values.keyVault.customAuth.podIdentitySelector}}
+        aadpodidbinding: {{ .Values.keyVault.customAuth.podIdentitySelector }}
+        {{- end }}
     spec:
       serviceAccountName: {{ template "azure-key-vault-controller.fullname" . }}
       containers:
