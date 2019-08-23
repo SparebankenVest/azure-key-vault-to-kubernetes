@@ -56,6 +56,7 @@ type azureKeyVaultConfig struct {
 	aadPodBindingLabel       string
 	cloudConfigHostPath      string
 	cloudConfigContainerPath string
+	dockerPullTimeout        int
 }
 
 var config azureKeyVaultConfig
@@ -287,7 +288,7 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 }
 
 func getDockerImage(container corev1.Container, creds string) (*dockertypes.ImageInspect, error) {
-	timeout := 30 * time.Second
+	timeout := time.Duration(config.dockerPullTimeout) * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -312,6 +313,10 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", imageName, err)
 	}
 
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	imgPullOutput, err := ioutil.ReadAll(imgReader)
 	log.Debugf("docker pull image output: %s", imgPullOutput)
 	// io.Copy(os.Stdout, imgReader)
@@ -323,6 +328,10 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 	inspect, _, err := cli.ImageInspectWithRaw(ctx, imageName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect docker image '%s', error: %+v", imageName, err)
+	}
+
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
 	return &inspect, nil
@@ -511,6 +520,7 @@ func mutatePodSpec(pod *corev1.Pod) error {
 
 func initConfig() {
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
+	viper.SetDefault("custom_docker_pull_timeout", 120)
 	viper.AutomaticEnv()
 }
 
@@ -543,6 +553,7 @@ func main() {
 		customAuth:               viper.GetBool("CUSTOM_AUTH"),
 		customAuthAutoInject:     viper.GetBool("CUSTOM_AUTH_INJECT"),
 		credentialsSecretName:    viper.GetString("CUSTOM_AUTH_INJECT_SECRET_NAME"),
+		dockerPullTimeout:        viper.GetInt("CUSTOM_DOCKER_PULL_TIMEOUT"),
 		cloudConfigHostPath:      "/etc/kubernetes/azure.json",
 		cloudConfigContainerPath: "/azure-keyvault/azure.json",
 	}
