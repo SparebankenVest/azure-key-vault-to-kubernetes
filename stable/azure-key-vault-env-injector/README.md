@@ -68,10 +68,10 @@ The following tables lists configurable parameters of the azure-key-vault-env-in
 |debug                                    |debug logs for webhook                       |false                                     |
 |env                                      |aditional env vars to send to pod            |{}                                        |
 |envImage.repository                      |image repo that contains the env image       |spvest/azure-keyvault-env                 |
-|envImage.tag                             |image tag                                    |0.1.10                                     |
+|envImage.tag                             |image tag                                    |0.1.15                                     |
 |image.pullPolicy                         |image pull policy                            |IfNotPresent                              |
 |image.repository                         |image repo that contains the controller      |spvest/azure-keyvault-webhook             |
-|image.tag                                |image tag                                    |0.1.10                                     |
+|image.tag                                |image tag                                    |0.1.15                                     |
 |installCrd                               |install custom resource definition           |true                                      |
 |nodeSelector                             |node selector to use                         |{}                                        |
 |replicaCount                             |number of replicas                           |1                                         |
