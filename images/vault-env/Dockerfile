@@ -1,4 +1,4 @@
-FROM spvest/golang-build-stage as build
+FROM spvest/golang-build-stage:1.13.0 as build
 
 FROM alpine:3.8
 
