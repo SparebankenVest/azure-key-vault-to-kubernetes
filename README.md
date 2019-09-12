@@ -6,6 +6,8 @@ Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubern
 
 <!-- TOC depthFrom:2 -->
 
+- [Installation](#installation)
+  - [Installation without Helm](#installation-without-helm)
 - [Requirements](#requirements)
 - [Overview](#overview)
   - [When to use the Controller](#when-to-use-the-controller)
@@ -20,8 +22,6 @@ Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubern
     - [Custom Authentication for Env Injector](#custom-authentication-for-env-injector)
     - [Custom Authentication Options](#custom-authentication-options)
 - [Authorization](#authorization)
-- [Installation](#installation)
-  - [Installation without Helm](#installation-without-helm)
 - [Usage](#usage)
   - [The AzureKeyVaultSecret resource](#the-azurekeyvaultsecret-resource)
     - [Vault object types](#vault-object-types)
@@ -38,6 +38,22 @@ Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubern
 - [Contributing](#contributing)
 
 <!-- /TOC -->
+
+## Installation
+
+It's recommended to use Helm charts for installation:
+
+Controller: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-controller
+
+Env Injector: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector
+
+### Installation without Helm
+
+If Helm is not an option in Kubernetes, use Helm on a local computer to generate the Kubernetes templates like below:
+
+`helm install --debug --dry-run <options>`
+
+See the individual Helm charts above for `<options>`.
 
 ## Requirements
 
@@ -209,14 +225,6 @@ Azure Key Vault Keys:
 
 `az keyvault set-policy -n <azure key vault name> --key-permissions get --spn <service principal id> --subscription <azure subscription>`
 
-## Installation
-
-It's recommended to use Helm charts for installation:
-
-Controller: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-controller
-
-Env Injector: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector
-
 **Note: The Env Injector needs to be anabled for each namespace**
 
 The Env Injector is developed using a Mutating Admission Webhook that triggers just before every Pod gets created. To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the `azure-key-vault-env-injection` label, like in the example below:
@@ -229,14 +237,6 @@ metadata:
   labels:
     azure-key-vault-env-injection: enabled
 ```
-
-### Installation without Helm
-
-If Helm is not an option in Kubernetes, use Helm on a local computer to generate the Kubernetes templates like below:
-
-`helm install --debug --dry-run <options>`
-
-See the individual Helm charts above for `<options>`.
 
 ## Usage
 
@@ -442,7 +442,7 @@ spec:
     object:
       type: secret # object type
       name: test-secret # name of the object
-  output:
+  output: # Only needed by the Controller
     secret:
       name: keyvault-secret
       dataKey: azuresecret # key to store object value in kubernetes secret
@@ -489,7 +489,7 @@ spec:
     object:
       type: certificate
       name: test-cert
-  output:
+  output: # Only needed by the Controller
     secret:
       name: keyvault-certificate
       type: kubernetes.io/tls
