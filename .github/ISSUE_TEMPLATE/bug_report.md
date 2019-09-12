@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-**Note: Make sure to check out known issue (https://github.com/sparebankenvest/azure-key-vault-to-kubernetes#known-issues) before submitting**
+**Note: Make sure to check out known issues (https://github.com/sparebankenvest/azure-key-vault-to-kubernetes#known-issues) before submitting**
 
 **Describe the bug**
 A clear and concise description of what the bug is.
