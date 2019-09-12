@@ -93,3 +93,6 @@ required = [
   name = "github.com/docker/docker"
   version = "v17.05.0-ce"
 
+[[constraint]]
+  name = "github.com/docker/distribution"
+  version = "v2.7.1"

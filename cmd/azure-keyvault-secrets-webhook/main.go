@@ -43,8 +43,14 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth"
 
+	dockerref "github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
+)
+
+const (
+	dockerHubHost    = "index.docker.io"
+	oldDockerHubHost = "docker.io"
 )
 
 type azureKeyVaultConfig struct {
@@ -301,7 +307,13 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 		return nil, fmt.Errorf("failed to create docker client, error: %+v", err)
 	}
 
-	imageName := container.Image
+	named, err := dockerref.ParseNormalizedNamed(container.Image)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse image name, error: %+v", err)
+	}
+
+	imageName := named.Name()
+
 	if !strings.Contains(imageName, "/") {
 		imageName = "docker.io/library/" + imageName
 	}
