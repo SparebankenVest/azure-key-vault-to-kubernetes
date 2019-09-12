@@ -1,7 +1,8 @@
 # Helm chart for Azure Active Directory Pod Identity
-A simple [helm](https://helm.sh/) chart for setting up the components needed to use [Azure Active Directory Pod Identity](https://github.com/Azure/aad-pod-identity) in Kubernetes.
 
-**NOTE: This chart is temporarily copied from https://github.com/Azure/aad-pod-identity to host in our Helm registry until MS publish in their own registry. Ref issue: https://github.com/Azure/aad-pod-identity/issues/122**
+## NOTE: This chart is no longer updated or maintained as MS now provide their own official chart here: https://github.com/Azure/aad-pod-identity/tree/master/charts/aad-pod-identity
+
+A simple [helm](https://helm.sh/) chart for setting up the components needed to use [Azure Active Directory Pod Identity](https://github.com/Azure/aad-pod-identity) in Kubernetes.
 
 ## Chart resources
 This helm chart will deploy the following resources:
