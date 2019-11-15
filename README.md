@@ -58,6 +58,7 @@ See the individual Helm charts above for `<options>`.
 ## Requirements
 
 * Kubernetes version >= 1.9 
+* Enabled admission controllers: MutatingAdmissionWebhook and ValidatingAdmissionWebhook
 * RBAC enabled
 * Default [authentication](#authentication) requires Kubernetes cluster running in Azure - use custom authentication if running outside Azure
 
