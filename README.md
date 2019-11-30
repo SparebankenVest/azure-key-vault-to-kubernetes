@@ -118,24 +118,9 @@ Periodically the Controller will poll Azure Key Vault for version changes of the
 
 See [Usage](#usage) for more details.
 
-**Note-1: Pods in Kubernetes currently do not get notifications when Secret resources change, and Pods will have to be re-created or use something like the Wave controller (https://github.com/pusher/wave) to get the changes**
-
-**Note-2: By default the Controller auto sync secrets every 10 minutes (configurable) and depending on how many secrets are synchronized can cause extra usage costs of Azure Key Vault.**
-
 ### Env Injector
 
-The Env Injector is developed using a Mutating Admission Webhook that triggers just before every Pod gets created. To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the `azure-key-vault-env-injection` label, like in the example below:
-
-```
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: akv-test
-  labels:
-    azure-key-vault-env-injection: enabled
-```
-
-As with the Controller, the Env Injector relies on `AzureKeyVaultSecret` resources to provide information about the Azure Key Vault secrets. 
+The Env Injector is developed using a Mutating Admission Webhook that triggers just before every Pod gets created. As with the Controller, the Env Injector relies on `AzureKeyVaultSecret` resources to provide information about the Azure Key Vault secrets. 
 
 The Env Injector will start processing containers containing one or more environment placeholders like below: 
 ```
@@ -145,9 +130,13 @@ env:
 ...
 ```
 
+**Note: To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the `azure-key-vault-env-injection` label**
+
 It will start by injecting a init-container into the Pod. This init-container copies over the `azure-keyvault-env` executable to a share volume between the init-container and the original container. It then changes either the CMD or ENTRYPOINT, depending on which was used by the original container, to use the `azure-keyvault-env` executable instead, and pass on the "old" command as parameters to this new executable. The init-container will then complete and the original container will start.
 
 When the original container starts it will execute the `azure-keyvault-env` command which will download any Azure Key Vault secrets, identified by the environment placeholders above. The remaining step is for `azure-keyvault-env` to execute the original command and params, pass on the updated environment variables with real secret values. This way all secrets gets injected transparently in-memory during container startup, and not reveal any secret content to the container spec, disk or logs.
+
+See [Usage](#usage) for more details.
 
 ## Authentication
 
@@ -293,6 +282,9 @@ Create `AzureKeyVaultSecret` resources to synchronize into native Kubernetes sec
       type: <optional - kubernetes secret type - defaults to opaque>
 ```
 
+**Note-1: Pods in Kubernetes currently do not get notifications when Secret resources change, and Pods will have to be re-created or use something like the Wave controller (https://github.com/pusher/wave) to get the changes**
+
+**Note-2: By default the Controller auto sync secrets every 10 minutes (configurable) and depending on how many secrets are synchronized can cause extra usage costs of Azure Key Vault.**
 
 #### Commonly used Kubernetes secret types
 
@@ -347,8 +339,9 @@ This must be a properly formatted **Private** SSH Key stored in a Secret object.
 
 Make sure the Env Injector is installed in the Kubernetes cluster, then:
 
-1. Create `AzureKeyVaultSecret` resources references secrets in Azure Key Vault
-2. Inject into applications using syntax below, referencing to the `AzureKeyVaultSecret` in 1.
+1. Set the `azure-key-vault-env-injection` label for the namespace(s) where the secret is going to be used
+2. Create `AzureKeyVaultSecret` resources references secrets in Azure Key Vault
+3. Inject into applications using syntax below, referencing to the `AzureKeyVaultSecret` in 2.
 
 ```yaml
 env:
@@ -358,6 +351,16 @@ env:
 ```
 
 **Example:**
+
+```yaml
+# namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+  labels:
+    azure-key-vault-env-injection: enabled
+```
 
 ```yaml 
 # my-azure-keyvault-secret.yaml
@@ -386,6 +389,7 @@ env:
 Apply the resources to Kubernetes:
 
 ```bash
+kubectl apply -f namespace.yaml
 kubectl apply -f my-azure-keyvault-secret.yaml
 kubectl apply -f my-deployment.yaml
 ```
