@@ -431,6 +431,36 @@ To get `key2` using query:
 
 `xxx@azurekeyvault?key2` which will return `my key 2 value`.
 
+### Azure Key Vault Secrets with `kubectl`
+
+List Azure Key Vault Secrets in namespace:
+```
+$ kubectl -n default get akvs
+NAME       VAULT         VAULT OBJECT   SECRET NAME   SYNCHED
+secret-1   my-kv         Secret1                 
+secret-2   my-other-kv   Secret2                        
+secret-3   my-kv         Secret3        my-secret-3   2019-11-30T06:09:05Z
+secret-4   my-other-kv   Secret4        my-secret-4   2019-11-30T06:09:35Z
+```
+
+List all Azure Key Vault Secrets in cluster:
+```
+$ kubectl get akvs --all-namespaces
+```
+
+Inspect individual secrets:
+```
+$ kubectl -n default describe akvs my-secret
+```
+
+Check events:
+```
+$ kubectl -n default get events
+LAST SEEN   TYPE     REASON        OBJECT                                      MESSAGE
+4m40s       Normal   Synced        azurekeyvaultsecret/my-credentials          AzureKeyVaultSecret synced successfully
+4m40s       Normal   Synced        azurekeyvaultsecret/my-cert                 AzureKeyVaultSecret synced successfully
+```
+
 ## Examples
 
 ### Plain secret
@@ -543,6 +573,14 @@ containers:
 Doing HTTPS calls without CA certificates will make it impossible for the client to validate if a TLS certificate is signed by a trusted CA. 
 
 **Solution:** Make sure CA certificates are installed in the Docker image used by the container you are trying to inject env vars into (eg. `apt-get install -y ca-certificates`)
+
+## Troubleshooting
+
+### Where can I find logs and look for errors?
+
+Both the controller and the env-injector output logs, so use `kubectl logs` for inspection. There are also some events beeing written to Kubernetes, which can be viewed using `kubectl get events`.
+
+### 
 
 ## Credits
 
