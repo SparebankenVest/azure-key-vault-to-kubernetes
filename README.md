@@ -2,6 +2,8 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes) [![CircleCI](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes.svg?style=shield)](https://circleci.com/gh/SparebankenVest/azure-key-vault-to-kubernetes)
 
+Project status: Stable - multipal financial institutions are running this project on production Kubernetes clusters
+
 Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubernetes-931f82364354
 
 <!-- TOC depthFrom:2 -->
