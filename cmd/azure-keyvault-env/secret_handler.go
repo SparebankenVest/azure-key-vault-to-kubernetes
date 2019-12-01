@@ -136,6 +136,10 @@ func (h *AzureKeyVaultCertificateHandler) Handle() (string, error) {
 		return "", err
 	}
 
+	if h.query == "raw" {
+		return string(cert.ExportRaw()), nil
+	}
+
 	var privKey []byte
 	var pubKey []byte
 
