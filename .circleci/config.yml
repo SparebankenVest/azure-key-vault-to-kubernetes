@@ -1,6 +1,9 @@
 version: 2
 jobs:
   build:
+    branches:
+      only:
+        - master
     docker:
     - image: circleci/golang:1.13.0
     working_directory: /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes
