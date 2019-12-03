@@ -1,0 +1,25 @@
+name: publish docker images
+
+on:
+  push:
+    branches:
+    - master
+    paths-ignore:
+    - 'docs/**'
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Setup Golang
+      uses: actions/setup-go@v1
+      with:
+        go-version: '1.13.0'
+
+    - name: Test
+      run: make test
+
+    - name: Create Docker Image
+      run: make build
