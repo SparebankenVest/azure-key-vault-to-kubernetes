@@ -27,11 +27,10 @@ jobs:
     - name: Build
       run: |
         cd docs
-        npm build
+        npm run build
 
     - name: Fake Deploy
       run: |
-        cd docs
         dir
 
     # - name: Deploy
