@@ -35,7 +35,6 @@ const config = {
 			"/how-it-works"
 		],
 		"links": [
-			{ "text": "Azure Key Vault to Kubernetes", "link": "https://github.com/SparebankenVest/azure-key-vault-to-kubernetes"},
 		],
 		"frontline": true,
 		"ignoreIndex": false,
