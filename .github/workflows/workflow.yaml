@@ -27,6 +27,7 @@ jobs:
     - name: Build
       run: |
         cd docs
+        npm i
         npm run build
 
     - name: Fake Deploy
