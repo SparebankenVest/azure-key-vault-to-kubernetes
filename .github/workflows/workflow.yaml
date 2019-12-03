@@ -24,13 +24,19 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-node-
 
-    - run: |
+    - name: Build
+      run: |
         cd docs
         npm build
 
-    - name: Deploy
-      uses: peaceiris/actions-gh-pages@v2.5.0
-      env:
-        ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-        PUBLISH_BRANCH: gh-pages
-        PUBLISH_DIR: ./public
+    - name: Fake Deploy
+      run: |
+        cd docs
+        dir
+
+    # - name: Deploy
+    #   uses: peaceiris/actions-gh-pages@v2.5.0
+    #   env:
+    #     ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+    #     PUBLISH_BRANCH: gh-pages
+    #     PUBLISH_DIR: ./public
