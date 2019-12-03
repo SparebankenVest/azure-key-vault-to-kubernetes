@@ -32,7 +32,8 @@ jobs:
 
     - name: Fake Deploy
       run: |
-        dir
+        cd docs
+        node ./deploy-github
 
     # - name: Deploy
     #   uses: peaceiris/actions-gh-pages@v2.5.0
