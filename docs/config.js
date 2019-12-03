@@ -44,7 +44,7 @@ const config = {
 		"title": "Azure Key Vault to Kubernetes",
 		"description": "Documentation for synchronizing or injecting secrets from Azure Key Vault to Kubernetes",
 		"ogImage": null,
-		"docsLocation": "https://github.com/SparebankenVest/akv4k8s-docs/tree/master/content/docs",
+		"docsLocation": "https://github.com/SparebankenVest/akv4k8s-docs/tree/master/docs/content",
 		"favicon": "https://raw.githubusercontent.com/SparebankenVest/azure-key-vault-to-kubernetes/master/docs/images/akvk8s.png"
 	},
 };
