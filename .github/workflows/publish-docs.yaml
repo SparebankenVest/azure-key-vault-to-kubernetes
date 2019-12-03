@@ -4,9 +4,11 @@ on:
   push:
     branches:
     - master
+    paths:
+    - 'docs/**'
 
 jobs:
-  build-deploy:
+  build-deploy-docs:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@master
