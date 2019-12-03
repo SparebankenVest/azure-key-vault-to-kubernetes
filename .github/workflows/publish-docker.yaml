@@ -23,3 +23,10 @@ jobs:
 
     - name: Create Docker Image
       run: make build
+
+    - name: Docker Login
+      run: docker login -u ${{secrets.PRIVATE_REGISTRY_USERNAME}} -p ${{secrets.PRIVATE_REGISTRY_PASSWORD}} dokken.azurecr.io
+
+    - name: Push Docker Image
+      run: make push
+        
