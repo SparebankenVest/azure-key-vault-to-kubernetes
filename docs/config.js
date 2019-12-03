@@ -8,7 +8,7 @@ const config = {
 		"logo": "https://raw.githubusercontent.com/SparebankenVest/azure-key-vault-to-kubernetes/master/docs/images/akvk8s.png",
 		"logoLink": "/",
 		"title": "Azure Key Vault to Kubernetes",
-		"githubUrl": "https://github.com/SparebankenVest/azure-key-vault-for-kubernetes",
+		"githubUrl": "https://github.com/SparebankenVest/azure-key-vault-to-kubernetes",
 		"helpUrl": "",
 		"tweetText": "",
 		"links": [
