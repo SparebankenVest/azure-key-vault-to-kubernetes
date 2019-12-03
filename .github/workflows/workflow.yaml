@@ -30,14 +30,9 @@ jobs:
         npm i
         npm run build
 
-    - name: Fake Deploy
-      run: |
-        cd docs
-        node ./deploy-github
-
-    # - name: Deploy
-    #   uses: peaceiris/actions-gh-pages@v2.5.0
-    #   env:
-    #     ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-    #     PUBLISH_BRANCH: gh-pages
-    #     PUBLISH_DIR: ./public
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v2.5.0
+      env:
+        ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+        PUBLISH_BRANCH: gh-pages
+        PUBLISH_DIR: ./public
