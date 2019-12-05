@@ -129,7 +129,7 @@ export default class MDXRuntimeTest extends Component {
     canonicalUrl = canonicalUrl + mdx.fields.slug;
 
     let disqusConfig = {
-      url: `${config.gatsby.siteUrl+location.pathname}`,
+      url: canonicalUrl,
       identifier: mdx.fields.id,
       title: mdx.fields.title,
     }
