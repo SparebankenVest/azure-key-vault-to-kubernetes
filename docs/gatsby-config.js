@@ -7,7 +7,6 @@ const plugins = [
     options: {
       trackingId: "UA-136446489-2",
       head: false,
-      anonymize: true,
     },
   },
   'gatsby-plugin-catch-links',
