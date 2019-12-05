@@ -8,6 +8,7 @@ import NextPrevious from '../components/NextPrevious';
 import '../components/styles.css';
 import 'prismjs/themes/prism-coy.css';
 import 'prismjs/plugins/command-line/prism-command-line.css';
+import { Disqus, CommentCount } from 'gatsby-plugin-disqus'
 
 import config from '../../config';
 
@@ -127,6 +128,12 @@ export default class MDXRuntimeTest extends Component {
     canonicalUrl = config.gatsby.pathPrefix !== '/' ? canonicalUrl + config.gatsby.pathPrefix : canonicalUrl;
     canonicalUrl = canonicalUrl + mdx.fields.slug;
 
+    let disqusConfig = {
+      url: `${config.gatsby.siteUrl+location.pathname}`,
+      identifier: mdx.fields.id,
+      title: mdx.fields.title,
+    }
+
     return (
       <Layout {...this.props}>
         <Helmet>
@@ -154,6 +161,10 @@ export default class MDXRuntimeTest extends Component {
         </div>
         <div className={'addPaddTopBottom'}>
           <NextPrevious mdx={mdx} nav={nav} />
+        </div>
+        <div className={'disqus-comments'}>
+          <CommentCount config={disqusConfig} placeholder={'...'} />
+          <Disqus config={disqusConfig} />
         </div>
       </Layout>
     );

@@ -3,10 +3,11 @@ const queries = require("./src/utils/algolia");
 const config = require("./config");
 const plugins = [
   {
-    resolve: `gatsby-plugin-google-analytics`,
+    resolve: `gatsby-plugin-gtag`,
     options: {
-      trackingId: "UA-136446489-2",
-      head: true,
+      trackingId: `UA-136446489-2`,
+      head: false,
+      anonymize: true,
     },
   },
   'gatsby-plugin-catch-links',
@@ -38,6 +39,12 @@ const plugins = [
     }
   },
   'gatsby-plugin-emotion',
+  {
+    resolve: `gatsby-plugin-disqus`,
+    options: {
+      shortname: `akv2k8s`
+    }
+  },
   'gatsby-plugin-remove-trailing-slashes',
   'gatsby-plugin-react-helmet',
   {

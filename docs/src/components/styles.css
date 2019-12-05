@@ -73,6 +73,13 @@ body {
   border: 1px solid rgb(137, 185, 205);
 }
 
+.disqus-comments {
+  border-top: 1px dashed;
+  margin-top: 50px;
+  /* padding-top: 50px; */
+  padding: 20px 20px 20px 20px;
+  background-color: #fff;
+}
 
 .video-responsive {
   position: relative;
