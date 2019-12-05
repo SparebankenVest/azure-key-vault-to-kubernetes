@@ -2,7 +2,7 @@ const config = {
 	"gatsby": {
 		"pathPrefix": "/",
 		"siteUrl": "https://akv4k8s.io",
-		"gaTrackingId": null
+		"gaTrackingId": "UA-136446489-2"
 	},
 	"header": {
 		"logo": "https://raw.githubusercontent.com/SparebankenVest/azure-key-vault-to-kubernetes/master/docs/images/akvk8s.png",

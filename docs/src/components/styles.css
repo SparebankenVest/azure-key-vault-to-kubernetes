@@ -73,12 +73,36 @@ body {
   border: 1px solid rgb(137, 185, 205);
 }
 
-.disqus-comments {
-  border-top: 1px dashed;
-  margin-top: 50px;
-  /* padding-top: 50px; */
-  padding: 20px 20px 20px 20px;
+.feedback {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.feedback button {
+  color: rgb(1, 150, 96);
   background-color: #fff;
+  border: 1px solid rgb(1, 150, 96);
+  border-radius: 4px;
+  padding: 2px 10px;
+  width: 75px;
+  font-size: 15px;
+}
+
+.feedback button:hover {
+  color: #000;
+  border-color: rgb(0, 118, 75);
+}
+
+.feedback-prompt {
+  color: #9d9a9a;
+}
+
+.feedback-yes {
+  margin: 4px;
+}
+
+.feedback-no {
+  margin: 4px;
 }
 
 .video-responsive {

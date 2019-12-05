@@ -2,14 +2,6 @@ require("dotenv").config();
 const queries = require("./src/utils/algolia");
 const config = require("./config");
 const plugins = [
-  {
-    resolve: `gatsby-plugin-gtag`,
-    options: {
-      trackingId: `UA-136446489-2`,
-      head: false,
-      anonymize: true,
-    },
-  },
   'gatsby-plugin-catch-links',
   'gatsby-plugin-sitemap',
   'gatsby-plugin-sharp',

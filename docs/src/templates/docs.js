@@ -8,7 +8,7 @@ import NextPrevious from '../components/NextPrevious';
 import '../components/styles.css';
 import 'prismjs/themes/prism-coy.css';
 import 'prismjs/plugins/command-line/prism-command-line.css';
-import { Disqus, CommentCount } from 'gatsby-plugin-disqus'
+import Feedback from '../components/Feedback';
 
 import config from '../../config';
 
@@ -162,10 +162,7 @@ export default class MDXRuntimeTest extends Component {
         <div className={'addPaddTopBottom'}>
           <NextPrevious mdx={mdx} nav={nav} />
         </div>
-        <div className={'disqus-comments'}>
-          <CommentCount config={disqusConfig} placeholder={'...'} />
-          <Disqus config={disqusConfig} />
-        </div>
+        <Feedback />
       </Layout>
     );
   }
