@@ -6,7 +6,7 @@ const plugins = [
     resolve: `gatsby-plugin-google-analytics`,
     options: {
       trackingId: "UA-136446489-2",
-      head: false,
+      head: true,
     },
   },
   'gatsby-plugin-catch-links',
