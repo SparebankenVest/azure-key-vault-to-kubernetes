@@ -1,6 +1,6 @@
 ---
-title: "Setup"
-metaTitle: "Setup"
+title: "Installation"
+metaTitle: "Installation"
 metaDescription: "Installation of Azure Key Vault to Kubernetes"
 index: 10
 ---
@@ -12,7 +12,7 @@ index: 10
 * RBAC enabled
 * Default [authentication](#authentication) requires Kubernetes cluster running in Azure - use custom authentication if running outside Azure
 
-### Installation
+### Installing to Kubernetes
 
 It's recommended to use Helm charts for installation.
 
