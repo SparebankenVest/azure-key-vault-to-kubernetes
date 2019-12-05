@@ -31,12 +31,6 @@ const plugins = [
     }
   },
   'gatsby-plugin-emotion',
-  {
-    resolve: `gatsby-plugin-disqus`,
-    options: {
-      shortname: `akv2k8s`
-    }
-  },
   'gatsby-plugin-remove-trailing-slashes',
   'gatsby-plugin-react-helmet',
   {
