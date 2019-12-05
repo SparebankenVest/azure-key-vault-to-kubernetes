@@ -25,11 +25,11 @@ const config = {
 	"sidebar": {
 		"forcedNavOrder": [
 			"/index",
-			"/setup",
+			"/installation",
 			"/components",
 			"/authentication",
 			"/authorization",
-			"/tasks",
+			"/tutorials",
 			"/examples",
 			"/reference",
 			"/how-it-works"
