@@ -47,3 +47,7 @@ helm install --debug --dry-run <options>
 ```
 
 See the individual Helm charts above for `<options>`.
+
+### Cleanup
+
+To remove installation, run `helm uninstall`

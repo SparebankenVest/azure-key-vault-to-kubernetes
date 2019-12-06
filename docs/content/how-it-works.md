@@ -25,8 +25,8 @@ The Env Injector will start processing containers containing one or more environ
 
 ```yaml
 env:
-- name: <name of environment variable>
-  value: <name of AzureKeyVaultSecret>@azurekeyvault?<optional field query>
+  - name: <name of environment variable>
+    value: <name of AzureKeyVaultSecret>@azurekeyvault?<optional field query>
 ...
 ```
 

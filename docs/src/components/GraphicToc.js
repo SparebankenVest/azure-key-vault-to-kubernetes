@@ -56,16 +56,3 @@ const GraphicToc = ({location}) => (
 );
 
 export default GraphicToc;
-
-{/* <div className={'graphic-toc'}>
-<Link to={props.link} className={'graphic-toc-link'}>
-  <div className={'graphic-toc-wrapper'}>
-    <div className={'graphic-toc-title'}>
-      <span>{props.name}</span>
-    </div>
-    <div className={'graphic-toc-description'}>
-      <span>{props.description}</span>
-    </div>
-  </div>
-</Link>
-</div> */}

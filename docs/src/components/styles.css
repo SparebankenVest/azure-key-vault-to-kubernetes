@@ -78,6 +78,27 @@ body {
   margin-bottom: 40px;
 }
 
+.feedback-prompt {
+  color: #21243d;
+  display: flex;
+  line-height: 24px;
+  margin-bottom: 20px;
+}
+
+.feedback-line {
+  height: 1px;
+  flex-grow: 1;
+  display: block;
+  background-color: rgba(103, 109, 154, 0.386);
+  margin-top: 12px;
+}
+
+.feedback-text {
+  margin-left: 32px;
+  margin-right: 32px;
+}
+
+
 .feedback button {
   color: rgb(1, 150, 96);
   background-color: #fff;
@@ -91,10 +112,6 @@ body {
 .feedback button:hover {
   color: #000;
   border-color: rgb(0, 118, 75);
-}
-
-.feedback-prompt {
-  color: #9d9a9a;
 }
 
 .feedback-yes {
