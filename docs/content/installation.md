@@ -1,7 +1,7 @@
 ---
 title: "Installation"
 metaTitle: "Installation"
-metaDescription: "Installation of Azure Key Vault to Kubernetes"
+metaDescription: "How to setup Azure Key Vault to Kubernetes"
 index: 10
 ---
 

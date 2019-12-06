@@ -36,7 +36,7 @@ const config = {
 		],
 		"links": [
 		],
-		"frontline": true,
+		"frontline": false,
 		"ignoreIndex": false,
 	},
 	"siteMetadata": {

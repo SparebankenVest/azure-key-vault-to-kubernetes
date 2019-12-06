@@ -109,7 +109,12 @@ body {
   font-size: 15px;
 }
 
-.feedback button:hover {
+.feedback button:disabled {
+  color: rgb(121, 121, 121);
+  border: 1px solid rgb(121, 121, 121);
+}
+
+.feedback button:hover:enabled {
   color: #000;
   border-color: rgb(0, 118, 75);
 }
@@ -120,6 +125,10 @@ body {
 
 .feedback-no {
   margin: 4px;
+}
+
+.feedback-response {
+  margin-top: 16px;
 }
 
 .video-responsive {

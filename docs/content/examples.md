@@ -9,7 +9,7 @@ index: 60
 
 Define a `AzureKeyVaultSecret` resource:
 
-```yaml
+```yaml 
 apiVersion: spv.no/v1alpha1
 kind: AzureKeyVaultSecret
 metadata:
