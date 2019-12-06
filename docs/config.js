@@ -5,7 +5,7 @@ const config = {
 		"gaTrackingId": "UA-136446489-2"
 	},
 	"header": {
-		"logo": "https://raw.githubusercontent.com/SparebankenVest/azure-key-vault-to-kubernetes/master/docs/images/akvk8s.png",
+		"logo": "/images/akvk8s.png",
 		"logoLink": "/",
 		"title": "Azure Key Vault to Kubernetes",
 		"githubUrl": "https://github.com/SparebankenVest/azure-key-vault-to-kubernetes",
@@ -44,7 +44,7 @@ const config = {
 		"description": "Documentation for synchronizing or injecting secrets from Azure Key Vault to Kubernetes",
 		"ogImage": null,
 		"docsLocation": "https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/tree/master/docs/content",
-		"favicon": "https://raw.githubusercontent.com/SparebankenVest/azure-key-vault-to-kubernetes/master/docs/images/akvk8s.png"
+		"favicon": "/images/akvk8s.png"
 	},
 };
 
