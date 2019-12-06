@@ -66,7 +66,8 @@ const plugins = [
         },
       }],
     },
-  },
+  }, 
+  'gatsby-plugin-robots-txt',
 ];
 if (config.header.search && config.header.search.enabled && config.header.search.algoliaAppId && config.header.search.algoliaAdminKey) {
   plugins.push({
