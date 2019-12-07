@@ -1,6 +1,6 @@
 ---
 title: "Authentication"
-metaTitle: "authentication"
+metaTitle: "Authentication"
 metaDescription: "Learn about the different options for authenticating with Azure Key Vault."
 index: 30
 ---

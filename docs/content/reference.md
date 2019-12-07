@@ -1,6 +1,6 @@
 ---
 title: "Reference"
-metaTitle: "reference"
+metaTitle: "Reference"
 metaDescription: "See the complete reference and options for all akv2k8s resources."
 index: 70
 ---
@@ -8,12 +8,6 @@ index: 70
 ### The AzureKeyVaultSecret resource
 
 The `AzureKeyVaultSecret` is defined using this schema:
-
-```html
-<body>
-  <h1>alskdjflkjaf</h1>
-</body>
-```
 
 ```yaml
 apiVersion: spv.no/v1alpha1
@@ -126,7 +120,7 @@ Make sure the Env Injector is installed in the Kubernetes cluster, then:
 
 ```yaml
 env:
-- name: <name of environment variable>
-  value: <name of AzureKeyVaultSecret>@azurekeyvault?<optional field query>
+  - name: <name of environment variable>
+    value: <name of AzureKeyVaultSecret>@azurekeyvault?<optional field query>
 ...
 ```

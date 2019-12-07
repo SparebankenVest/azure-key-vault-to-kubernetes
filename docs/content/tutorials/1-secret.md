@@ -1,10 +1,12 @@
 ---
 title: "Get Secret"
-metaTitle: "Secret"
-metaDescription: "Sync and inject secret from Azure Key Vault"
+metaTitle: "Get Secret"
+metaDescription: "Tutorial covering how to get a secret from Azure Key Vault into Kubernetes, either as a native Kubernetes secret or directly injected into a container."
 ---
 
-In this section we will show how to:
+**Note: The [prerequisites](/tutorials/0-prerequisites) are required to complete this tutorial.**
+
+This tutorial will cover how to:
 
 1. Get a secret from Azure Key Vault into Kubernetes
 2. Inject a secret from Azure Key Vault into a container

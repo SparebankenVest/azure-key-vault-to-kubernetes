@@ -1,7 +1,7 @@
 ---
 title: "Env Injector"
 metaTitle: "Env Injector"
-metaDescription: "This is the meta description"
+metaDescription: "Learn about the Env-Injector for Azure Key Vault to Kubernetes."
 ---
 
 The **Azure Key Vault Env Injector** (Env Injector for short) is a Kubernetes Mutating Webhook that transparently injects Azure Key Vault secrets as environment variables into programs running in containers, without touching disk or in any other way expose the actual secret content outside the program.

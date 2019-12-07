@@ -1,6 +1,6 @@
 ---
 title: "Examples"
-metaTitle: "examples"
+metaTitle: "Examples"
 metaDescription: "See different examples of how akv2k8s can be used."
 index: 60
 ---

@@ -1,6 +1,6 @@
 ---
 title: "Components"
-metaTitle: "components"
+metaTitle: "Components"
 metaDescription: "Learn about the different components of akv2k8s."
 ---
 

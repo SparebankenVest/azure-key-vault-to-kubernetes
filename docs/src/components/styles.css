@@ -224,11 +224,13 @@ body {
 }
 .searchWrapper
 {
-  padding-left: 0px;
+  padding-left: 20px;
   padding-right: 20px;
   flex: 1;
-  max-width: 600px;
+  max-width: 400px;
   position: relative;
+  margin-bottom: 10px;
+
 }
 .searchWrapper a {
   font-weight: 500;
@@ -236,17 +238,36 @@ body {
 .hitWrapper
 {
   background-color: #fff;
-  padding: 4px;
+  padding: 0px;
   border-radius: 4px;
   position: absolute;
-  max-width: 600px;
+  max-width: 380px;
   top: 40px;
   border: 1px solid #ccc;
   box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.16);
   height: auto;
   max-height: 80vh;
-  overflow: scroll;
+  overflow-y: scroll;
   left: 0;
+}
+/* .ais-Hits {
+  border: 1px solid;
+} */
+.ais-Hits-list {
+  /* padding: 10px 10px 10px 15px; */
+  list-style-type: none;
+}
+/* .ais-Hits-list li:nth-child(odd) { 
+  background: #cbfcff;
+} */
+.ais-Hits-item {
+  /* margin-bottom: 20px; */
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.018);
+  margin: 4px 4px 10px 4px;
+}
+.ais-Highlight > .ais-Highlight-nonHighlighted {
+  font-size: 16px;
 }
 .showResults {
   display: block;

@@ -1,7 +1,7 @@
 ---
 title: "Authorization"
-metaTitle: "authorization"
-metaDescription: "TLearn how to set the proper access rights to access Azure Key Vault secrets."
+metaTitle: "Authorization"
+metaDescription: "Learn how to set the proper access rights to access Azure Key Vault secrets from Kubernetes."
 index: 40
 ---
 
