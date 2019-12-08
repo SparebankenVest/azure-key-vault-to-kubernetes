@@ -2,9 +2,6 @@ body {
   font-family: 'Playfair Display';
 }
 
-h1 {
-  font-size: 
-}
 .graphic-toc {
   margin: 10px;
   padding: 0px;
@@ -562,6 +559,7 @@ pre {
   min-height: 30px;
   display: flex;
   align-items: center;
+  font-size: 14px;
 }
 
 .gitBtn img {
