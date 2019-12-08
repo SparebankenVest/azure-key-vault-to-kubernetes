@@ -24,15 +24,23 @@ const GraphicToc = ({location}) => (
       }
     }
   `}
+  
   render={({allMdx}) => {
+    let filter = (edge) => {
+      if(location) {
+        return edge.node.fields.slug === location;
+      }
+      return edge.node.fields.slug.lastIndexOf('/') === 0 && edge.node.fields.slug !== "/";    
+    };
+
     let topEdges = allMdx.edges
-                    .filter(edge => edge.node.fields.slug.lastIndexOf('/') === 0 && edge.node.fields.slug !== "/")
+                    .filter(filter)
                     .sort((a, b) => {
                       return a.node.frontmatter.index - b.node.frontmatter.index;
                     } );
 
     return (
-      <div>
+      <div style={{textAlign: "center"}}>
       {topEdges.map(edge => {
         return (
           <div className={'graphic-toc'}>

@@ -5,26 +5,33 @@ metaDescription: "Azure Key Vault to Kubernetes (akv2k8s) makes Azure Key Vault 
 index: 1
 ---
 
-#### Azure Key Vault to Kubernetes (akv2k8s) makes Azure Key Vault objects available to Kubernetes in a simple and secure way.
+**Azure Key Vault to Kubernetes (akv2k8s) makes Azure Key Vault objects available to Kubernetes in a simple and secure way.**
 
-Akv2k8s support two methods of making Azure Key Vault object data available in Kubernetes:
+Two options is supported:
 
-  1. as a native Kubernetes `Secret`
-  2. directly injected into your program as an ENV variable
+  1. Azure Key Vault object as a native Kubernetes `Secret`
+  2. Azure Key Vault object directly injected into your program as an ENV variable
 
 The diagram below illustrate the two options:
+
+> This is some test comment
+> And another one
 
 ![Controller and Env-Injector](/images/controller_and_injector.png)
 
 For more information about the inner workings of Azure Key Vault for Kubernetes, see [How it works](/how-it-works).
 
-### The goals for this project
+### The goals
+
+The Azure Key Vault to Kubernetes project was set out with these goals in mind:
 
 1. Avoid a direct program dependency on Azure Key Vault for getting secrets, and adhere to the 12 Factor App principle for configuration (https://12factor.net/config)
 2. Make it simple, secure and low risk to transfer Azure Key Vault secrets into Kubernetes as native Kubernetes secrets
 3. Securely and transparently be able to inject Azure Key Vault secrets as environment variables to applications, without having to use native Kubernetes secrets
 
 All of these goals are met.
+
+> This is some test comment
 
 ### Learn more about Azure Key Vault to Kubernetes
 

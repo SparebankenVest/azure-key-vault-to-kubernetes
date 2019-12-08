@@ -1,8 +1,10 @@
-@import url('https://fonts.googleapis.com/css?family=Roboto:300,400,500,700');
 body {
-  font-family: 'Roboto';
+  font-family: 'Playfair Display';
 }
 
+h1 {
+  font-size: 
+}
 .graphic-toc {
   margin: 10px;
   padding: 0px;
@@ -247,7 +249,7 @@ body {
   box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.16);
   height: auto;
   max-height: 80vh;
-  overflow-y: scroll;
+  overflow-y: auto;
   left: 0;
 }
 /* .ais-Hits {
@@ -382,7 +384,6 @@ pre {
 }
 
 .mainWrapper ul li, .mainWrapper ol li {
-  font-size: 16px;
   line-height: 1.8;
   font-weight: 400;
 }

@@ -5,6 +5,7 @@ import Code from "./code";
 import CodeBlock from "./codeBlock";
 import Pre from "./pre";
 import AnchorTag from "./anchor";
+import Blockquote from "./blockquote";
 
 /* eslint-disable react/display-name */
 export default {
@@ -18,7 +19,8 @@ export default {
   pre: Pre,
   code: CodeBlock,
   inlineCode: props => <Code {...props} />,
-  a: props => <AnchorTag {...props} />
+  a: props => <AnchorTag {...props} />,
+  blockquote: Blockquote,
   // TODO add `img`
   // TODO add `blockquote`
   // TODO add `ul`

@@ -26,6 +26,7 @@
     "gatsby-plugin-gtag": "^1.0.12",
     "gatsby-plugin-layout": "^1.1.16",
     "gatsby-plugin-mdx": "^1.0.59",
+    "gatsby-plugin-prefetch-google-fonts": "^1.4.3",
     "gatsby-plugin-react-helmet": "^3.1.16",
     "gatsby-plugin-robots-txt": "^1.5.0",
     "gatsby-plugin-sharp": "^2.3.5",
@@ -60,7 +61,6 @@
   },
   "devDependencies": {
     "gatsby-plugin-remove-trailing-slashes": "^2.1.15",
-    "gh-pages": "^2.1.1",
     "prism-react-renderer": "^0.1.7"
   }
 }

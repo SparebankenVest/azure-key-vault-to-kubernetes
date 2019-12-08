@@ -14,6 +14,23 @@ import config from '../../config';
 
 const forcedNavOrder = config.sidebar.forcedNavOrder;
 
+// "Playfair Display",
+// -apple-system,
+//   BlinkMacSystemFont,
+//   "Segoe UI",
+//   "Roboto",
+//   "Roboto Light",
+//   "Oxygen",
+//   "Ubuntu",
+//   "Cantarell",
+//   "Fira Sans",
+//   "Droid Sans",
+//   "Helvetica Neue",
+//   sans-serif,
+//   "Apple Color Emoji",
+//   "Segoe UI Emoji",
+//   "Segoe UI Symbol";
+
 injectGlobal`
   * {
     margin: 0;
@@ -22,23 +39,9 @@ injectGlobal`
   }
 
   html, body {
-    font-family: -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      "Roboto",
-      "Roboto Light",
-      "Oxygen",
-      "Ubuntu",
-      "Cantarell",
-      "Fira Sans",
-      "Droid Sans",
-      "Helvetica Neue",
-      sans-serif,
-      "Apple Color Emoji",
-      "Segoe UI Emoji",
-      "Segoe UI Symbol";
-
-    font-size: 16px;
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
+    font-size: 18px;
+    letter-spacing: .015em;
   }
 
   a {
@@ -52,7 +55,6 @@ const Edit = styled('div')`
   text-align: right;
 
   a {
-    font-size: 14px;
     font-weight: 500;
     line-height: 1em;
     text-decoration: none;
