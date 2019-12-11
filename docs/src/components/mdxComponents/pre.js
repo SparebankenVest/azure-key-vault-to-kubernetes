@@ -9,10 +9,11 @@ const Pre = system(
   },
   {
     overflow: "auto",
+    fontSize: 15,
   },
   "fontFamily",
   "space",
-  "color"
+  "color",
 );
 Pre.displayName = "Pre";
 

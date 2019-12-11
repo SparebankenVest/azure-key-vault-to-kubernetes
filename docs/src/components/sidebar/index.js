@@ -116,17 +116,36 @@ const SidebarLayout = ({location}) => (
                 slug
                 title
               }
+              frontmatter {
+                index
+              }
             }
           }
         }
       }
     `}
     render={({allMdx}) => {
+      let edges = allMdx.edges
+                    .sort((a, b) => {
+                      if(a.node.frontmatter.index && b.node.frontmatter.index) {
+                        return a.node.frontmatter.index - b.node.frontmatter.index;
+                      }
+                      let a_slug = a.node.fields.slug;
+                      let b_slug = b.node.fields.slug;
+
+                      if (a_slug > b_slug) {
+                        return 1;
+                      } else if (a_slug < b_slug) {
+                        return -1;
+                      } else if (a_slug === b_slug) {
+                        return 0;
+                      }
+                    } );
       return (
         <Sidebar>
           <ul className={'sideBarUL'}>
             <Tree
-              edges={allMdx.edges}
+              edges={edges}
             />
             <Divider />
             {config.sidebar.links.map((link, key) => {

@@ -2,7 +2,6 @@
 title: "Prerequisites"
 metaTitle: "Prerequisites"
 metaDescription: "A set of commands to create all prerequisite resources needed to complete tutorials"
-index: 0
 ---
 
 Below are a set of common prerequisites for all the tutorials.

@@ -23,17 +23,7 @@ const config = {
 		}
 	},
 	"sidebar": {
-		"forcedNavOrder": [
-			"/index",
-			"/installation",
-			"/components",
-			"/authentication",
-			"/authorization",
-			"/tutorials",
-			"/examples",
-			"/reference",
-			"/how-it-works"
-		],
+		"forcedNavOrder": [],
 		"links": [
 		],
 		"frontline": false,

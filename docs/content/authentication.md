@@ -8,7 +8,7 @@ index: 30
 By default both the Controller and the Env Injector will use the credentials found in Cloud Config on the host to authenticate with Azure Key Vault. This is the same credentials as the Kubernetes cluster use when interacting with Azure to create VM's, Load Balancers and other cloud infrastructure.
 
 <div class="alert alert-warning" role="alert">
-  Note: if you do not run Kubernetes on Azure <a href="#override-default-authentication">override default authentication</a>
+  Note: if you do not run Kubernetes on Azure <a href="#override">override default authentication</a>
 </div>
 
 Cloud Config for Azure is located at `/etc/kubernetes/azure.json`. The Controller will map this as a read only volume and read the credentials. For the Env Injector it's a bit different. Since the Env Injector is not in full control over how the original container is setup, it will copy the azure.json to a local shared volume, chmod `azure.json` to 444 in case the original container is running under a less privileged user (which is a good practice) and not get access to the credentials.
@@ -21,7 +21,7 @@ Currently only one situations has been identified, where the above does not work
 
 **For default authentication move to the next section about [Authorization](#authorization). To override default authentication, read on.**
 
-## Override default authentication
+## Override default authentication {#override}
 
 It is possible to give the Controller and/or the Env Injector specific credentials to authenticate with Azure Key Vault.
 

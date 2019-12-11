@@ -64,7 +64,7 @@ export default connectSearchBox(({ refine, ...rest }) => {
     e.preventDefault();
   }
   return (
-    <Form className={'formElement'} onSubmit={preventSubmit}>
+    <Form className={'formElement'} style={{display: "flex", flexDirection: "row-reverse", alignItems: "center"}} onSubmit={preventSubmit}>
       <SearchIcon />
       <Input
         className={'searchInput ' + searchCustom}
