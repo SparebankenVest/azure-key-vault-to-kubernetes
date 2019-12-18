@@ -19,7 +19,7 @@ but we have not yet come across a good case for doing this.
 Requirements:
 
 * Controller must be installed in Kubernetes cluster.
-* A Azure Key Vault named `akv2k8s-test`
+* An Azure Key Vault named `akv2k8s-test`
 * A Secret object named `my-secret` stored in Azure Key Vault
 * Authentication and Authorization configured
 
