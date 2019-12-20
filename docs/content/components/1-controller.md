@@ -2,6 +2,7 @@
 title: "Controller"
 metaTitle: "Controller"
 metaDescription: "Learn about the Controller for Azure Key Vault to Kubernetes."
+index: 21
 ---
 
 The **Azure Key Vault Controller** (Controller for short) synchronizes Secrets, Certificates and Keys from Azure Key Vault as native `Secret`'s in Kubernetes.

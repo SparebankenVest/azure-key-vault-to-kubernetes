@@ -88,9 +88,23 @@ export default class MDXRuntimeTest extends Component {
     const gitHub = require('../components/images/github.svg');
 
     const navItems = allMdx.edges
+      .sort((a, b) => {
+        if(a.node.frontmatter.index && b.node.frontmatter.index) {
+          return a.node.frontmatter.index - b.node.frontmatter.index;
+        }
+        let a_slug = a.node.fields.slug;
+        let b_slug = b.node.fields.slug;
+
+        if (a_slug > b_slug) {
+          return 1;
+        } else if (a_slug < b_slug) {
+          return -1;
+        } else if (a_slug === b_slug) {
+          return 0;
+        }
+      })
       .map(({ node }) => node.fields.slug)
       .filter(slug => slug !== "/")
-      .sort()
       .reduce(
         (acc, cur) => {
           if (forcedNavOrder.find(url => url === cur)) {
@@ -194,6 +208,7 @@ export const pageQuery = graphql`
       frontmatter {
         metaTitle
         metaDescription
+        index
       }
     }
     allMdx {
@@ -202,6 +217,9 @@ export const pageQuery = graphql`
           fields {
             slug
             title
+          }
+          frontmatter {
+            index
           }
         }
       }

@@ -2,6 +2,7 @@
 title: "When to use which?"
 metaTitle: "When to use which"
 metaDescription: "Learn when to use the controller or the env-injector with Azure Key Vault to Kubernetes."
+index: 23
 ---
 
 ### Recommendation is to install both

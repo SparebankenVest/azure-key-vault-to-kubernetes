@@ -2,6 +2,7 @@
 title: "Get Secret"
 metaTitle: "Get Secret"
 metaDescription: "Tutorial covering how to get a secret from Azure Key Vault into Kubernetes, either as a native Kubernetes secret or directly injected into a container."
+index: 52
 ---
 
 **Note: The [prerequisites](/tutorials/0-prerequisites) are required to complete this tutorial.**

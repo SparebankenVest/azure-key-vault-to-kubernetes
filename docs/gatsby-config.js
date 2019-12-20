@@ -17,15 +17,6 @@ const plugins = [
     options: {
       gatsbyRemarkPlugins: [
         {
-          resolve: "gatsby-remark-images",
-          options: {
-            maxWidth: 1035,
-            sizeByPixelDensity: true,
-            linkImagesToOriginal: true,
-            showCaptions: true,
-          }
-        },
-        {
           resolve: 'gatsby-remark-copy-linked-files'
         }
       ],
@@ -58,15 +49,25 @@ const plugins = [
     options: {
       plugins: [
         {
-        resolve: `gatsby-remark-prismjs`,
-        options: {
-          classPrefix: "language-",
-          inlineCodeMarker: null,
-          aliases: {},
-          showLineNumbers: true,
-          noInlineHighlight: false,
+          resolve: "gatsby-remark-images",
+          options: {
+            maxWidth: 1035,
+            sizeByPixelDensity: true,
+            linkImagesToOriginal: true,
+            showCaptions: true,
+          }
         },
-      }],
+        {
+          resolve: `gatsby-remark-prismjs`,
+          options: {
+            classPrefix: "language-",
+            inlineCodeMarker: null,
+            aliases: {},
+            showLineNumbers: true,
+            noInlineHighlight: false,
+          },
+        }
+      ],
     },
   }, 
   'gatsby-plugin-robots-txt',

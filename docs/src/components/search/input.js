@@ -42,6 +42,14 @@ const expand = css`
     margin: 0.3em;
   }
 `
+
+const Form = styled.form`
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  max-width: 400px;
+`
+
 const Input = styled.input`
   outline: none;
   border: none;
@@ -52,11 +60,6 @@ const Input = styled.input`
   {hightlight-next-line}
   ${props => (props.collapse ? collapse : expand)};
 `
-const Form = styled.form`
-  display: flex;
-  flex-direction: row-reverse;
-  align-items: center;
-`
 
 export default connectSearchBox(({ refine, ...rest }) => {
   const searchCustom = '';
@@ -64,7 +67,7 @@ export default connectSearchBox(({ refine, ...rest }) => {
     e.preventDefault();
   }
   return (
-    <Form className={'formElement'} style={{display: "flex", flexDirection: "row-reverse", alignItems: "center"}} onSubmit={preventSubmit}>
+    <Form className={'formElement'} onSubmit={preventSubmit}>
       <SearchIcon />
       <Input
         className={'searchInput ' + searchCustom}

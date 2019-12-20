@@ -221,6 +221,19 @@ body {
   outline: none;
   border: 0;
 }
+.searchInput::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+  color: rgba(255, 255, 255, 0.2);
+  opacity: 1; /* Firefox */
+}
+
+.searchInput:-ms-input-placeholder { /* Internet Explorer 10-11 */
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.searchInput::-ms-input-placeholder { /* Microsoft Edge */
+  color: rgba(255, 255, 255, 0.2);
+}
+
 .searchWrapper
 {
   padding-left: 20px;
@@ -228,7 +241,6 @@ body {
   flex: 1;
   position: relative;
   margin-bottom: 10px;
-
 }
 .searchWrapper a {
   font-weight: 500;
