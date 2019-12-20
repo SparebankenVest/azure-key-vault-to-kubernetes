@@ -169,6 +169,8 @@ func (h *Handler) getSecretFromKeyVault(azureKeyVaultSecret *azureKeyVaultSecret
 	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
 	case azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeSecret:
 		secretHandler = NewAzureSecretHandler(azureKeyVaultSecret, h.vaultService)
+	case azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeBase64EncodedSecret:
+		secretHandler = NewAzureBase64EncodedSecretHandler(azureKeyVaultSecret, h.vaultService)
 	case azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeCertificate:
 		secretHandler = NewAzureCertificateHandler(azureKeyVaultSecret, h.vaultService)
 	case azureKeyVaultSecretv1alpha1.AzureKeyVaultObjectTypeKey:

@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -36,6 +37,12 @@ type KubernetesSecretHandler interface {
 
 // AzureSecretHandler handles getting and formatting Azure Key Vault Secret from Azure Key Vault to Kubernetes
 type AzureSecretHandler struct {
+	secretSpec   *akvsv1alpha1.AzureKeyVaultSecret
+	vaultService vault.Service
+}
+
+// AzureBase64EncodedSecretHandler handles getting and decoding Azure Key Vault Secret from Azure Key Vault to Kubernetes
+type AzureBase64EncodedSecretHandler struct {
 	secretSpec   *akvsv1alpha1.AzureKeyVaultSecret
 	vaultService vault.Service
 }
@@ -61,6 +68,14 @@ type AzureMultiValueSecretHandler struct {
 // NewAzureSecretHandler return a new AzureSecretHandler
 func NewAzureSecretHandler(secretSpec *akvsv1alpha1.AzureKeyVaultSecret, vaultService vault.Service) *AzureSecretHandler {
 	return &AzureSecretHandler{
+		secretSpec:   secretSpec,
+		vaultService: vaultService,
+	}
+}
+
+// NewAzureBase64EncodedSecretHandler return a new AzureBase64EncodedSecretHandler
+func NewAzureBase64EncodedSecretHandler(secretSpec *akvsv1alpha1.AzureKeyVaultSecret, vaultService vault.Service) *AzureBase64EncodedSecretHandler {
+	return &AzureBase64EncodedSecretHandler{
 		secretSpec:   secretSpec,
 		vaultService: vaultService,
 	}
@@ -129,6 +144,29 @@ func (h *AzureSecretHandler) Handle() (map[string][]byte, error) {
 		values[h.secretSpec.Spec.Output.Secret.DataKey] = []byte(secret)
 	}
 
+	return values, nil
+}
+
+// Handle getting and decoding base64 Azure Key Vault Secret from Azure Key Vault to Kubernetes
+func (h *AzureBase64EncodedSecretHandler) Handle() (map[string][]byte, error) {
+	if h.secretSpec.Spec.Output.Secret.DataKey == "" {
+		return nil, fmt.Errorf("no datakey spesified for output secret")
+	}
+
+	var err error
+
+	secret, err := h.vaultService.GetSecret(&h.secretSpec.Spec.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	decodedData, err := base64.StdEncoding.DecodeString(secret)
+	if err != nil {
+		return nil, err
+	}
+
+	values := make(map[string][]byte)
+	values[h.secretSpec.Spec.Output.Secret.DataKey] = decodedData
 	return values, nil
 }
 

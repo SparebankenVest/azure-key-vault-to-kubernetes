@@ -347,3 +347,30 @@ func TestHandleSecretWithSSHAuthAsOutput(t *testing.T) {
 		t.Errorf("there should be a value stored for key '%s'", corev1.SSHAuthPrivateKey)
 	}
 }
+
+func TestHandleSecretWithBase64Encoded(t *testing.T) {
+	fakeVault := &fakeVaultService{
+		fakeSecretValue: "SSBhbSBiYXNlNjQgZW5jb2RlZA==",
+	}
+
+	secret := secret()
+	secret.Spec.Vault.Object.Type = "base64-encoded-secret"
+	secret.Spec.Output.Secret.Type = corev1.SecretTypeOpaque
+	secret.Spec.Output.Secret.DataKey = "mykey"
+
+	handler := NewAzureBase64EncodedSecretHandler(secret, fakeVault)
+	values, err := handler.Handle()
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if values == nil {
+		t.Error("handler should have returned value")
+	}
+
+	if string(values["mykey"]) != "I am base64 encoded" {
+		t.Error("handler should have decoded value" + string(values["mykey"]))
+	}
+
+}

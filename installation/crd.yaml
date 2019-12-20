@@ -61,6 +61,7 @@ spec:
                       - certificate
                       - exportable-certificate
                       - key # not implemented
+                      - base64-encoded-secret
                     version:
                       type: string
                       description: The object version in Azure Key Vault

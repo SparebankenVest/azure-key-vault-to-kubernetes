@@ -66,6 +66,9 @@ const (
 	// AzureKeyVaultObjectTypeSecret - get Secret object type from Azure Key Vault
 	AzureKeyVaultObjectTypeSecret AzureKeyVaultObjectType = "secret"
 
+	// AzureKeyVaultObjectTypeBase64EncodedSecret - get Base64 Encoded Secret object type from Azure Key Vault
+	AzureKeyVaultObjectTypeBase64EncodedSecret AzureKeyVaultObjectType = "base64-encoded-secret"
+
 	// AzureKeyVaultObjectTypeMultiKeyValueSecret - get Secret object type from Azure Key Vault containing multiple key/values
 	AzureKeyVaultObjectTypeMultiKeyValueSecret = "multi-key-value-secret"
 
