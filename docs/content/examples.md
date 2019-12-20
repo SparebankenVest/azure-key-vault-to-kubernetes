@@ -52,6 +52,50 @@ containers:
 ...
 ```
 
+### Base64 Encoded Secret
+
+Base64 encoded secret is supported only for Controller because it's meant to be used with files stored in the Azure Key Vault.
+
+Create Azure Key Vault secret containing binary file in base64 decoded format.
+
+```bash
+base64_tokendata=$( openssl base64 -A -in ./my-keystore.jks )
+az keyvault secret set --vault-name my-kv --name my-keystore --value "$base64_tokendata"
+```
+
+Define a `AzureKeyVaultSecret` resource:
+
+```yaml
+apiVersion: spv.no/v1alpha1
+kind: AzureKeyVaultSecret
+metadata:
+  name: my-first-azure-keyvault-secret
+  namespace: default
+spec:
+  vault:
+    name: my-kv # name of key vault
+    object:
+      type: base64-encoded-secret # object type
+      name: my-keystore # name of the object
+  output: # Only needed by the Controller
+    secret:
+      name: keyvault-secret
+      dataKey: azuresecret.jks # key to store object value in kubernetes secret
+```
+
+If the Controller is installed the following Kubernetes Secret will be created:
+
+```yaml
+apiVersion: v1
+data:
+  azuresecret: YXNkZmFzZGZhc2Rm
+kind: Secret
+metadata:
+  name: keyvault-secret.jks
+  namespace: default
+type: opaque
+```
+
 ### Certificate with exportable key
 
 Define a `AzureKeyVaultSecret` resource:
