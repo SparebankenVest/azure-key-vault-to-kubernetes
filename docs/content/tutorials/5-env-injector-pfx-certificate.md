@@ -2,6 +2,7 @@
 title: "Inject PFX Certificate"
 metaTitle: "Inject PFX Certificate"
 metaDescription: "Tutorial covering how to directly inject PFX certificates into a container as a base64 encoded environment variable."
+index: 56
 ---
 
 # Inject PFX Certficiate
