@@ -290,6 +290,8 @@ Create `AzureKeyVaultSecret` resources to synchronize into native Kubernetes sec
       type: <optional - kubernetes secret type - defaults to opaque>
 ```
 
+Azure certificates can be exported to multiple types. The preferred output type is `kubernetes.io/tls`, but this is not always suitable for the consuming application. If the type is set to `opaque` it will output the raw certificate into the specified dataKey. If type is not specified (left blank), it will export the certificate in pem, unless the dataKey has the suffix `.key`. In the latter case, it will export the private key as pem.
+
 **Note-1: Pods in Kubernetes currently do not get notifications when Secret resources change, and Pods will have to be re-created or use something like the Wave controller (https://github.com/pusher/wave) to get the changes**
 
 **Note-2: By default the Controller auto sync secrets every 10 minutes (configurable) and depending on how many secrets are synchronized can cause extra usage costs of Azure Key Vault.**

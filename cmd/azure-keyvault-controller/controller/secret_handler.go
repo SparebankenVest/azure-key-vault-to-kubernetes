@@ -137,7 +137,9 @@ func (h *AzureCertificateHandler) Handle() (map[string][]byte, error) {
 	values := make(map[string][]byte)
 	var err error
 
-	exportPrivateKey := h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeTLS || h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeOpaque
+	exportPrivateKey := strings.HasSuffix(h.secretSpec.Spec.Output.Secret.DataKey, ".key") ||
+		h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeTLS ||
+		h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeOpaque
 	if !exportPrivateKey && h.secretSpec.Spec.Output.Secret.DataKey == "" {
 		return nil, fmt.Errorf("no datakey spesified for output secret")
 	}
@@ -151,16 +153,25 @@ func (h *AzureCertificateHandler) Handle() (map[string][]byte, error) {
 
 	if h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeOpaque {
 		values[h.secretSpec.Spec.Output.Secret.DataKey] = cert.ExportRaw()
-	} else if exportPrivateKey {
+		return values, nil
+	}
+
+	if h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeTLS {
 		if values[corev1.TLSCertKey], err = cert.ExportPublicKeyAsPem(); err != nil {
 			return nil, err
 		}
 		if values[corev1.TLSPrivateKeyKey], err = cert.ExportPrivateKeyAsPem(); err != nil {
 			return nil, err
 		}
+		return values, nil
+	}
+
+	if strings.HasSuffix(h.secretSpec.Spec.Output.Secret.DataKey, ".key") {
+		if values[h.secretSpec.Spec.Output.Secret.DataKey], err = cert.ExportPrivateKeyAsPem(); err != nil {
+			return nil, err
+		}
 	} else {
-		values[h.secretSpec.Spec.Output.Secret.DataKey], err = cert.ExportPublicKeyAsPem()
-		if err != nil {
+		if values[h.secretSpec.Spec.Output.Secret.DataKey], err = cert.ExportPublicKeyAsPem(); err != nil {
 			return nil, err
 		}
 	}

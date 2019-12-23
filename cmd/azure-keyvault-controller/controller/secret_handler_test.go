@@ -151,6 +151,22 @@ func TestHandlePubliKeyCertificateOnlyWithTlsOutput(t *testing.T) {
 	}
 }
 
+func TestHandlePrivateKeyCertificateWithDataKey(t *testing.T) {
+	fakeVault := &fakeVaultService{
+		fakeCertValue: pemCertPubOnly,
+	}
+
+	secret := secret()
+	secret.Spec.Vault.Object.Type = "certificate"
+	secret.Spec.Output.Secret.DataKey = "mykey.key"
+
+	handler := NewAzureCertificateHandler(secret, fakeVault)
+	_, err := handler.Handle()
+	if err == nil {
+		t.Error("Should have returned error because there is no private key")
+	}
+}
+
 func TestHandlePubliKeyCertificateWithDataKey(t *testing.T) {
 	fakeVault := &fakeVaultService{
 		fakeCertValue: pemCertPubOnly,
