@@ -39,6 +39,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
 	azureKeyVaultSecretv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
@@ -168,7 +169,11 @@ func (h *Handler) getSecretFromKeyVault(azureKeyVaultSecret *azureKeyVaultSecret
 
 	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
 	case azureKeyVaultSecretv1.AzureKeyVaultObjectTypeSecret:
-		secretHandler = NewAzureSecretHandler(azureKeyVaultSecret, h.vaultService)
+		transformator, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
+		if err != nil {
+			return nil, err
+		}
+		secretHandler = NewAzureSecretHandler(azureKeyVaultSecret, h.vaultService, *transformator)
 	case azureKeyVaultSecretv1.AzureKeyVaultObjectTypeCertificate:
 		secretHandler = NewAzureCertificateHandler(azureKeyVaultSecret, h.vaultService)
 	case azureKeyVaultSecretv1.AzureKeyVaultObjectTypeKey:

@@ -33,12 +33,12 @@ func TestTransformWithTrim(t *testing.T) {
 		Transforms: []string{"trim"},
 	}
 
-	transformator, err := CreateTransformator(&secretSpec, testString)
+	transformator, err := CreateTransformator(&secretSpec)
 	if err != nil {
 		t.Error(err)
 	}
 
-	newSecret, err := transformator.Transform()
+	newSecret, err := transformator.Transform(testString)
 
 	if newSecret != testStringTrimmed {
 		t.Error("Secret not properly trimmed with white space")
@@ -50,12 +50,12 @@ func TestTransformWithBase64Decode(t *testing.T) {
 		Transforms: []string{"base64decode"},
 	}
 
-	transformator, err := CreateTransformator(&secretSpec, testBase64String)
+	transformator, err := CreateTransformator(&secretSpec)
 	if err != nil {
 		t.Error(err)
 	}
 
-	newSecret, err := transformator.Transform()
+	newSecret, err := transformator.Transform(testBase64String)
 
 	if newSecret != testString {
 		t.Errorf("Actual   :%s", newSecret)
@@ -68,12 +68,12 @@ func TestTransformWithBase64Encode(t *testing.T) {
 		Transforms: []string{"base64encode"},
 	}
 
-	transformator, err := CreateTransformator(&secretSpec, testString)
+	transformator, err := CreateTransformator(&secretSpec)
 	if err != nil {
 		t.Error(err)
 	}
 
-	newSecret, err := transformator.Transform()
+	newSecret, err := transformator.Transform(testString)
 
 	if newSecret != testBase64String {
 		t.Errorf("Actual   :%s", newSecret)
@@ -86,12 +86,12 @@ func TestTransformWithAll(t *testing.T) {
 		Transforms: []string{"base64encode", "base64decode", "trim"},
 	}
 
-	transformator, err := CreateTransformator(&secretSpec, testString)
+	transformator, err := CreateTransformator(&secretSpec)
 	if err != nil {
 		t.Error(err)
 	}
 
-	newSecret, err := transformator.Transform()
+	newSecret, err := transformator.Transform(testString)
 
 	if newSecret != testStringTrimmed {
 		t.Errorf("Actual   :%s", newSecret)
@@ -104,8 +104,21 @@ func TestTransformUnknown(t *testing.T) {
 		Transforms: []string{"nonexistant"},
 	}
 
-	_, err := CreateTransformator(&secretSpec, testString)
+	_, err := CreateTransformator(&secretSpec)
 	if err == nil {
 		t.Error("Unknown transformer should throw")
 	}
+}
+
+func TestTransformWithNilOutputSpec(t *testing.T) {
+	transformator, err := CreateTransformator(nil)
+	if err != nil {
+		t.Error("Transform should handle nil Output spec")
+	}
+
+	newSecret, err := transformator.Transform(testString)
+	if newSecret != testString {
+		t.Errorf("Transform should work without any transformers")
+	}
+
 }

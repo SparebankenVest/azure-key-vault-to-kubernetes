@@ -23,8 +23,14 @@ import (
 )
 
 // CreateTransformator creates a new Transformator ready to run transformation handlers
-func CreateTransformator(spec *akvsv1.AzureKeyVaultOutput, secret string) (*Transformator, error) {
+func CreateTransformator(spec *akvsv1.AzureKeyVaultOutput) (*Transformator, error) {
 	var transforms []TransformationHandler
+
+	if spec == nil {
+		return &Transformator{
+			transHandlers: transforms,
+		}, nil
+	}
 
 	for _, transform := range spec.Transforms {
 		switch transform {
@@ -41,19 +47,16 @@ func CreateTransformator(spec *akvsv1.AzureKeyVaultOutput, secret string) (*Tran
 
 	return &Transformator{
 		transHandlers: transforms,
-		origSecret:    secret,
 	}, nil
 }
 
 // Transformator
 type Transformator struct {
 	transHandlers []TransformationHandler
-	origSecret    string
 }
 
-func (t *Transformator) Transform() (string, error) {
+func (t *Transformator) Transform(secret string) (string, error) {
 	var err error
-	secret := t.origSecret
 	for _, handler := range t.transHandlers {
 		if secret, err = handler.Handle(secret); err != nil {
 			return "", err

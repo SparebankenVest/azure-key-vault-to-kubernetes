@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
 	akvsv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	azureKeyVaultSecretv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
@@ -36,8 +37,9 @@ type KubernetesSecretHandler interface {
 
 // AzureSecretHandler handles getting and formatting Azure Key Vault Secret from Azure Key Vault to Kubernetes
 type AzureSecretHandler struct {
-	secretSpec   *akvsv1.AzureKeyVaultSecret
-	vaultService vault.Service
+	secretSpec    *akvsv1.AzureKeyVaultSecret
+	vaultService  vault.Service
+	transformator transformers.Transformator
 }
 
 // AzureCertificateHandler handles getting and formatting Azure Key Vault Certificate from Azure Key Vault to Kubernetes
@@ -59,10 +61,11 @@ type AzureMultiValueSecretHandler struct {
 }
 
 // NewAzureSecretHandler return a new AzureSecretHandler
-func NewAzureSecretHandler(secretSpec *akvsv1.AzureKeyVaultSecret, vaultService vault.Service) *AzureSecretHandler {
+func NewAzureSecretHandler(secretSpec *akvsv1.AzureKeyVaultSecret, vaultService vault.Service, transformator transformers.Transformator) *AzureSecretHandler {
 	return &AzureSecretHandler{
-		secretSpec:   secretSpec,
-		vaultService: vaultService,
+		secretSpec:    secretSpec,
+		vaultService:  vaultService,
+		transformator: transformator,
 	}
 }
 
@@ -99,6 +102,11 @@ func (h *AzureSecretHandler) Handle() (map[string][]byte, error) {
 	values := make(map[string][]byte)
 
 	secret, err := h.vaultService.GetSecret(&h.secretSpec.Spec.Vault)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, err = h.transformator.Transform(secret)
 	if err != nil {
 		return nil, err
 	}

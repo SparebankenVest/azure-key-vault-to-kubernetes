@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
 	akvsv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	azureKeyVaultSecretv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
@@ -36,9 +37,10 @@ type EnvSecretHandler interface {
 
 // AzureKeyVaultSecretHandler handles getting and formatting Azure Key Vault Secret from Azure Key Vault to environment variables
 type AzureKeyVaultSecretHandler struct {
-	secretSpec   *akvsv1.AzureKeyVaultSecret
-	vaultService vault.Service
-	query        string
+	secretSpec    *akvsv1.AzureKeyVaultSecret
+	vaultService  vault.Service
+	transformator transformers.Transformator
+	query         string
 }
 
 // AzureKeyVaultCertificateHandler handles getting and formatting Azure Key Vault Certificate from Azure Key Vault to environment variables
@@ -63,11 +65,12 @@ type AzureKeyVaultMultiValueSecretHandler struct {
 }
 
 // NewAzureKeyVaultSecretHandler return a new AzureKeyVaultSecretHandler
-func NewAzureKeyVaultSecretHandler(secretSpec *akvsv1.AzureKeyVaultSecret, query string, vaultService vault.Service) *AzureKeyVaultSecretHandler {
+func NewAzureKeyVaultSecretHandler(secretSpec *akvsv1.AzureKeyVaultSecret, query string, transformator transformers.Transformator, vaultService vault.Service) *AzureKeyVaultSecretHandler {
 	return &AzureKeyVaultSecretHandler{
-		secretSpec:   secretSpec,
-		vaultService: vaultService,
-		query:        query,
+		secretSpec:    secretSpec,
+		vaultService:  vaultService,
+		transformator: transformator,
+		query:         query,
 	}
 }
 
@@ -101,6 +104,11 @@ func NewAzureKeyVaultMultiKeySecretHandler(secretSpec *akvsv1.AzureKeyVaultSecre
 // Handle getting and formating Azure Key Vault Secret from Azure Key Vault to Kubernetes
 func (h *AzureKeyVaultSecretHandler) Handle() (string, error) {
 	secret, err := h.vaultService.GetSecret(&h.secretSpec.Spec.Vault)
+	if err != nil {
+		return "", err
+	}
+
+	secret, err = h.transformator.Transform(secret)
 	if err != nil {
 		return "", err
 	}
