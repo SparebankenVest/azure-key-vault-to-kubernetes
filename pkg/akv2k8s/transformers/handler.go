@@ -18,47 +18,31 @@ package transformers
 
 import (
 	"encoding/base64"
-	akvsv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
 	"strings"
 )
 
-// TransformSecret will iterate over all enabled transformers (if any), run each transformer and return transformed result
-func TransformSecret(spec *akvsv1alpha1.AzureKeyVaultOutput, secret string) string {
-	return ""
-}
-
 // TransformationHandler handles transformation of Azure Key Vault data
 type TransformationHandler interface {
-	Handle() (string, error)
+	Handle(string) (string, error)
 }
+
+// Base64EncodeHandler handles base64 encoding of data
+type Base64EncodeHandler struct{}
 
 // Base64DecodeHandler handles base64 decoding of data
-type Base64DecodeHandler struct {
-	secret string
-}
+type Base64DecodeHandler struct{}
 
 // TrimHandler handles standar trimming of string data
-type TrimHandler struct {
-	secret string
-}
+type TrimHandler struct{}
 
-// NewBase64DecodeHandler creates a new handler for decoding base64 data
-func NewBase64DecodeHandler(secret string) *Base64DecodeHandler {
-	return &Base64DecodeHandler{
-		secret: secret,
-	}
-}
-
-// NewTrimHandler creates a new handler for trimming empty spaces from a secret
-func NewTrimHandler(secret string) *TrimHandler {
-	return &TrimHandler{
-		secret: secret,
-	}
+// Handle encode secrets as a base64 encoded string
+func (h *Base64EncodeHandler) Handle(secret string) (string, error) {
+	return base64.StdEncoding.EncodeToString([]byte(secret)), nil
 }
 
 // Handle handles decoding of base64 encoded data
-func (h *Base64DecodeHandler) Handle() (string, error) {
-	decoded, err := base64.StdEncoding.DecodeString(h.secret)
+func (h *Base64DecodeHandler) Handle(secret string) (string, error) {
+	decoded, err := base64.StdEncoding.DecodeString(secret)
 
 	if err != nil {
 		return "", err
@@ -68,6 +52,6 @@ func (h *Base64DecodeHandler) Handle() (string, error) {
 }
 
 // Handle handles trimming empty spaces from secret
-func (h *TrimHandler) Handle() (string, error) {
-	return strings.TrimSpace(h.secret), nil
+func (h *TrimHandler) Handle(secret string) (string, error) {
+	return strings.TrimSpace(secret), nil
 }

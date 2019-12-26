@@ -4,3 +4,4 @@ debug.test
 .git
 .circleci
 artifacts
+docs/

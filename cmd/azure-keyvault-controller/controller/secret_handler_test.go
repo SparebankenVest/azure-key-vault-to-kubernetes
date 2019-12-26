@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
-	akvsv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	akvsv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -36,33 +36,33 @@ type fakeVaultService struct {
 	fakeCertValue   string
 }
 
-func (f *fakeVaultService) GetSecret(secret *akvsv1alpha1.AzureKeyVault) (string, error) {
+func (f *fakeVaultService) GetSecret(secret *akvsv1.AzureKeyVault) (string, error) {
 	if f.fakeSecretValue != "" {
 		return f.fakeSecretValue, nil
 	}
 	return "", nil
 }
-func (f *fakeVaultService) GetKey(secret *akvsv1alpha1.AzureKeyVault) (string, error) {
+func (f *fakeVaultService) GetKey(secret *akvsv1.AzureKeyVault) (string, error) {
 	return "", nil
 }
-func (f *fakeVaultService) GetCertificate(secret *akvsv1alpha1.AzureKeyVault, exportPrivateKey bool) (*vault.Certificate, error) {
+func (f *fakeVaultService) GetCertificate(secret *akvsv1.AzureKeyVault, exportPrivateKey bool) (*vault.Certificate, error) {
 	if f.fakeCertValue != "" {
 		return vault.NewCertificateFromPem(f.fakeCertValue)
 	}
 	return nil, nil
 }
 
-func secret() *akvsv1alpha1.AzureKeyVaultSecret {
-	return &akvsv1alpha1.AzureKeyVaultSecret{
-		TypeMeta: metav1.TypeMeta{APIVersion: akvsv1alpha1.SchemeGroupVersion.String()},
+func secret() *akvsv1.AzureKeyVaultSecret {
+	return &akvsv1.AzureKeyVaultSecret{
+		TypeMeta: metav1.TypeMeta{APIVersion: akvsv1.SchemeGroupVersion.String()},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-name",
 			Namespace: metav1.NamespaceDefault,
 		},
-		Spec: akvsv1alpha1.AzureKeyVaultSecretSpec{
-			Vault: akvsv1alpha1.AzureKeyVault{
+		Spec: akvsv1.AzureKeyVaultSecretSpec{
+			Vault: akvsv1.AzureKeyVault{
 				Name: fmt.Sprintf("%s-vault-name", "test-name"),
-				Object: akvsv1alpha1.AzureKeyVaultObject{
+				Object: akvsv1.AzureKeyVaultObject{
 					Name: "some-secret",
 					Type: "secret",
 				},

@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
-	akvsv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	akvsv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 )
 
 const (
@@ -32,9 +32,9 @@ const (
 
 // Service is an interface for implementing vaults
 type Service interface {
-	GetSecret(secret *akvsv1alpha1.AzureKeyVault) (string, error)
-	GetKey(secret *akvsv1alpha1.AzureKeyVault) (string, error)
-	GetCertificate(secret *akvsv1alpha1.AzureKeyVault, exportPrivateKey bool) (*Certificate, error)
+	GetSecret(secret *akvsv1.AzureKeyVault) (string, error)
+	GetKey(secret *akvsv1.AzureKeyVault) (string, error)
+	GetCertificate(secret *akvsv1.AzureKeyVault, exportPrivateKey bool) (*Certificate, error)
 }
 
 type azureKeyVaultService struct {
@@ -49,7 +49,7 @@ func NewService(credentials *AzureKeyVaultCredentials) Service {
 }
 
 // GetSecret download secrets from Azure Key Vault
-func (a *azureKeyVaultService) GetSecret(vaultSpec *akvsv1alpha1.AzureKeyVault) (string, error) {
+func (a *azureKeyVaultService) GetSecret(vaultSpec *akvsv1.AzureKeyVault) (string, error) {
 	if vaultSpec.Object.Name == "" {
 		return "", fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
 	}
@@ -70,7 +70,7 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvsv1alpha1.AzureKeyVault) 
 }
 
 // GetKey download encryption keys from Azure Key Vault
-func (a *azureKeyVaultService) GetKey(vaultSpec *akvsv1alpha1.AzureKeyVault) (string, error) {
+func (a *azureKeyVaultService) GetKey(vaultSpec *akvsv1.AzureKeyVault) (string, error) {
 	if vaultSpec.Object.Name == "" {
 		return "", fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
 	}
@@ -91,7 +91,7 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvsv1alpha1.AzureKeyVault) (st
 }
 
 // GetCertificate download public/private certificates from Azure Key Vault
-func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvsv1alpha1.AzureKeyVault, exportPrivateKey bool) (*Certificate, error) {
+func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvsv1.AzureKeyVault, exportPrivateKey bool) (*Certificate, error) {
 	vaultClient, err := a.getClient("https://vault.azure.net")
 	if err != nil {
 		return nil, err
