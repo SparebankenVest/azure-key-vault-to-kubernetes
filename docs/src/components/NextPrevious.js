@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from "./link";
 import './styles.css';
+
 class NextPrevious extends React.Component {
   render() {
     const { mdx, nav } = this.props;

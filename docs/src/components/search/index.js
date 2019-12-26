@@ -84,10 +84,6 @@ const Root = styled.div`
   grid-gap: 1em;
 `
 
-const Container = styled.div`
-  max-width: 500px;
-`
-
 const focus = css`
   background: white;
   color: ${props => props.theme.darkBlue};
@@ -134,27 +130,25 @@ export default function SearchComponent({ indices, collapse, hitsAsGrid }) {
   useClickOutside(ref, () => setFocus(false))
   const displayResult = (query.length > 0 && focus) ? 'showResults' : 'hideResults';
   return (
-    <Container>
-      <InstantSearch
-        searchClient={searchClient}
-        indexName={indices[0].name}
-        onSearchStateChange={({ query }) => setQuery(query)}
-        root={{ Root, props: { ref } }}
-      >
-        <Input onFocus={() => setFocus(true)} {...{ collapse, focus }} />
-        <HitsWrapper className={'hitWrapper ' + displayResult} show={query.length > 0 && focus} asGrid={hitsAsGrid}>
-          {indices.map(({ name, title, hitComp }) => {
-            return (
-              <Index key={name} indexName={name}>
-                <Results>
-                  <Hits hitComponent={hitComps[hitComp](() => setFocus(false))} />
-                </Results>
-              </Index>
-            )})}
-          <PoweredBy />
-        </HitsWrapper>
-        <Configure hitsPerPage={5} />
-      </InstantSearch>
-    </Container>
+    <InstantSearch
+      searchClient={searchClient}
+      indexName={indices[0].name}
+      onSearchStateChange={({ query }) => setQuery(query)}
+      root={{ Root, props: { ref } }}
+    >
+      <Input onFocus={() => setFocus(true)} {...{ collapse, focus }} />
+      <HitsWrapper className={'hitWrapper ' + displayResult} show={query.length > 0 && focus} asGrid={hitsAsGrid}>
+        {indices.map(({ name, title, hitComp }) => {
+          return (
+            <Index key={name} indexName={name}>
+              <Results>
+                <Hits hitComponent={hitComps[hitComp](() => setFocus(false))} />
+              </Results>
+            </Index>
+          )})}
+        <PoweredBy />
+      </HitsWrapper>
+      <Configure hitsPerPage={5} />
+    </InstantSearch>
   )
 }
