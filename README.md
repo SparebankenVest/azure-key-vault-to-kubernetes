@@ -1,51 +1,16 @@
 # Azure Key Vault To Kubernetes
 
 [![Release](https://img.shields.io/github/release/atrox/sync-dotenv.svg?style=flat-square)](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/releases/latest)
-[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSparebankenVest%2Fazure-key-vault-to-kubernetes%2Fbadge%3Fref%3Dmaster&style=flat)](https://actions-badge.atrox.dev/SparebankenVest/azure-key-vault-to-kubernetes/goto?ref=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes) 
+[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSparebankenVest%2Fazure-key-vault-to-kubernetes%2Fbadge%3Fref%3Dmaster&style=flat-square&label=github%20actions)](https://actions-badge.atrox.dev/SparebankenVest/azure-key-vault-to-kubernetes/goto?ref=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes)
+![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-controller?label=controller%20downloads&style=flat-square)
+![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-webhook?label=env-injector%20downloads&style=flat-square)
 
 Project status: Stable - multipal financial institutions are running this project on production Kubernetes clusters
 
 Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubernetes-931f82364354
 
-<!-- TOC depthFrom:2 -->
-
-- [Installation](#installation)
-  - [Installation without Helm](#installation-without-helm)
-- [Requirements](#requirements)
-- [Overview](#overview)
-  - [When to use the Controller](#when-to-use-the-controller)
-  - [When to use the Env Injector?](#when-to-use-the-env-injector)
-  - [Recommendation is to install both](#recommendation-is-to-install-both)
-- [How it works](#how-it-works)
-  - [Controller](#controller)
-  - [Env Injector](#env-injector)
-- [Authentication](#authentication)
-  - [Override default authentication](#override-default-authentication)
-    - [Custom Authentication for the Controller](#custom-authentication-for-the-controller)
-    - [Custom Authentication for Env Injector](#custom-authentication-for-env-injector)
-    - [Custom Authentication Options](#custom-authentication-options)
-- [Authorization](#authorization)
-- [Usage](#usage)
-  - [The AzureKeyVaultSecret resource](#the-azurekeyvaultsecret-resource)
-    - [Vault object types](#vault-object-types)
-  - [The Controller](#the-controller)
-    - [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)
-  - [The Env Injector](#the-env-injector)
-    - [Using queries with the Env Injector](#using-queries-with-the-env-injector)
-  - [Azure Key Vault Secrets with `kubectl`](#azure-key-vault-secrets-with-kubectl)
-- [Examples](#examples)
-  - [Plain secret](#plain-secret)
-  - [Certificate with exportable key](#certificate-with-exportable-key)
-- [Known issues](#known-issues)
-  - [Env Injector - x509: certificate signed by unknown authority](#env-injector---x509-certificate-signed-by-unknown-authority)
-- [Troubleshooting](#troubleshooting)
-  - [Where can I find logs and look for errors?](#where-can-i-find-logs-and-look-for-errors)
-  - [](#)
-- [Credits](#credits)
-- [Contributing](#contributing)
-
-<!-- /TOC -->
+<!-- TOC depthFrom:2 -->autoauto- [Installation](#installation)auto  - [Installation without Helm](#installation-without-helm)auto- [Requirements](#requirements)auto- [Overview](#overview)auto  - [When to use the Controller](#when-to-use-the-controller)auto  - [When to use the Env Injector?](#when-to-use-the-env-injector)auto  - [Recommendation is to install both](#recommendation-is-to-install-both)auto- [How it works](#how-it-works)auto  - [Controller](#controller)auto  - [Env Injector](#env-injector)auto- [Authentication](#authentication)auto  - [Override default authentication](#override-default-authentication)auto    - [Custom Authentication for the Controller](#custom-authentication-for-the-controller)auto    - [Custom Authentication for Env Injector](#custom-authentication-for-env-injector)auto    - [Custom Authentication Options](#custom-authentication-options)auto- [Authorization](#authorization)auto- [Usage](#usage)auto  - [The AzureKeyVaultSecret resource](#the-azurekeyvaultsecret-resource)auto    - [Vault object types](#vault-object-types)auto  - [The Controller](#the-controller)auto    - [Commonly used Kubernetes secret types](#commonly-used-kubernetes-secret-types)auto  - [The Env Injector](#the-env-injector)auto    - [Using queries with the Env Injector](#using-queries-with-the-env-injector)auto  - [Azure Key Vault Secrets with `kubectl`](#azure-key-vault-secrets-with-kubectl)auto- [Examples](#examples)auto  - [Plain secret](#plain-secret)auto  - [Certificate with exportable key](#certificate-with-exportable-key)auto- [Known issues](#known-issues)auto  - [Env Injector - x509: certificate signed by unknown authority](#env-injector---x509-certificate-signed-by-unknown-authority)auto- [Troubleshooting](#troubleshooting)auto  - [Where can I find logs and look for errors?](#where-can-i-find-logs-and-look-for-errors)auto  - [](#)auto- [Credits](#credits)auto- [Contributing](#contributing)autoauto<!-- /TOC -->
 
 ## Installation
 
