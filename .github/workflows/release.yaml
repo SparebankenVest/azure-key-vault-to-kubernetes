@@ -19,5 +19,5 @@ jobs:
     - name: Docker Push
       run: |
         docker login -u ${{secrets.PUBLIC_REGISTRY_USERNAME}} -p ${{secrets.PUBLIC_REGISTRY_PASSWORD}}
-        make release
+        make release DOCKER_RELEASE_TAG={{ github.ref }}
         
