@@ -1,16 +1,16 @@
 # Azure Key Vault To Kubernetes
 
-[![Release](https://img.shields.io/github/release/atrox/sync-dotenv.svg?style=flat-square)](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/releases/latest)
-[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSparebankenVest%2Fazure-key-vault-to-kubernetes%2Fbadge%3Fref%3Dmaster&style=flat-square&label=github%20actions)](https://actions-badge.atrox.dev/SparebankenVest/azure-key-vault-to-kubernetes/goto?ref=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat-square)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes)
-![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-controller?label=controller%20downloads&style=flat-square)
-![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-webhook?label=env-injector%20downloads&style=flat-square)
+[![Release](https://img.shields.io/github/release/atrox/sync-dotenv.svg?style=flat)](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/releases/latest)
+[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSparebankenVest%2Fazure-key-vault-to-kubernetes%2Fbadge%3Fref%3Dmaster&style=flat&label=github%20actions)](https://actions-badge.atrox.dev/SparebankenVest/azure-key-vault-to-kubernetes/goto?ref=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes)
+![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-controller?label=controller%20downloads&style=flat)
+![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-webhook?label=env-injector%20downloads&style=flat)
 
 Project status: Stable - multipal financial institutions are running this project on production Kubernetes clusters
 
 Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubernetes-931f82364354
 
-**Full documentation is available at https://akv2k8s.io**
+**Full documentation available at https://akv2k8s.io**
 
 ## Overview
 
