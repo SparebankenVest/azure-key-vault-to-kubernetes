@@ -8,7 +8,7 @@ DOCKER_WEBHOOK_IMAGE=azure-keyvault-webhook
 DOCKER_VAULTENV_IMAGE=azure-keyvault-env
 
 DOCKER_INTERNAL_TAG := $(shell git rev-parse --short HEAD)
-DOCKER_RELEASE_TAG := $(shell git describe)
+DOCKER_RELEASE_TAG := $(shell git describe --tags)
 
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_URL := https://$(PACKAGE)
