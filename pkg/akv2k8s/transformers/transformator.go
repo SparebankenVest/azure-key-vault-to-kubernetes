@@ -19,11 +19,11 @@ package transformers
 import (
 	"fmt"
 
-	akvsv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
+	akvs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
 )
 
 // CreateTransformator creates a new Transformator ready to run transformation handlers
-func CreateTransformator(spec *akvsv1.AzureKeyVaultOutput) (*Transformator, error) {
+func CreateTransformator(spec *akvs.AzureKeyVaultOutput) (*Transformator, error) {
 	var transforms []TransformationHandler
 
 	if spec == nil {

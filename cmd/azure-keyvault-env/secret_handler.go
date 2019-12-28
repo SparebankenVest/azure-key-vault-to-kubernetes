@@ -23,8 +23,7 @@ import (
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
-	akvsv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
-	azureKeyVaultSecretv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
 
 	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -37,7 +36,7 @@ type EnvSecretHandler interface {
 
 // AzureKeyVaultSecretHandler handles getting and formatting Azure Key Vault Secret from Azure Key Vault to environment variables
 type AzureKeyVaultSecretHandler struct {
-	secretSpec    *akvsv1.AzureKeyVaultSecret
+	secretSpec    *akv.AzureKeyVaultSecret
 	vaultService  vault.Service
 	transformator transformers.Transformator
 	query         string
@@ -45,27 +44,27 @@ type AzureKeyVaultSecretHandler struct {
 
 // AzureKeyVaultCertificateHandler handles getting and formatting Azure Key Vault Certificate from Azure Key Vault to environment variables
 type AzureKeyVaultCertificateHandler struct {
-	secretSpec   *akvsv1.AzureKeyVaultSecret
+	secretSpec   *akv.AzureKeyVaultSecret
 	vaultService vault.Service
 	query        string
 }
 
 // AzureKeyVaultKeyHandler handles getting and formatting Azure Key Vault Key from Azure Key Vault to environment variables
 type AzureKeyVaultKeyHandler struct {
-	secretSpec   *akvsv1.AzureKeyVaultSecret
+	secretSpec   *akv.AzureKeyVaultSecret
 	vaultService vault.Service
 	query        string
 }
 
 // AzureKeyVaultMultiValueSecretHandler handles getting and formatting Azure Key Vault Secret containing multiple values from Azure Key Vault to Kubernetes
 type AzureKeyVaultMultiValueSecretHandler struct {
-	secretSpec   *akvsv1.AzureKeyVaultSecret
+	secretSpec   *akv.AzureKeyVaultSecret
 	vaultService vault.Service
 	query        string
 }
 
 // NewAzureKeyVaultSecretHandler return a new AzureKeyVaultSecretHandler
-func NewAzureKeyVaultSecretHandler(secretSpec *akvsv1.AzureKeyVaultSecret, query string, transformator transformers.Transformator, vaultService vault.Service) *AzureKeyVaultSecretHandler {
+func NewAzureKeyVaultSecretHandler(secretSpec *akv.AzureKeyVaultSecret, query string, transformator transformers.Transformator, vaultService vault.Service) *AzureKeyVaultSecretHandler {
 	return &AzureKeyVaultSecretHandler{
 		secretSpec:    secretSpec,
 		vaultService:  vaultService,
@@ -75,7 +74,7 @@ func NewAzureKeyVaultSecretHandler(secretSpec *akvsv1.AzureKeyVaultSecret, query
 }
 
 // NewAzureKeyVaultCertificateHandler return a new AzureKeyVaultCertificateHandler
-func NewAzureKeyVaultCertificateHandler(secretSpec *akvsv1.AzureKeyVaultSecret, query string, vaultService vault.Service) *AzureKeyVaultCertificateHandler {
+func NewAzureKeyVaultCertificateHandler(secretSpec *akv.AzureKeyVaultSecret, query string, vaultService vault.Service) *AzureKeyVaultCertificateHandler {
 	return &AzureKeyVaultCertificateHandler{
 		secretSpec:   secretSpec,
 		vaultService: vaultService,
@@ -84,7 +83,7 @@ func NewAzureKeyVaultCertificateHandler(secretSpec *akvsv1.AzureKeyVaultSecret, 
 }
 
 // NewAzureKeyVaultKeyHandler returns a new AzureKeyVaultKeyHandler
-func NewAzureKeyVaultKeyHandler(secretSpec *akvsv1.AzureKeyVaultSecret, query string, vaultService vault.Service) *AzureKeyVaultKeyHandler {
+func NewAzureKeyVaultKeyHandler(secretSpec *akv.AzureKeyVaultSecret, query string, vaultService vault.Service) *AzureKeyVaultKeyHandler {
 	return &AzureKeyVaultKeyHandler{
 		secretSpec:   secretSpec,
 		vaultService: vaultService,
@@ -93,7 +92,7 @@ func NewAzureKeyVaultKeyHandler(secretSpec *akvsv1.AzureKeyVaultSecret, query st
 }
 
 // NewAzureKeyVaultMultiKeySecretHandler returns a new AzureKeyVaultMultiKeySecretHandler
-func NewAzureKeyVaultMultiKeySecretHandler(secretSpec *akvsv1.AzureKeyVaultSecret, query string, vaultService vault.Service) *AzureKeyVaultMultiValueSecretHandler {
+func NewAzureKeyVaultMultiKeySecretHandler(secretSpec *akv.AzureKeyVaultSecret, query string, vaultService vault.Service) *AzureKeyVaultMultiValueSecretHandler {
 	return &AzureKeyVaultMultiValueSecretHandler{
 		secretSpec:   secretSpec,
 		vaultService: vaultService,
@@ -177,7 +176,7 @@ func (h *AzureKeyVaultKeyHandler) Handle() (string, error) {
 // Handle getting and formating Azure Key Vault Secret containing mulitple values from Azure Key Vault to Kubernetes
 func (h *AzureKeyVaultMultiValueSecretHandler) Handle() (string, error) {
 	if h.secretSpec.Spec.Vault.Object.ContentType == "" {
-		return "", fmt.Errorf("cannot use '%s' without also specifying content type", azureKeyVaultSecretv1.AzureKeyVaultObjectTypeMultiKeyValueSecret)
+		return "", fmt.Errorf("cannot use '%s' without also specifying content type", akv.AzureKeyVaultObjectTypeMultiKeyValueSecret)
 	}
 
 	secret, err := h.vaultService.GetSecret(&h.secretSpec.Spec.Vault)
@@ -188,11 +187,11 @@ func (h *AzureKeyVaultMultiValueSecretHandler) Handle() (string, error) {
 	var dat map[string]string
 
 	switch h.secretSpec.Spec.Vault.Object.ContentType {
-	case akvsv1.AzureKeyVaultObjectContentTypeJSON:
+	case akv.AzureKeyVaultObjectContentTypeJSON:
 		if err := json.Unmarshal([]byte(secret), &dat); err != nil {
 			return "", err
 		}
-	case akvsv1.AzureKeyVaultObjectContentTypeYaml:
+	case akv.AzureKeyVaultObjectContentTypeYaml:
 		if err := yaml.Unmarshal([]byte(secret), &dat); err != nil {
 			return "", err
 		}

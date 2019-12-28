@@ -41,9 +41,9 @@ import (
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
-	azureKeyVaultSecretv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
-	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/listers/azurekeyvault/v1"
+	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/listers/azurekeyvault/v1alpha1"
 )
 
 // Handler process work on workqueues
@@ -93,7 +93,7 @@ func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clien
 // converge the two. It then updates the Status block of the AzureKeyVaultSecret resource
 // with the current status of the resource.
 func (h *Handler) kubernetesSyncHandler(key string) error {
-	var azureKeyVaultSecret *azureKeyVaultSecretv1.AzureKeyVaultSecret
+	var azureKeyVaultSecret *akv.AzureKeyVaultSecret
 	var secret *corev1.Secret
 	var err error
 
@@ -120,7 +120,7 @@ func (h *Handler) kubernetesSyncHandler(key string) error {
 }
 
 func (h *Handler) azureSyncHandler(key string) error {
-	var azureKeyVaultSecret *azureKeyVaultSecretv1.AzureKeyVaultSecret
+	var azureKeyVaultSecret *akv.AzureKeyVaultSecret
 	var secret *corev1.Secret
 	var secretValue map[string][]byte
 	var err error
@@ -164,21 +164,21 @@ func (h *Handler) azureSyncHandler(key string) error {
 	return nil
 }
 
-func (h *Handler) getSecretFromKeyVault(azureKeyVaultSecret *azureKeyVaultSecretv1.AzureKeyVaultSecret) (map[string][]byte, error) {
+func (h *Handler) getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (map[string][]byte, error) {
 	var secretHandler KubernetesSecretHandler
 
 	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
-	case azureKeyVaultSecretv1.AzureKeyVaultObjectTypeSecret:
+	case akv.AzureKeyVaultObjectTypeSecret:
 		transformator, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
 		if err != nil {
 			return nil, err
 		}
 		secretHandler = NewAzureSecretHandler(azureKeyVaultSecret, h.vaultService, *transformator)
-	case azureKeyVaultSecretv1.AzureKeyVaultObjectTypeCertificate:
+	case akv.AzureKeyVaultObjectTypeCertificate:
 		secretHandler = NewAzureCertificateHandler(azureKeyVaultSecret, h.vaultService)
-	case azureKeyVaultSecretv1.AzureKeyVaultObjectTypeKey:
+	case akv.AzureKeyVaultObjectTypeKey:
 		secretHandler = NewAzureKeyHandler(azureKeyVaultSecret, h.vaultService)
-	case azureKeyVaultSecretv1.AzureKeyVaultObjectTypeMultiKeyValueSecret:
+	case akv.AzureKeyVaultObjectTypeMultiKeyValueSecret:
 		secretHandler = NewAzureMultiKeySecretHandler(azureKeyVaultSecret, h.vaultService)
 	default:
 		return nil, fmt.Errorf("azure key vault object type '%s' not currently supported", azureKeyVaultSecret.Spec.Vault.Object.Type)
@@ -186,7 +186,7 @@ func (h *Handler) getSecretFromKeyVault(azureKeyVaultSecret *azureKeyVaultSecret
 	return secretHandler.Handle()
 }
 
-func (h *Handler) getAzureKeyVaultSecret(key string) (*azureKeyVaultSecretv1.AzureKeyVaultSecret, error) {
+func (h *Handler) getAzureKeyVaultSecret(key string) (*akv.AzureKeyVaultSecret, error) {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("invalid resource key: %s", key)
@@ -200,7 +200,7 @@ func (h *Handler) getAzureKeyVaultSecret(key string) (*azureKeyVaultSecretv1.Azu
 	return azureKeyVaultSecret, err
 }
 
-func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVaultSecretv1.AzureKeyVaultSecret) (*corev1.Secret, error) {
+func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (*corev1.Secret, error) {
 	var secret *corev1.Secret
 	var secretValues map[string][]byte
 	var err error
@@ -254,7 +254,7 @@ func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *azureKeyVault
 	return secret, err
 }
 
-func hasAzureKeyVaultSecretChanged(vaultSecret *azureKeyVaultSecretv1.AzureKeyVaultSecret, secret *corev1.Secret) bool {
+func hasAzureKeyVaultSecretChanged(vaultSecret *akv.AzureKeyVaultSecret, secret *corev1.Secret) bool {
 	secretType := determineSecretType(vaultSecret)
 	if secretType != secret.Type {
 		return true
@@ -269,7 +269,7 @@ func hasAzureKeyVaultSecretChanged(vaultSecret *azureKeyVaultSecretv1.AzureKeyVa
 	return false
 }
 
-func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyVaultSecretv1.AzureKeyVaultSecret, secretHash string) error {
+func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *akv.AzureKeyVaultSecret, secretHash string) error {
 	secretName := determineSecretName(azureKeyVaultSecret)
 
 	// NEVER modify objects from the store. It's a read-only, local cache.
@@ -285,7 +285,7 @@ func (h *Handler) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *azureKeyV
 	// we must use Update instead of UpdateStatus to update the Status block of the AzureKeyVaultSecret resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := h.azureKeyvaultClientset.AzurekeyvaultV1().AzureKeyVaultSecrets(azureKeyVaultSecret.Namespace).UpdateStatus(azureKeyVaultSecretCopy)
+	_, err := h.azureKeyvaultClientset.AzurekeyvaultV1alpha1().AzureKeyVaultSecrets(azureKeyVaultSecret.Namespace).UpdateStatus(azureKeyVaultSecretCopy)
 	return err
 }
 
@@ -308,7 +308,7 @@ func handleKeyVaultError(err error, key string) bool {
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
 // It then enqueues that AzureKeyVaultSecret resource to be processed. If the object does not
 // have an appropriate OwnerReference, it will simply be skipped.
-func (h *Handler) handleObject(obj interface{}) (*azureKeyVaultSecretv1.AzureKeyVaultSecret, bool, error) {
+func (h *Handler) handleObject(obj interface{}) (*akv.AzureKeyVaultSecret, bool, error) {
 	var object metav1.Object
 	var ok bool
 
@@ -346,7 +346,7 @@ func (h *Handler) handleObject(obj interface{}) (*azureKeyVaultSecretv1.AzureKey
 // newSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1.AzureKeyVaultSecret, azureSecretValue map[string][]byte) *corev1.Secret {
+func createNewSecret(azureKeyVaultSecret *akv.AzureKeyVaultSecret, azureSecretValue map[string][]byte) *corev1.Secret {
 	secretName := determineSecretName(azureKeyVaultSecret)
 	secretType := determineSecretType(azureKeyVaultSecret)
 
@@ -356,8 +356,8 @@ func createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1.AzureKeyVaultSec
 			Namespace: azureKeyVaultSecret.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(azureKeyVaultSecret, schema.GroupVersionKind{
-					Group:   azureKeyVaultSecretv1.SchemeGroupVersion.Group,
-					Version: azureKeyVaultSecretv1.SchemeGroupVersion.Version,
+					Group:   akv.SchemeGroupVersion.Group,
+					Version: akv.SchemeGroupVersion.Version,
 					Kind:    "AzureKeyVaultSecret",
 				}),
 			},
@@ -367,7 +367,7 @@ func createNewSecret(azureKeyVaultSecret *azureKeyVaultSecretv1.AzureKeyVaultSec
 	}
 }
 
-func determineSecretName(azureKeyVaultSecret *azureKeyVaultSecretv1.AzureKeyVaultSecret) string {
+func determineSecretName(azureKeyVaultSecret *akv.AzureKeyVaultSecret) string {
 	name := azureKeyVaultSecret.Spec.Output.Secret.Name
 	if name == "" {
 		name = azureKeyVaultSecret.Name
@@ -375,7 +375,7 @@ func determineSecretName(azureKeyVaultSecret *azureKeyVaultSecretv1.AzureKeyVaul
 	return name
 }
 
-func determineSecretType(azureKeyVaultSecret *azureKeyVaultSecretv1.AzureKeyVaultSecret) corev1.SecretType {
+func determineSecretType(azureKeyVaultSecret *akv.AzureKeyVaultSecret) corev1.SecretType {
 	if azureKeyVaultSecret.Spec.Output.Secret.Type == "" {
 		return corev1.SecretTypeOpaque
 	}

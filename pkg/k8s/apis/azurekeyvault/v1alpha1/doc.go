@@ -18,4 +18,4 @@ limitations under the License.
 // +groupName=azurekeyvault.spv.no
 
 // Package v1 is the v1 version of the API.
-package v1
+package v1alpha1
