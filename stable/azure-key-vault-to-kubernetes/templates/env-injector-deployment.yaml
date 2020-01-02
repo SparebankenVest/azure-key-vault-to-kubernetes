@@ -51,7 +51,7 @@ spec:
           - name: TLS_PRIVATE_KEY_FILE
             value: /var/serving-cert/servingKey
           - name: AZUREKEYVAULT_ENV_IMAGE
-            value: {{ .Values.env_injector.image.repository }}:{{ .Values.env_injector.image.tag }}
+            value: {{ .Values.env_injector.envImage.repository }}:{{ .Values.env_injector.envImage.tag }}
           - name: AAD_POD_BINDING_LABEL
             valueFrom:
               fieldRef:

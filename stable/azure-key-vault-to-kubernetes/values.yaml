@@ -17,7 +17,7 @@ controller:
   name: controller
   image:
     repository: spvest/azure-keyvault-webhook
-    tag: 0.1.15
+    tag: 1.0.0-beta.9
     pullPolicy: IfNotPresent
   
   replicaCount: 1
@@ -30,7 +30,7 @@ controller:
     name:
 
   env: []
-  
+
   keyVault:
     # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
     customAuth:
@@ -56,8 +56,11 @@ env_injector:
   name: env-injector
   image:
     repository: spvest/azure-keyvault-env
-    tag: 0.1.15
+    tag: 1.0.0-beta.9
     pullPolicy: IfNotPresent
+  envImage:
+    repository: spvest/azure-keyvault-env
+    tag: 1.0.0-beta.9
   
   service:
     name: azure-keyvault-secrets-webhook
