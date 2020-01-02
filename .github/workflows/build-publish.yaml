@@ -40,7 +40,6 @@ jobs:
         # chmod +x linux-amd64/helm
         # alias helm=/tmp/helm/bin/linux-amd64/helm
         helm version -c
-        helm init -c
 
     - name: Build Helm Repo
       env:
