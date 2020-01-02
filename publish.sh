@@ -16,17 +16,12 @@ WORKING_DIRECTORY="$PWD"
   exit 1
 }
 [ -z "$HELM_VERSION" ] && HELM_VERSION=2.12.2
-[ "$CIRCLE_BRANCH" ] || {
-  echo "ERROR: Environment variable CIRCLE_BRANCH is required"
-  exit 1
-}
 
 echo "GITHUB_PAGES_REPO=$GITHUB_PAGES_REPO"
 echo "CUSTOM_DOMAIN=$CUSTOM_DOMAIN"
 echo "GITHUB_PAGES_BRANCH=$GITHUB_PAGES_BRANCH"
 echo "HELM_CHARTS_SOURCE=$HELM_CHARTS_SOURCE"
 echo "HELM_VERSION=$HELM_VERSION"
-echo "CIRCLE_BRANCH=$CIRCLE_BRANCH"
 
 echo '>> Prepare...'
 mkdir -p /tmp/helm/bin
@@ -76,15 +71,10 @@ done
 echo '>>> helm repo index'
 helm repo index .
 
-if [ "$CIRCLE_BRANCH" != "master" ]; then
-  echo "Current branch is not master and do not publish"
-  exit 0
-fi
-
 echo ">> Publishing to $GITHUB_PAGES_BRANCH branch of $GITHUB_PAGES_REPO"
-git config user.email "$CIRCLE_USERNAME@users.noreply.github.com"
-git config user.name CircleCI
+git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+git config user.name GitHubActions
 git add .
 git status
-git commit -m "Published by CircleCI $CIRCLE_BUILD_URL"
+git commit -m "Published by GitHubActions"
 git push origin "$GITHUB_PAGES_BRANCH"

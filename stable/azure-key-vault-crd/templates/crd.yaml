@@ -31,7 +31,14 @@ spec:
       description: When this resource was last synched with Azure Key Vault
       JSONPath: .status.lastAzureUpdate
   scope: Namespaced
-  version: v1alpha1
+  versions: 
+    - name: v1alpha1
+      served: true
+      storage: false
+    - name: v1
+      served: true
+      storage: true
+      
   subresources:
     status: {}
   validation:
@@ -57,10 +64,9 @@ spec:
                       description: The type of object in Azure Key Vault
                       enum:
                       - secret
-                      - multi-key-value-secret 
                       - certificate
-                      - exportable-certificate
                       - key
+                      - multi-key-value-secret 
                     version:
                       type: string
                       description: The object version in Azure Key Vault
@@ -71,8 +77,11 @@ spec:
                       - application/x-json
                       - application/x-yaml
             output:
-              required: ['secret']
               properties:
+                transform:
+                  type: array
+                  items:
+                    type: string
                 secret:
                   required: ['name']
                   properties:
