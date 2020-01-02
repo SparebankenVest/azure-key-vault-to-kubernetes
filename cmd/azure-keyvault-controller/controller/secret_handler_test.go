@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
-	akvsv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -36,33 +37,33 @@ type fakeVaultService struct {
 	fakeCertValue   string
 }
 
-func (f *fakeVaultService) GetSecret(secret *akvsv1alpha1.AzureKeyVault) (string, error) {
+func (f *fakeVaultService) GetSecret(secret *akv.AzureKeyVault) (string, error) {
 	if f.fakeSecretValue != "" {
 		return f.fakeSecretValue, nil
 	}
 	return "", nil
 }
-func (f *fakeVaultService) GetKey(secret *akvsv1alpha1.AzureKeyVault) (string, error) {
+func (f *fakeVaultService) GetKey(secret *akv.AzureKeyVault) (string, error) {
 	return "", nil
 }
-func (f *fakeVaultService) GetCertificate(secret *akvsv1alpha1.AzureKeyVault, exportPrivateKey bool) (*vault.Certificate, error) {
+func (f *fakeVaultService) GetCertificate(secret *akv.AzureKeyVault, exportPrivateKey bool) (*vault.Certificate, error) {
 	if f.fakeCertValue != "" {
 		return vault.NewCertificateFromPem(f.fakeCertValue)
 	}
 	return nil, nil
 }
 
-func secret() *akvsv1alpha1.AzureKeyVaultSecret {
-	return &akvsv1alpha1.AzureKeyVaultSecret{
-		TypeMeta: metav1.TypeMeta{APIVersion: akvsv1alpha1.SchemeGroupVersion.String()},
+func secret() *akv.AzureKeyVaultSecret {
+	return &akv.AzureKeyVaultSecret{
+		TypeMeta: metav1.TypeMeta{APIVersion: akv.SchemeGroupVersion.String()},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-name",
 			Namespace: metav1.NamespaceDefault,
 		},
-		Spec: akvsv1alpha1.AzureKeyVaultSecretSpec{
-			Vault: akvsv1alpha1.AzureKeyVault{
+		Spec: akv.AzureKeyVaultSecretSpec{
+			Vault: akv.AzureKeyVault{
 				Name: fmt.Sprintf("%s-vault-name", "test-name"),
-				Object: akvsv1alpha1.AzureKeyVaultObject{
+				Object: akv.AzureKeyVaultObject{
 					Name: "some-secret",
 					Type: "secret",
 				},
@@ -97,7 +98,8 @@ func TestHandleSecretWithNoDataKey(t *testing.T) {
 	}
 
 	secret := secret()
-	handler := NewAzureSecretHandler(secret, fakeVault)
+	transformator, err := transformers.CreateTransformator(&secret.Spec.Output)
+	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
 	values, err := handler.Handle()
 	if err == nil {
 		t.Error("Should fail when no datakey is spesified")
@@ -270,7 +272,9 @@ func TestHandleSecretWithBasicAuthOutput(t *testing.T) {
 	secret.Spec.Vault.Object.Type = "secret"
 	secret.Spec.Output.Secret.Type = corev1.SecretTypeBasicAuth
 
-	handler := NewAzureSecretHandler(secret, fakeVault)
+	transformator, err := transformers.CreateTransformator(&secret.Spec.Output)
+
+	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
 	values, err := handler.Handle()
 	if err != nil {
 		t.Error(err)
@@ -298,7 +302,8 @@ func TestHandleSecretWithDockerConfigJsonAsOutput(t *testing.T) {
 	secret.Spec.Vault.Object.Type = "secret"
 	secret.Spec.Output.Secret.Type = corev1.SecretTypeDockerConfigJson
 
-	handler := NewAzureSecretHandler(secret, fakeVault)
+	transformator, err := transformers.CreateTransformator(&secret.Spec.Output)
+	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
 	values, err := handler.Handle()
 	if err != nil {
 		t.Error(err)
@@ -323,7 +328,8 @@ func TestHandleSecretWithDockerConfigAsOutput(t *testing.T) {
 	secret.Spec.Vault.Object.Type = "secret"
 	secret.Spec.Output.Secret.Type = corev1.SecretTypeDockercfg
 
-	handler := NewAzureSecretHandler(secret, fakeVault)
+	transformator, err := transformers.CreateTransformator(&secret.Spec.Output)
+	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
 	values, err := handler.Handle()
 	if err != nil {
 		t.Error(err)
@@ -348,7 +354,8 @@ func TestHandleSecretWithSSHAuthAsOutput(t *testing.T) {
 	secret.Spec.Vault.Object.Type = "secret"
 	secret.Spec.Output.Secret.Type = corev1.SecretTypeSSHAuth
 
-	handler := NewAzureSecretHandler(secret, fakeVault)
+	transformator, err := transformers.CreateTransformator(&secret.Spec.Output)
+	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
 	values, err := handler.Handle()
 	if err != nil {
 		t.Error(err)

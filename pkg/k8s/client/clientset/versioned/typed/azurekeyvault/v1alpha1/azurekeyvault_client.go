@@ -30,17 +30,12 @@ import (
 
 type AzurekeyvaultV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	AzureKeyVaultEnvSecretsGetter
 	AzureKeyVaultSecretsGetter
 }
 
 // AzurekeyvaultV1alpha1Client is used to interact with features provided by the azurekeyvault.spv.no group.
 type AzurekeyvaultV1alpha1Client struct {
 	restClient rest.Interface
-}
-
-func (c *AzurekeyvaultV1alpha1Client) AzureKeyVaultEnvSecrets(namespace string) AzureKeyVaultEnvSecretInterface {
-	return newAzureKeyVaultEnvSecrets(c, namespace)
 }
 
 func (c *AzurekeyvaultV1alpha1Client) AzureKeyVaultSecrets(namespace string) AzureKeyVaultSecretInterface {

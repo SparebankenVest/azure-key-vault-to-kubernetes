@@ -8,7 +8,7 @@ DOCKER_WEBHOOK_IMAGE=azure-keyvault-webhook
 DOCKER_VAULTENV_IMAGE=azure-keyvault-env
 
 DOCKER_INTERNAL_TAG := $(shell git rev-parse --short HEAD)
-DOCKER_RELEASE_TAG := $(shell git describe)
+DOCKER_RELEASE_TAG := $(shell git describe --tags)
 
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_URL := https://$(PACKAGE)
@@ -27,7 +27,7 @@ build-vaultenv:
 	docker build . -t $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) -f images/vault-env/Dockerfile --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-env" --build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
 
 test:
-	CGO_ENABLED=0 go test -v $(shell go list ./... | grep -v /pkg/)
+	CGO_ENABLED=0 go test -v $(shell go list ./... | grep -v /pkg/k8s/)
 
 push: push-controller push-webhook push-vaultenv
 

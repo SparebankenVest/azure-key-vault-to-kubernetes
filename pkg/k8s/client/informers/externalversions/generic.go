@@ -56,8 +56,6 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=azurekeyvault.spv.no, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("azurekeyvaultenvsecrets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Azurekeyvault().V1alpha1().AzureKeyVaultEnvSecrets().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Azurekeyvault().V1alpha1().AzureKeyVaultSecrets().Informer()}, nil
 

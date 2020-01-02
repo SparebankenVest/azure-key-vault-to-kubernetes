@@ -21,6 +21,4 @@ limitations under the License.
 
 package v1alpha1
 
-type AzureKeyVaultEnvSecretExpansion interface{}
-
 type AzureKeyVaultSecretExpansion interface{}

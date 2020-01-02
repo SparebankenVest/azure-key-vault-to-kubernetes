@@ -21,14 +21,6 @@ limitations under the License.
 
 package v1alpha1
 
-// AzureKeyVaultEnvSecretListerExpansion allows custom methods to be added to
-// AzureKeyVaultEnvSecretLister.
-type AzureKeyVaultEnvSecretListerExpansion interface{}
-
-// AzureKeyVaultEnvSecretNamespaceListerExpansion allows custom methods to be added to
-// AzureKeyVaultEnvSecretNamespaceLister.
-type AzureKeyVaultEnvSecretNamespaceListerExpansion interface{}
-
 // AzureKeyVaultSecretListerExpansion allows custom methods to be added to
 // AzureKeyVaultSecretLister.
 type AzureKeyVaultSecretListerExpansion interface{}

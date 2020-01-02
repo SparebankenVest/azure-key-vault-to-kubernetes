@@ -24,8 +24,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
-	vaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -167,17 +168,21 @@ func main() {
 	log.Debugf("%s azure key vault env injector", logPrefix)
 }
 
-func getSecretFromKeyVault(azureKeyVaultSecret *vaultSecretv1alpha1.AzureKeyVaultSecret, query string, vaultService vault.Service) (string, error) {
+func getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret, query string, vaultService vault.Service) (string, error) {
 	var secretHandler EnvSecretHandler
 
 	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
-	case vaultSecretv1alpha1.AzureKeyVaultObjectTypeSecret:
-		secretHandler = NewAzureKeyVaultSecretHandler(azureKeyVaultSecret, query, vaultService)
-	case vaultSecretv1alpha1.AzureKeyVaultObjectTypeCertificate:
+	case akv.AzureKeyVaultObjectTypeSecret:
+		transformator, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
+		if err != nil {
+			return "", err
+		}
+		secretHandler = NewAzureKeyVaultSecretHandler(azureKeyVaultSecret, query, *transformator, vaultService)
+	case akv.AzureKeyVaultObjectTypeCertificate:
 		secretHandler = NewAzureKeyVaultCertificateHandler(azureKeyVaultSecret, query, vaultService)
-	case vaultSecretv1alpha1.AzureKeyVaultObjectTypeKey:
+	case akv.AzureKeyVaultObjectTypeKey:
 		secretHandler = NewAzureKeyVaultKeyHandler(azureKeyVaultSecret, query, vaultService)
-	case vaultSecretv1alpha1.AzureKeyVaultObjectTypeMultiKeyValueSecret:
+	case akv.AzureKeyVaultObjectTypeMultiKeyValueSecret:
 		secretHandler = NewAzureKeyVaultMultiKeySecretHandler(azureKeyVaultSecret, query, vaultService)
 	default:
 		return "", fmt.Errorf("azure key vault object type '%s' not currently supported", azureKeyVaultSecret.Spec.Vault.Object.Type)

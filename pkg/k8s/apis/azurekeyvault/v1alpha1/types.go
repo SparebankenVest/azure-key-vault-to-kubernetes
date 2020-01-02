@@ -85,6 +85,8 @@ const (
 // AzureKeyVaultOutput defines output sources, currently only support Secret
 type AzureKeyVaultOutput struct {
 	Secret AzureKeyVaultOutputSecret `json:"secret"`
+	// +optional
+	Transforms []string `json:"transforms,omitempty"`
 }
 
 // AzureKeyVaultOutputSecret has information needed to output
@@ -111,31 +113,4 @@ type AzureKeyVaultSecretList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []AzureKeyVaultSecret `json:"items"`
-}
-
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// AzureKeyVaultEnvSecret is a specification for a AzureKeyVaultEnvSecret resource
-type AzureKeyVaultEnvSecret struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   AzureKeyVaultEnvSecretSpec `json:"spec"`
-	Status AzureKeyVaultSecretStatus  `json:"status"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// AzureKeyVaultEnvSecretList is a list of AzureKeyVaultEnvSecret resources
-type AzureKeyVaultEnvSecretList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []AzureKeyVaultEnvSecret `json:"items"`
-}
-
-// AzureKeyVaultEnvSecretSpec is the spec for a AzureKeyVaultSecret resource
-type AzureKeyVaultEnvSecretSpec struct {
-	Vault AzureKeyVault `json:"vault"`
 }

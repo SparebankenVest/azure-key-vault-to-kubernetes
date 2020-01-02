@@ -33,7 +33,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	azureKeyVaultSecretv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
 	keyvaultScheme "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/scheme"
 	informers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions/azurekeyvault/v1alpha1"
 )
@@ -103,7 +103,7 @@ func NewController(handler *Handler, secretInformer coreinformers.SecretInformer
 	// Set up an event handler for when AzureKeyVaultSecret resources change
 	azureKeyVaultSecretsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			secret := obj.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
+			secret := obj.(*akv.AzureKeyVaultSecret)
 			if secret.Spec.Output.Secret.Name == "" {
 				return
 			}
@@ -112,8 +112,8 @@ func NewController(handler *Handler, secretInformer coreinformers.SecretInformer
 			controller.enqueueAzurePoll(obj)
 		},
 		UpdateFunc: func(old, new interface{}) {
-			newSecret := new.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
-			oldSecret := old.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
+			newSecret := new.(*akv.AzureKeyVaultSecret)
+			oldSecret := old.(*akv.AzureKeyVaultSecret)
 			if oldSecret.Spec.Output.Secret.Name == "" {
 				return
 			}
@@ -128,7 +128,7 @@ func NewController(handler *Handler, secretInformer coreinformers.SecretInformer
 			controller.enqueueAzureKeyVaultSecret(new)
 		},
 		DeleteFunc: func(obj interface{}) {
-			secret := obj.(*azureKeyVaultSecretv1alpha1.AzureKeyVaultSecret)
+			secret := obj.(*akv.AzureKeyVaultSecret)
 			if secret.Spec.Output.Secret.Name == "" {
 				return
 			}

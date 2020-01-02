@@ -27,8 +27,6 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// AzureKeyVaultEnvSecrets returns a AzureKeyVaultEnvSecretInformer.
-	AzureKeyVaultEnvSecrets() AzureKeyVaultEnvSecretInformer
 	// AzureKeyVaultSecrets returns a AzureKeyVaultSecretInformer.
 	AzureKeyVaultSecrets() AzureKeyVaultSecretInformer
 }
@@ -42,11 +40,6 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
-}
-
-// AzureKeyVaultEnvSecrets returns a AzureKeyVaultEnvSecretInformer.
-func (v *version) AzureKeyVaultEnvSecrets() AzureKeyVaultEnvSecretInformer {
-	return &azureKeyVaultEnvSecretInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // AzureKeyVaultSecrets returns a AzureKeyVaultSecretInformer.

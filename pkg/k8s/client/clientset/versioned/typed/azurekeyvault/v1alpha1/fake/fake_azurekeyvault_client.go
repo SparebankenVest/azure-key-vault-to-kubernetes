@@ -31,10 +31,6 @@ type FakeAzurekeyvaultV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeAzurekeyvaultV1alpha1) AzureKeyVaultEnvSecrets(namespace string) v1alpha1.AzureKeyVaultEnvSecretInterface {
-	return &FakeAzureKeyVaultEnvSecrets{c, namespace}
-}
-
 func (c *FakeAzurekeyvaultV1alpha1) AzureKeyVaultSecrets(namespace string) v1alpha1.AzureKeyVaultSecretInterface {
 	return &FakeAzureKeyVaultSecrets{c, namespace}
 }

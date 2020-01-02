@@ -1,4 +1,4 @@
-name: build push
+name: build and deploy to private repo
 
 on:
   push:
