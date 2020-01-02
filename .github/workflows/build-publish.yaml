@@ -104,4 +104,4 @@ jobs:
         helm repo add spv-charts https://charts.spvapi.no
         helm repo update
         helm repo list
-        helm inspect spv-charts/azure-key-vault-controller --version 0.1.0-alpha.2
+        helm show chart spv-charts/azure-key-vault-controller --version 0.1.0-alpha.2
