@@ -14,7 +14,7 @@ jobs:
     - uses: actions/checkout@master
 
     - name: Publish
-      run: cat publish.sh | sh
+      run: ./publish.sh
 
     - name: Verify
       run: |
