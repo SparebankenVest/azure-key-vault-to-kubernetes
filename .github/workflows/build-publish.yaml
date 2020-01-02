@@ -82,7 +82,7 @@ jobs:
       env:
         ACTIONS_DEPLOY_KEY: ${{ secrets.GH_PAGES_TOKEN }}
       run: |
-        SSH_DIR="/root/.ssh"
+        SSH_DIR="${HOME}/.ssh"
         mkdir "${SSH_DIR}"
         ssh-keyscan -t rsa github.com > "${SSH_DIR}/known_hosts"
         echo "${ACTIONS_DEPLOY_KEY}" > "${SSH_DIR}/id_rsa"
