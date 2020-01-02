@@ -12,6 +12,11 @@ jobs:
     - uses: actions/checkout@master
 
     - name: Publish
+      env:
+        GITHUB_PAGES_REPO: sparebankenvest/helm-charts
+        CUSTOM_DOMAIN: charts.spvapi.no
+        GITHUB_PAGES_BRANCH: gh-pages
+        HELM_VERSION: 2.12.2
       run: ./publish.sh
 
     - name: Verify
