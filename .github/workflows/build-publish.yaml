@@ -73,29 +73,32 @@ jobs:
 
     - name: Commit files
       run: |
+        git config user.name "${GITHUB_ACTOR}"
+        git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
         cd publish
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
         git commit -m "Published by GitHubActions" -a
 
-    # - name: Push changes
-    #   uses: ad-m/github-push-action@master
-    #   with:
-    #     github_token: ${{ secrets.GH_PAGES_TOKEN }}
-    #     directory: publish
-    #     repository: sparebankenvest/helm-charts
-    #     branch: gh-pages
-
-    - name: Deploy
-      uses: peaceiris/actions-gh-pages@v2
+    - name: Configure git key
       env:
         ACTIONS_DEPLOY_KEY: ${{ secrets.GH_PAGES_TOKEN }}
-        EXTERNAL_REPOSITORY: sparebankenvest/helm-charts
+      run: |
+        SSH_DIR="/root/.ssh"
+        mkdir "${SSH_DIR}"
+        ssh-keyscan -t rsa github.com > "${SSH_DIR}/known_hosts"
+        echo "${ACTIONS_DEPLOY_KEY}" > "${SSH_DIR}/id_rsa"
+        chmod 400 "${SSH_DIR}/id_rsa"
+
+    - name: Push Helm charts
+      env:
+        PUBLISH_REPOSITORY: sparebankenvest/helm-charts
         PUBLISH_BRANCH: gh-pages
-        PUBLISH_DIR: ./publish
-      with:
-        username: "GitHub Actions"
-        useremail: "githubactions@github.com"
+      run: |
+        cd publish
+
+        git remote rm origin || true
+        git remote add origin "git@github.com:${PUBLISH_REPOSITORY}.git"
+        git push origin "${PUBLISH_BRANCH}"
 
     - name: Verify
       run: |
