@@ -45,6 +45,7 @@ jobs:
       env:
         CUSTOM_DOMAIN: charts.spvapi.no
       run: |
+        cd publish
         helm repo add spv-pub-charts https://$CUSTOM_DOMAIN
         
         echo '>> Building charts...'
@@ -72,6 +73,7 @@ jobs:
 
     - name: Commit files
       run: |
+        cd publish
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git commit -m "Published by GitHubActions" -a
@@ -80,7 +82,7 @@ jobs:
       uses: ad-m/github-push-action@master
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        directory: /tmp/helm/publish
+        directory: publish
         repository: sparebankenvest/helm-charts
         branch: gh-pages
 
