@@ -43,14 +43,14 @@ spec:
         - name: CUSTOM_AUTH
           value: {{ .Values.controller.keyVault.customAuth.enabled | quote }}
         - name: LOG_LEVEL
-          value: "{{ .Values.logLevel }}"
-        {{- range $key, $value := .Values.env }}
+          value: "{{ .Values.controller.logLevel }}"
+        {{- range $key, $value := .Values.controller.env }}
         - name: {{ $key }}
           value: {{ $value }}
         {{- end }}
         volumeMounts:
           - name: azure-config
-            mountPath: "{{ .Values.cloudConfig }}"
+            mountPath: "{{ .Values.controller.cloudConfig }}"
             readOnly: true
         resources:
 {{ toYaml .Values.controller.resources | indent 12 }}
@@ -68,11 +68,11 @@ spec:
   {{- end }}
       {{- if .Values.controller.image.pullSecret }}
       imagePullSecrets:
-      - name: "{{ .Values.image.pullSecret }}"
+      - name: "{{ .Values.controller.image.pullSecret }}"
       {{- end }}
       volumes:
       - name: azure-config
         hostPath:
-          path: "{{ .Values.cloudConfig }}"
+          path: "{{ .Values.controller.cloudConfig }}"
           type: File
 {{- end }}

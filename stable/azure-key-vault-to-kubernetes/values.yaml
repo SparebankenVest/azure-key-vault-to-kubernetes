@@ -11,7 +11,7 @@ rbac:
   create: true
   podSecurityPolicies:
     {}
-    
+
 controller:
   enabled: true
   name: controller
@@ -29,6 +29,8 @@ controller:
     ## If not set and create is true, a name is generated using the fullname template
     name:
 
+  env: []
+  
   keyVault:
     # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
     customAuth:
