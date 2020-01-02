@@ -73,10 +73,9 @@ jobs:
 
     - name: Commit files
       run: |
+        cd publish
         git config user.name "${GITHUB_ACTOR}"
         git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-
-        cd publish
         git commit -m "Published by GitHubActions" -a
 
     - name: Configure git key
