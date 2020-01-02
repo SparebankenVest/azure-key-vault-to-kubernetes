@@ -1,0 +1,93 @@
+# Default values 
+
+# Will create CRD's
+crds:
+  enabled: true
+  create: true
+  keep: true
+
+rbac:
+  # Specifies whether RBAC resources should be created
+  create: true
+  podSecurityPolicies:
+    {}
+    
+controller:
+  enabled: true
+  name: controller
+  image:
+    repository: spvest/azure-keyvault-webhook
+    tag: 0.1.15
+    pullPolicy: IfNotPresent
+  
+  replicaCount: 1
+  debug: false
+
+  serviceAccount:
+    create: true
+    ## The name of the ServiceAccount to use.
+    ## If not set and create is true, a name is generated using the fullname template
+    name:
+
+  keyVault:
+    # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
+    customAuth:
+      enabled: false
+      # Uncomment to use aad-pod-identity (MSI) and point to a selector
+      # podIdentitySelector: azure-key-vault
+
+    polling:
+      normalInterval: 1m
+      failureInterval: 10m
+      failureAttempts: 5
+
+  logLevel: info
+  cloudConfig: /etc/kubernetes/azure.json
+
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+env_injector:
+  enabled: true
+  name: env-injector
+  image:
+    repository: spvest/azure-keyvault-env
+    tag: 0.1.15
+    pullPolicy: IfNotPresent
+  
+  service:
+    name: azure-keyvault-secrets-webhook
+    type: ClusterIP
+    externalPort: 443
+    internalPort: 443
+
+  serviceAccount:
+    create: true
+    ## The name of the ServiceAccount to use.
+    ## If not set and create is true, a name is generated using the fullname template
+    name:
+
+  # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
+  customAuth:
+    enabled: false
+
+    # set to true to enable auto injection of credentials
+    autoInject: 
+      enabled: false
+
+      # if credentials are env vars, spesify name of the 
+      # secret the env injector should create for
+      # storing the credentials
+      
+      # secretName: <secret name>
+      
+      # uncomment to use aad-pod-identity (MSI) and point to a selector
+      # if used, secretName must not be set
+      
+      # podIdentitySelector: <selector name>
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

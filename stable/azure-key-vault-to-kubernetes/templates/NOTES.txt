@@ -1,0 +1,2 @@
+Congratulations! You've successfully installed Azure Key Vault to Kubernetes.
+For more information see the documentation online at https://akv2k8s.io.

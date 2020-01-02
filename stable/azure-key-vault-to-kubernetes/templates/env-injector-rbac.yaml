@@ -1,0 +1,50 @@
+{{- if .Values.env_injector.enabled -}}
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: {{ template "akv2k8s.envinjector.fullname" . }}-reader
+rules:
+  - apiGroups:
+    - spv.no
+    resources:
+    - azurekeyvaultsecrets
+    verbs:
+    - get
+    - list
+    - watch
+  {{- if .Values.rbac.podSecurityPolicies }}
+  - apiGroups: ['policy']
+    resources: ['podsecuritypolicies']
+    verbs: ['use']
+    resourceNames:
+      {{- toYaml .Values.rbac.podSecurityPolicies | nindent 6 }}
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ template "akv2k8s.envinjector.fullname" . }}
+roleRef:
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  namespace: {{ .Release.Namespace }}
+  name: {{ template "envinjector.serviceAccountName" . }}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: {{ template "akv2k8s.envinjector.fullname" . }}-reader
+subjects:
+- kind: Group
+  name: system:serviceaccounts
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: {{ template "akv2k8s.envinjector.fullname" . }}-reader
+  apiGroup: rbac.authorization.k8s.io
+{{- end}}
+{{- end}}

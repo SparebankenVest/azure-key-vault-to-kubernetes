@@ -1,0 +1,118 @@
+{{- if .Values.controller.enabled -}}
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: {{ template "akv2k8s.controller.fullname" . }}
+  labels:
+    app: {{ template "akv2k8s.controller.name" . }}
+    chart: {{ template "akv2k8s.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+rules:
+  - apiGroups:
+    - spv.no
+    resources:
+    - azurekeyvaultsecrets
+    verbs:
+    - get
+    - list
+    - watch
+    - update
+  - apiGroups:
+    - spv.no
+    resources:
+    - azurekeyvaultsecrets/status
+    verbs:
+    - patch
+    - update
+  - apiGroups:
+    - ""
+    resources:
+    - secrets
+    verbs:
+    - create
+    - update
+    - delete
+    - get
+    - watch
+    - list
+  - apiGroups:
+    - ""
+    resources:
+    - events
+    verbs:
+    - create
+    - update
+    - patch
+  {{- if .Values.rbac.podSecurityPolicies }}
+  - apiGroups: ['policy']
+    resources: ['podsecuritypolicies']
+    verbs: ['use']
+    resourceNames:
+      {{- toYaml .Values.rbac.podSecurityPolicies | nindent 6 }}
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: {{ template "akv2k8s.controller.fullname" . }}-reader
+  labels:
+    app: {{ template "akv2k8s.controller.name" . }}
+    chart: {{ template "akv2k8s.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+rules:
+  - apiGroups:
+    - spv.no
+    resources:
+    - azurekeyvaultsecrets
+    verbs:
+    - get
+    - list
+    - watch
+  {{- if .Values.rbac.podSecurityPolicies }}
+  - apiGroups: ['policy']
+    resources: ['podsecuritypolicies']
+    verbs: ['use']
+    resourceNames:
+      {{- toYaml .Values.rbac.podSecurityPolicies | nindent 6 }}
+  {{- end }}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: {{ template "akv2k8s.controller.fullname" . }}
+  labels:
+    app: {{ template "akv2k8s.controller.name" . }}
+    chart: {{ template "akv2k8s.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+subjects:
+- kind: ServiceAccount
+  name: {{ template "controller.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ template "akv2k8s.controller.fullname" . }}
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: {{ template "akv2k8s.controller.fullname" . }}-reader
+  labels:
+    app: {{ template "akv2k8s.controller.name" . }}
+    chart: {{ template "akv2k8s.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+subjects:
+- kind: Group
+  name: system:serviceaccounts
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: {{ template "akv2k8s.controller.fullname" . }}-reader
+  apiGroup: rbac.authorization.k8s.io
+{{- end}}
+{{- end}}

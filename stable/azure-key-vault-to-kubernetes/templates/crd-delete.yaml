@@ -1,0 +1,48 @@
+{{- if and .Values.crds.enabled (not .Values.crds.keep)}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "akv2k8s.fullname" . }}-crd-cleanup
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-weight": "3"
+    "helm.sh/hook-delete-policy": hook-succeeded
+  labels:
+    app.kubernetes.io/name: {{ include "akv2k8s.name" . }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    helm.sh/chart: {{ include "akv2k8s.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  {{- if .Values.extraLabels }}
+    {{- toYaml .Values.extraLabels | nindent 4 }}
+  {{- end }}
+spec:
+  template:
+    metadata:
+      name: {{ include "akv2k8s.fullname" . }}-crd-cleanup
+      labels:
+        app.kubernetes.io/name: {{ include "akv2k8s.name" . }}
+        app.kubernetes.io/part-of: {{ .Release.Name }}
+        helm.sh/chart: {{ include "akv2k8s.chart" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+      {{- if .Values.extraLabels }}
+        {{- toYaml .Values.extraLabels | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- if and .Values.controller.enabled .Values.controller.serviceAccount.create }}
+      serviceAccountName: {{ include "controller.serviceAccountName" . }}
+      {{- else if and .Values.env_injector.enabled .Values.env_injector.serviceAccount.create }}
+      serviceAccountName: {{ include "envinjector.serviceAccountName" . }}
+      {{- end }}
+      containers:
+        - name: kubectl
+          image: "k8s.gcr.io/hyperkube:v1.12.1"
+          command:
+          - /bin/sh
+          - -c
+          - >
+              kubectl delete crds -l name=azurekeyvaultsecrets.spv.no
+      restartPolicy: OnFailure
+{{- end }}

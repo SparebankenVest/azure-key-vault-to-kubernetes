@@ -1,0 +1,12 @@
+apiVersion: v2
+appVersion: 1.0.0-beta.9
+description: A Helm chart that deploys the Azure Key Vault to Kubernetes Controller and Env-Injector to Kubernetes
+name: azure-key-vault-to-kubernetes
+version: 1.0.0-beta.9
+
+maintainers:
+- name: Jon Arild Tørresdal
+  email: jon@torresdal.net
+  url: https://mrdevops.io
+
+icon: https://raw.githubusercontent.com/SparebankenVest/azure-key-vault-to-kubernetes/master/docs/static/images/akvk8s.png

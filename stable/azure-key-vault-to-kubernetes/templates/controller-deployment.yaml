@@ -1,0 +1,78 @@
+{{- if .Values.controller.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "akv2k8s.controller.fullname" . }}
+  labels:
+    app: {{ template "akv2k8s.controller.name" . }}
+    chart: {{ template "akv2k8s.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ template "akv2k8s.controller.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "akv2k8s.controller.name" . }}
+        release: {{ .Release.Name }}
+        {{- if and .Values.controller.keyVault.customAuth.enabled .Values.controller.keyVault.customAuth.podIdentitySelector}}
+        aadpodidbinding: {{ .Values.controller.keyVault.customAuth.podIdentitySelector }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ template "controller.serviceAccountName" . }}
+      containers:
+      - name: {{ .Values.controller.name}}
+        image: '{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag }}'
+        imagePullPolicy: Always
+        args:
+          - "--cloudconfig={{ .Values.controller.cloudConfig }}"
+        env:
+        - name: AZURE_VAULT_NORMAL_POLL_INTERVALS
+          value: "{{ .Values.controller.keyVault.polling.normalInterval }}"
+        - name: AZURE_VAULT_EXCEPTION_POLL_INTERVALS
+          value: "{{ .Values.controller.keyVault.polling.failureInterval }}"
+        - name: AZURE_VAULT_MAX_FAILURE_ATTEMPTS
+          value: "{{ .Values.controller.keyVault.polling.failureAttempts }}"
+        - name: AAD_POD_BINDING_LABEL
+          valueFrom:
+            fieldRef:
+              fieldPath:  metadata.labels['aadpodidbinding']
+        - name: CUSTOM_AUTH
+          value: {{ .Values.controller.keyVault.customAuth.enabled | quote }}
+        - name: LOG_LEVEL
+          value: "{{ .Values.logLevel }}"
+        {{- range $key, $value := .Values.env }}
+        - name: {{ $key }}
+          value: {{ $value }}
+        {{- end }}
+        volumeMounts:
+          - name: azure-config
+            mountPath: "{{ .Values.cloudConfig }}"
+            readOnly: true
+        resources:
+{{ toYaml .Values.controller.resources | indent 12 }}
+    {{- if .Values.controller.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.controller.nodeSelector | indent 8 }}
+    {{- end }}
+  {{- if .Values.controller.tolerations }}
+      tolerations:
+{{ toYaml .Values.controller.tolerations | indent 8 }}
+  {{- end }}
+  {{- if .Values.controller.affinity }}
+      affinity:
+{{ toYaml .Values.controller.affinity | indent 8 }}
+  {{- end }}
+      {{- if .Values.controller.image.pullSecret }}
+      imagePullSecrets:
+      - name: "{{ .Values.image.pullSecret }}"
+      {{- end }}
+      volumes:
+      - name: azure-config
+        hostPath:
+          path: "{{ .Values.cloudConfig }}"
+          type: File
+{{- end }}

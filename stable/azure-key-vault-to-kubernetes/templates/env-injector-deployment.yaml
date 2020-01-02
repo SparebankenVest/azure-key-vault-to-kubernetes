@@ -1,0 +1,103 @@
+{{- if .Values.env_injector.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "akv2k8s.envinjector.fullname" . }}
+  labels:
+    app: {{ template "akv2k8s.envinjector.name" . }}
+    chart: {{ template "akv2k8s.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    component: webhook
+spec:
+  replicas: {{ .Values.env_injector.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "akv2k8s.envinjector.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "akv2k8s.envinjector.name" . }}
+        release: {{ .Release.Name }}
+        {{- if .Values.env_injector.customAuth.enabled }}
+          {{- if and .Values.env_injector.customAuth.autoInject.enabled .Values.env_injector.customAuth.autoInject.podIdentitySelector }}
+        aadpodidbinding: {{ .Values.env_injector.customAuth.autoInject.podIdentitySelector }}
+          {{- end}}
+        {{- end}}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/env-injector-apiservice.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ template "envinjector.serviceAccountName" . }}
+      volumes:
+      - name: serving-cert
+        secret:
+          defaultMode: 420
+          secretName: {{ template "akv2k8s.envinjector.fullname" . }}
+      - name: dockersock
+        hostPath:
+          path: /var/run/docker.sock
+          type: File
+      - name: azureconf
+        hostPath:
+          path: /etc/kubernetes/azure.json
+          type: File
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.env_injector.image.repository }}:{{ .Values.env_injector.image.tag }}"
+          env:
+          - name: TLS_CERT_FILE
+            value: /var/serving-cert/servingCert
+          - name: TLS_PRIVATE_KEY_FILE
+            value: /var/serving-cert/servingKey
+          - name: AZUREKEYVAULT_ENV_IMAGE
+            value: {{ .Values.env_injector.image.repository }}:{{ .Values.env_injector.image.tag }}
+          - name: AAD_POD_BINDING_LABEL
+            valueFrom:
+              fieldRef:
+                fieldPath:  metadata.labels['aadpodidbinding']
+          {{- if .Values.env_injector.customAuth.enabled }}
+          - name: CUSTOM_AUTH
+            value: {{ .Values.env_injector.customAuth.enabled | quote }}
+            {{- if .Values.env_injector.customAuth.autoInject.enabled }}
+          - name: CUSTOM_AUTH_INJECT
+            value: {{ .Values.env_injector.customAuth.autoInject.enabled | quote }}
+            {{- end}}
+            {{- if .Values.env_injector.customAuth.autoInject.secretName }}
+          - NAME: CUSTOM_AUTH_INJECT_SECRET_NAME
+            VALUE: {{ .Values.env_injector.customAuth.autoInject.secretName | quote }}
+            {{- end}}
+          {{- end}}
+          - name: DEBUG
+            value: {{ .Values.env_injector.debug | quote }}
+          {{- range $key, $value := .Values.env }}
+          - name: {{ $key }}
+            value: {{ $value }}
+          {{- end }}
+          imagePullPolicy: {{ .Values.env_injector.image.pullPolicy }}
+          ports:
+          - containerPort: {{ .Values.env_injector.service.internalPort }}
+          volumeMounts:
+          - mountPath: /var/serving-cert
+            name: serving-cert
+          - mountPath: /var/run/docker.sock
+            name: dockersock
+            readOnly: true
+          - mountPath: /etc/kubernetes/azure.json
+            name: azureconf
+            readOnly: true
+          resources:
+{{ toYaml .Values.env_injector.resources | indent 12 }}
+    {{- if .Values.env_injector.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.env_injector.nodeSelector | indent 8 }}
+    {{- end }}
+  {{- if .Values.env_injector.tolerations }}
+      tolerations:
+{{ toYaml .Values.env_injector.tolerations | indent 8 }}
+  {{- end }}
+  {{- if .Values.env_injector.affinity }}
+      affinity:
+{{ toYaml .Values.env_injector.affinity | indent 8 }}
+  {{- end }}
+{{- end }}
