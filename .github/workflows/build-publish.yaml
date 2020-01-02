@@ -32,7 +32,7 @@ jobs:
       run: |
         echo '>> Installing Helm...'
         cd /tmp/helm/bin
-        curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 > get_helm.s
+        curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 > get_helm.sh
         chmod 700 get_helm.sh
         ./get_helm.sh -v ${HELM_VERSION}
         # wget "https://storage.googleapis.com/kubernetes-helm/helm-v${HELM_VERSION}-linux-amd64.tar.gz"
