@@ -101,7 +101,6 @@ jobs:
 
     - name: Verify
       run: |
-        alias helm=/tmp/helm/bin/linux-amd64/helm
         helm repo add spv-charts https://charts.spvapi.no
         helm repo update
         helm repo list
