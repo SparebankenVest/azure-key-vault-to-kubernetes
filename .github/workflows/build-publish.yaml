@@ -78,13 +78,24 @@ jobs:
         git config --local user.name "GitHub Action"
         git commit -m "Published by GitHubActions" -a
 
-    - name: Push changes
-      uses: ad-m/github-push-action@master
+    # - name: Push changes
+    #   uses: ad-m/github-push-action@master
+    #   with:
+    #     github_token: ${{ secrets.GH_PAGES_TOKEN }}
+    #     directory: publish
+    #     repository: sparebankenvest/helm-charts
+    #     branch: gh-pages
+
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v2
+      env:
+        ACTIONS_DEPLOY_KEY: ${{ secrets.GH_PAGES_TOKEN }}
+        EXTERNAL_REPOSITORY: sparebankenvest/helm-charts
+        PUBLISH_BRANCH: gh-pages
+        PUBLISH_DIR: ./publish
       with:
-        github_token: ${{ secrets.GH_PAGES_TOKEN }}
-        directory: publish
-        repository: sparebankenvest/helm-charts
-        branch: gh-pages
+        username: "GitHub Actions"
+        useremail: "githubactions@github.com"
 
     - name: Verify
       run: |
