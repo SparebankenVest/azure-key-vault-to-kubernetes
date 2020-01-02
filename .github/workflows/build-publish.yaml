@@ -24,12 +24,11 @@ jobs:
       with:
         repository: sparebankenvest/helm-charts
         ref: gh-pages
-        path: /tmp/helm/publish
+        path: publish
 
-    - name: Build Helm Repo
+    - name: Install Helm
       env:
         HELM_VERSION: 2.12.2
-        CUSTOM_DOMAIN: charts.spvapi.no
       run: |
         echo '>> Installing Helm...'
         cd /tmp/helm/bin
@@ -40,10 +39,14 @@ jobs:
         helm version -c
         helm init -c
 
+    - name: Build Helm Repo
+      env:
+        CUSTOM_DOMAIN: charts.spvapi.no
+      run: |
         helm repo add spv-pub-charts https://$CUSTOM_DOMAIN
         
         echo '>> Building charts...'
-        find "$PWD/stable" -mindepth 1 -maxdepth 1 -type d | while read chart; do
+        find "$GITHUB_WORKSPACE/master/stable" -mindepth 1 -maxdepth 1 -type d | while read chart; do
           echo ">>> helm lint $chart"
           helm lint "$chart"
           chart_name="`basename "$chart"`"
@@ -56,7 +59,7 @@ jobs:
         
         find "." -mindepth 1 -maxdepth 1 -type d | while read existingFolder; do
           folder="$(basename $existingFolder)"
-          if [ "$folder" != ".git" ] && [ ! -d $PWD/stable/$folder ]; then
+          if [ "$folder" != ".git" ] && [ ! -d $GITHUB_WORKSPACE/master/stable/$folder ]; then
             echo ">>> Removing deleted folder $existingFolder"
             rm -rf "$existingFolder"
           fi
