@@ -28,7 +28,7 @@ jobs:
 
     - name: Install Helm
       env:
-        HELM_VERSION: 3.0.2
+        HELM_VERSION: v3.0.2
       run: |
         echo '>> Installing Helm...'
         cd /tmp/helm/bin
