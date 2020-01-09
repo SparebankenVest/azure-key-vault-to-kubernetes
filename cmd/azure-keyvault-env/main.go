@@ -92,6 +92,13 @@ func main() {
 
 	vaultService := vault.NewService(creds)
 
+	// Delete /azure-keyvault/
+	dirToRemove := "/azure-keyvault/"
+	log.Debugf("%s deleting directory '%s'", logPrefix, dirToRemove)
+	if os.RemoveAll(dirToRemove) != nil {
+		log.Fatalf("%s error removing directory '%s' : %s", logPrefix, dirToRemove, err.Error())
+	}
+
 	log.Debugf("%s reading azurekeyvaultsecret's referenced in env variables", logPrefix)
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
@@ -162,6 +169,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
 		}
+
 	}
 
 	log.Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
