@@ -491,34 +491,31 @@ func mutatePodSpec(pod *corev1.Pod) error {
 		return err
 	}
 
-	if !initContainersMutated && !containersMutated {
-		log.Info("no containers mutated")
-		return nil
-	}
+	if initContainersMutated || containersMutated {
+		if config.namespace != "" && config.customAuth && config.customAuthAutoInject {
+			if config.credentials.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
+				if pod.Labels == nil {
+					pod.Labels = make(map[string]string)
+					pod.Labels["aadpodidbinding"] = config.aadPodBindingLabel
+				}
+			} else {
+				log.Infof("creating secret in new namespace '%s'...", config.namespace)
 
-	if config.namespace != "" && config.customAuth && config.customAuthAutoInject {
-		if config.credentials.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
-			if pod.Labels == nil {
-				pod.Labels = make(map[string]string)
-				pod.Labels["aadpodidbinding"] = config.aadPodBindingLabel
-			}
-		} else {
-			log.Infof("creating secret in new namespace '%s'...", config.namespace)
+				keyVaultSecret, err := config.credentials.GetKubernetesSecret(config.credentialsSecretName)
+				if err != nil {
+					return err
+				}
 
-			keyVaultSecret, err := config.credentials.GetKubernetesSecret(config.credentialsSecretName)
-			if err != nil {
-				return err
-			}
-
-			_, err = clientset.CoreV1().Secrets(config.namespace).Create(keyVaultSecret)
-			if err != nil {
-				if errors.IsAlreadyExists(err) {
-					_, err = clientset.CoreV1().Secrets(config.namespace).Update(keyVaultSecret)
-					if err != nil {
+				_, err = clientset.CoreV1().Secrets(config.namespace).Create(keyVaultSecret)
+				if err != nil {
+					if errors.IsAlreadyExists(err) {
+						_, err = clientset.CoreV1().Secrets(config.namespace).Update(keyVaultSecret)
+						if err != nil {
+							return err
+						}
+					} else {
 						return err
 					}
-				} else {
-					return err
 				}
 			}
 		}
@@ -526,6 +523,8 @@ func mutatePodSpec(pod *corev1.Pod) error {
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
 		podSpec.Volumes = append(podSpec.Volumes, getVolumes()...)
 		log.Info("containers mutated and pod updated with init-container and volumes")
+	} else {
+		log.Info("no containers mutated")
 	}
 
 	return nil
