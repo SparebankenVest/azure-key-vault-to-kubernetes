@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -95,7 +96,7 @@ func main() {
 	// Delete /azure-keyvault/
 	dirToRemove := "/azure-keyvault/"
 	log.Debugf("%s deleting directory '%s'", logPrefix, dirToRemove)
-	if os.RemoveAll(dirToRemove) != nil {
+	if clearDir(dirToRemove) != nil {
 		log.Fatalf("%s error removing directory '%s' : %s", logPrefix, dirToRemove, err.Error())
 	}
 
@@ -174,6 +175,20 @@ func main() {
 
 	log.Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
 	log.Debugf("%s azure key vault env injector", logPrefix)
+}
+
+func clearDir(dir string) error {
+	files, err := filepath.Glob(filepath.Join(dir, "*"))
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		err = os.RemoveAll(file)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret, query string, vaultService vault.Service) (string, error) {
