@@ -17,7 +17,7 @@ controller:
   name: controller
   image:
     repository: spvest/azure-keyvault-controller
-    tag: 1.0.0-beta.12
+    tag: 1.0.0-beta.13
     pullPolicy: IfNotPresent
   
   replicaCount: 1
@@ -43,7 +43,6 @@ controller:
       failureInterval: 10m
       failureAttempts: 5
 
-  logLevel: info
   cloudConfig: /etc/kubernetes/azure.json
 
   resources: {}
@@ -56,17 +55,19 @@ env_injector:
   name: env-injector
   image:
     repository: spvest/azure-keyvault-webhook
-    tag: 1.0.0-beta.12
+    tag: 1.0.0-beta.13
     pullPolicy: IfNotPresent
   envImage:
     repository: spvest/azure-keyvault-env
-    tag: 1.0.0-beta.12
+    tag: 1.0.0-beta.13
   
   service:
     name: azure-keyvault-secrets-webhook
     type: ClusterIP
     externalPort: 443
     internalPort: 443
+
+  logLevel: info
 
   serviceAccount:
     create: true
