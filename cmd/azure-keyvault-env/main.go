@@ -96,8 +96,9 @@ func main() {
 	// Delete /azure-keyvault/
 	dirToRemove := "/azure-keyvault/"
 	log.Debugf("%s deleting directory '%s'", logPrefix, dirToRemove)
-	if clearDir(dirToRemove) != nil {
-		log.Fatalf("%s error removing directory '%s' : %s", logPrefix, dirToRemove, err.Error())
+	err = clearDir(dirToRemove)
+	if err != nil {
+		log.Errorf("%s error removing directory '%s' : %s", logPrefix, dirToRemove, err.Error())
 	}
 
 	log.Debugf("%s reading azurekeyvaultsecret's referenced in env variables", logPrefix)
@@ -168,7 +169,7 @@ func main() {
 		log.Infof("starting process %s %v", binary, os.Args[1:])
 		err = syscall.Exec(binary, os.Args[1:], environ)
 		if err != nil {
-			log.Errorf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
+			log.Fatalf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
 		}
 
 	}
@@ -183,6 +184,7 @@ func clearDir(dir string) error {
 		return err
 	}
 	for _, file := range files {
+		log.Debugf("%s deleting file %s", logPrefix, file)
 		err = os.RemoveAll(file)
 		if err != nil {
 			return err
