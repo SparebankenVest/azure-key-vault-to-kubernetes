@@ -185,9 +185,9 @@ func clearDir(dir string) error {
 	}
 	for _, file := range files {
 		log.Debugf("%s deleting file %s", logPrefix, file)
-		err = os.RemoveAll(file)
+		err = os.Remove(file)
 		if err != nil {
-			return err
+			log.Errorf("%s failed to delete file %s", logPrefix, file)
 		}
 	}
 	return nil
