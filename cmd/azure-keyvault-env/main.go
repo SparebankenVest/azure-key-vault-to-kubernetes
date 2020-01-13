@@ -168,7 +168,7 @@ func main() {
 		log.Infof("starting process %s %v", binary, os.Args[1:])
 		err = syscall.Exec(binary, os.Args[1:], environ)
 		if err != nil {
-			log.Fatalf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
+			log.Errorf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
 		}
 
 	}
