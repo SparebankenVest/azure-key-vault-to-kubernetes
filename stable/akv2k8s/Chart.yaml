@@ -1,8 +1,8 @@
 apiVersion: v2
-appVersion: 1.0.0-beta.10
+appVersion: 1.0.0-beta.11
 description: A Helm chart that deploys the Azure Key Vault to Kubernetes Controller and Env-Injector to Kubernetes
 name: akv2k8s
-version: 1.0.0-beta.10
+version: 1.0.0-beta.11
 
 maintainers:
 - name: Jon Arild Tørresdal
