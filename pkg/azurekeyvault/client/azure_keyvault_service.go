@@ -54,13 +54,18 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvs.AzureKeyVault) (string,
 		return "", fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
 	}
 
+	settings, err := GetSettingFromEnvironment()
+	if err != nil {
+		return "", fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+	}
+
 	//Get secret value from Azure Key Vault
-	vaultClient, err := a.getClient("https://vault.azure.net")
+	vaultClient, err := a.getClient(settings.AzureKeyVaultURI)
 	if err != nil {
 		return "", err
 	}
 
-	baseURL := fmt.Sprintf("https://%s.vault.azure.net", vaultSpec.Name)
+	baseURL := fmt.Sprintf(settings.AzureKeyVaultResourceURI, vaultSpec.Name)
 	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 
 	if err != nil {
@@ -75,12 +80,17 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvs.AzureKeyVault) (string, er
 		return "", fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
 	}
 
-	vaultClient, err := a.getClient("https://vault.azure.net")
+	settings, err := GetSettingFromEnvironment()
+	if err != nil {
+		return "", fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+	}
+
+	vaultClient, err := a.getClient(settings.AzureKeyVaultURI)
 	if err != nil {
 		return "", err
 	}
 
-	baseURL := fmt.Sprintf("https://%s.vault.azure.net", vaultSpec.Name)
+	baseURL := fmt.Sprintf(settings.AzureKeyVaultResourceURI, vaultSpec.Name)
 	keyBundle, err := vaultClient.GetKey(context.Background(), baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 
 	if err != nil {
@@ -92,12 +102,18 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvs.AzureKeyVault) (string, er
 
 // GetCertificate download public/private certificates from Azure Key Vault
 func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, exportPrivateKey bool) (*Certificate, error) {
-	vaultClient, err := a.getClient("https://vault.azure.net")
+
+	settings, err := GetSettingFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+	}
+
+	vaultClient, err := a.getClient(settings.AzureKeyVaultURI)
 	if err != nil {
 		return nil, err
 	}
 
-	baseURL := fmt.Sprintf("https://%s.vault.azure.net", vaultSpec.Name)
+	baseURL := fmt.Sprintf(settings.AzureKeyVaultResourceURI, vaultSpec.Name)
 
 	certBundle, err := vaultClient.GetCertificate(context.Background(), baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 	if err != nil {

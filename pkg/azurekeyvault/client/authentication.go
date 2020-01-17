@@ -12,8 +12,6 @@ import (
 	cloudAuth "k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth"
 )
 
-const azureKeyVaultResourceURI = "https://vault.azure.net"
-
 // AzureKeyVaultCredentials for service principal
 type AzureKeyVaultCredentials struct {
 	getAuthorizer func() (autorest.Authorizer, error)
@@ -31,8 +29,20 @@ func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (*AzureK
 
 // NewAzureKeyVaultCredentialsFromClient creates a credentials object from a servbice principal to use with Azure Key Vault
 func NewAzureKeyVaultCredentialsFromClient(clientID, clientSecret, tenantID string) (*AzureKeyVaultCredentials, error) {
+
+	authSettings, err := auth.GetSettingsFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+	}
+
+	settings, err := GetSettingFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+	}
+
 	cred := azureAuth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
-	cred.Resource = azureKeyVaultResourceURI
+	cred.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
+	cred.Resource = settings.AzureKeyVaultURI
 
 	return &AzureKeyVaultCredentials{
 		getAuthorizer: func() (autorest.Authorizer, error) {
@@ -49,7 +59,13 @@ func NewAzureKeyVaultCredentialsFromClient(clientID, clientSecret, tenantID stri
 func NewAzureKeyVaultCredentialsFromEnvironment() (*AzureKeyVaultCredentials, error) {
 	return &AzureKeyVaultCredentials{
 		getAuthorizer: func() (autorest.Authorizer, error) {
-			authorizer, err := auth.NewAuthorizerFromEnvironmentWithResource(azureKeyVaultResourceURI)
+
+			settings, err := GetSettingFromEnvironment()
+			if err != nil {
+				return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+			}
+
+			authorizer, err := auth.NewAuthorizerFromEnvironmentWithResource(settings.AzureKeyVaultURI)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create authorizer from environment, err: %+v", err)
 			}
