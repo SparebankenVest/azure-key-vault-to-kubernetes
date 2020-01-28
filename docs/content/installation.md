@@ -26,10 +26,10 @@ helm repo update
 Install both Controller and Env-Injector:
 
 ```none
-helm install spv-charts/azure-key-vault-controller \
-  --set installCrd=false
+helm install spv-charts/azure-key-vault-controller
 
-helm install spv-charts/azure-key-vault-env-injector
+helm install spv-charts/azure-key-vault-env-injector \
+  --set installCrd=false
 ```
 
 For more details about installation options, see the 
