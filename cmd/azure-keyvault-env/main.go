@@ -93,8 +93,6 @@ func main() {
 
 	vaultService := vault.NewService(creds)
 
-	// Deletion used to be here
-
 	log.Debugf("%s reading azurekeyvaultsecret's referenced in env variables", logPrefix)
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
@@ -167,7 +165,7 @@ func main() {
 		log.Infof("starting process %s %v", binary, os.Args[1:])
 		err = syscall.Exec(binary, os.Args[1:], environ)
 		if err != nil {
-			log.Errorf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
+			log.Fatalf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
 		}
 
 	}
@@ -191,9 +189,10 @@ func clearDir(dir string) error {
 		return err
 	}
 	for _, file := range files {
-		err = os.RemoveAll(file)
+		log.Debugf("%s deleting file %s", logPrefix, file)
+		err = os.Remove(file)
 		if err != nil {
-			return err
+			log.Errorf("%s failed to delete file %s", logPrefix, file)
 		}
 	}
 	return nil
