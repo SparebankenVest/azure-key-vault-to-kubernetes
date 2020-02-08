@@ -1,3 +1,4 @@
+{{- $dot := . }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -46,7 +47,10 @@ spec:
           value: "{{ .Values.logLevel }}"
         {{- range $key, $value := .Values.env }}
         - name: {{ $key }}
-          value: {{ $value }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "azure-key-vault-controller.fullname" $dot }}-env
+              key: {{ $key }}
         {{- end }}
         volumeMounts:
           - name: azure-config
