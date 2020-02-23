@@ -27,8 +27,6 @@ spec:
       - name: azure-keyvault-controller
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: Always
-        args:
-          - "--cloudconfig={{ .Values.cloudConfig }}"
         env:
         - name: AZURE_VAULT_NORMAL_POLL_INTERVALS
           value: "{{ .Values.keyVault.polling.normalInterval }}"
@@ -48,16 +46,18 @@ spec:
         - name: {{ $key }}
           value: {{ $value }}
         {{- end }}
+        args:
+          - "--cloudconfig={{ .Values.cloudConfig }}"
         volumeMounts:
           - name: azure-config
             mountPath: "{{ .Values.cloudConfig }}"
             readOnly: true
-      {{- if .Values.image.pullSecret }}
-      imagePullSecrets:
-      - name: "{{ .Values.image.pullSecret }}"
-      {{- end }}
       volumes:
       - name: azure-config
         hostPath:
           path: "{{ .Values.cloudConfig }}"
           type: File
+      {{- if .Values.image.pullSecret }}
+      imagePullSecrets:
+      - name: "{{ .Values.image.pullSecret }}"
+      {{- end }}
