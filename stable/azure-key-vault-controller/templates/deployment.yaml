@@ -46,6 +46,7 @@ spec:
         - name: {{ $key }}
           value: {{ $value }}
         {{- end }}
+    {{- if not .Values.keyVault.customAuth.enabled }}
         args:
           - "--cloudconfig={{ .Values.cloudConfig }}"
         volumeMounts:
@@ -57,6 +58,7 @@ spec:
         hostPath:
           path: "{{ .Values.cloudConfig }}"
           type: File
+      {{- end }}
       {{- if .Values.image.pullSecret }}
       imagePullSecrets:
       - name: "{{ .Values.image.pullSecret }}"
