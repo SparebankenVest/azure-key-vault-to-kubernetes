@@ -63,8 +63,8 @@ spec:
             value: {{ .Values.customAuth.autoInject.enabled | quote }}
             {{- end}}
             {{- if .Values.customAuth.autoInject.secretName }}
-          - NAME: CUSTOM_AUTH_INJECT_SECRET_NAME
-            VALUE: {{ .Values.customAuth.autoInject.secretName | quote }}
+          - name: CUSTOM_AUTH_INJECT_SECRET_NAME
+            value: {{ .Values.customAuth.autoInject.secretName | quote }}
             {{- end}}
           {{- end}}
           - name: DEBUG
