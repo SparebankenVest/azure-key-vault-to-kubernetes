@@ -19,6 +19,12 @@ service:
   externalPort: 443
   internalPort: 443
 
+## See `kubectl explain poddisruptionbudget.spec` for more
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+podDisruptionBudget: {}
+#  minAvailable: 1
+#  maxUnavailable: 1
+
 # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
 customAuth:
   enabled: false
