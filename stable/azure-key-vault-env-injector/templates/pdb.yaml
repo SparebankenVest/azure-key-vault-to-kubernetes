@@ -1,0 +1,16 @@
+{{- if gt .Values.replicaCount 1.0 }}
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "azure-key-vault-to-kubernetes.fullname" . }}-pdb
+  labels:
+    app: {{ template "azure-key-vault-to-kubernetes.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}  
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: {{ template "azure-key-vault-to-kubernetes.name" . }}
+{{- end }}
