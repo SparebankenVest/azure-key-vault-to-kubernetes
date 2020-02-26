@@ -16,16 +16,19 @@ helm repo update
 ```
 
 ```bash
-helm install spv-charts/azure-key-vault-controller
+helm install spv-charts/azure-key-vault-controller \
+  --namespace akv2k8s
 ```
 
 **Installation of both Controller and env-injector**
 ```bash
 helm install spv-charts/azure-key-vault-controller \
-  --set installCrd=false
-
-helm install spv-charts/azure-key-vault-env-injector
+  --namespace akv2k8s
+helm install spv-charts/azure-key-vault-env-injector \
+  --set installCrd=false  --namespace akv2k8s
 ```
+
+We set `installCrd=false` on the last helm chart we install, or else the second install (injector in this case) will fail when the CRD already exists.
 
 **Using custom authentication**
 

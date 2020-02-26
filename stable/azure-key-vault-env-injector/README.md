@@ -1,7 +1,5 @@
 # Azure Key Vault Env Injector
 
-**This helm chart is still in Alpha and not yet ready for public consumption**
-
 This chart will install a Custom Resource Definition (`AzureKeyVaultEnvSecret`) and a mutating admission webhook, that together enable transparent injection of Azure Key Vault secrets to containers as environment variables.
 
 For more information see the main GitHub repository at https://github.com/SparebankenVest/azure-key-vault-to-kubernetes.
@@ -18,8 +16,11 @@ helm repo update
 ```
 
 ```bash
-helm install spv-charts/azure-key-vault-env-injector
+helm install spv-charts/azure-key-vault-env-injector \
+  --namespace akv2k8s
 ```
+
+**Note: It is recommended to install akv2k8s in its own dedicated namespace** 
 
 **Note: The Env Injector needs to be anabled for each namespace**
 
@@ -37,15 +38,17 @@ metadata:
 ### Installation of both Env Injector and Controller
 ```bash
 helm install spv-charts/azure-key-vault-env-injector \
-    --set installCrd=false
+  --namespace akv2k8s
 
-helm install spv-charts/azure-key-vault-controller
+helm install spv-charts/azure-key-vault-controller \
+    --set installCrd=false  --namespace akv2k8s
 ```
 
 ### Using custom authentication with credential injection enabled
 
 ```bash
 helm install spv-charts/azure-key-vault-env-injector \
+  --namespace akv2k8s \
   --set customAuth.enabled=true \
   --set customAuth.autoInject.enabled=true \
   --set customAuth.autoInject.secretName=azure-key-vault-secret \
