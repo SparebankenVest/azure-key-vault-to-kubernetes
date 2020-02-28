@@ -207,7 +207,6 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 			{
 				Name:      "azure-keyvault-env",
 				MountPath: "/azure-keyvault/",
-				ReadOnly:  true,
 			},
 		}...)
 
