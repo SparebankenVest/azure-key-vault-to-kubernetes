@@ -1,7 +1,7 @@
 # Default values 
 
 installCrd: true # if installing both controller and env injector, only one can install CRD
-replicaCount: 1
+replicaCount: 2
 debug: false
 
 image:
@@ -21,9 +21,26 @@ service:
 
 ## See `kubectl explain poddisruptionbudget.spec` for more
 ## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
-podDisruptionBudget: {}
-#  minAvailable: 1
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
 #  maxUnavailable: 1
+
+webhook:
+  # What will happen if the webhook fails? Ignore (continue) or Fail (prevent Pod from starting)?
+  failurePolicy: Ignore
+
+  # https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-namespaceselector
+  namespaceSelector:
+    matchLabels:
+      azure-key-vault-env-injection: enabled # The webhook will only trigger i namespaces with this label
+
+    # Prevent env injection for pods in kube-system as recomended: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#avoiding-operating-on-the-kube-system-namespace
+    matchExpressions:
+    - key: name
+      operator: NotIn
+      values:
+      - kube-system
 
 # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
 customAuth:

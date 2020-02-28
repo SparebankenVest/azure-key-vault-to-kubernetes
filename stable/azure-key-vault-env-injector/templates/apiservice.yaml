@@ -38,12 +38,17 @@ items:
       - "*"
       resources:
       - pods
-    failurePolicy: Fail
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
     namespaceSelector:
+      {{- if .Values.webhook.namespaceSelector.matchLabels }}
       matchLabels:
-        azure-key-vault-env-injection: enabled
-      # matchExpressions:
-      # - key: name
-      #   operator: NotIn
-      #   values:
-      #   - {{ .Release.Namespace }}
+{{ toYaml .Values.webhook.namespaceSelector.matchLabels | indent 8 }}
+      {{- end }}
+      matchExpressions:
+      {{- if .Values.webhook.namespaceSelector.matchExpressions }}
+{{ toYaml .Values.webhook.namespaceSelector.matchExpressions | indent 6 }}
+      {{- end }}
+      - key: name
+        operator: NotIn
+        values:
+        - {{ .Release.Namespace }}
