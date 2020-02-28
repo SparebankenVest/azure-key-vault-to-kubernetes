@@ -307,16 +307,18 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 		return nil, fmt.Errorf("failed to create docker client, error: %+v", err)
 	}
 
+	imageTag := "latest"
+	imageParts := strings.Split(container.Image, ":")
+	if len(imageParts) > 1 {
+		imageTag = imageParts[1]
+	}
+
 	named, err := dockerref.ParseNormalizedNamed(container.Image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse image name, error: %+v", err)
 	}
 
-	imageName := named.Name()
-
-	if !strings.Contains(imageName, "/") {
-		imageName = "docker.io/library/" + imageName
-	}
+	imageName := named.Name() + ":" + imageTag
 
 	// pull image in case its not present on host yet
 	log.Infof("pulling docker image %s to get entrypoint and cmd, timeout is %d seconds", imageName, timeout/time.Second)
