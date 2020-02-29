@@ -85,8 +85,7 @@ func setLogLevel(logLevel string) {
 // if default auth copies a read only version of azure config into
 // the /azure-keyvault/ folder to use as auth
 func getInitContainers() []corev1.Container {
-	cmd := "cp /usr/local/bin/azure-keyvault-env /azure-keyvault/"
-	cmd = cmd + fmt.Sprint(" && chmod 777 .")
+	cmd := "chmod 777 /azure-keyvault/ && cp /usr/local/bin/azure-keyvault-env /azure-keyvault/"
 	cmd = cmd + fmt.Sprintf(" && chmod 777 %s", "/azure-keyvault/azure-keyvault-env")
 
 	if !config.customAuth {
