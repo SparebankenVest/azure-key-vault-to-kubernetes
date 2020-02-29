@@ -15,7 +15,7 @@ const config = {
 			{ "text": "", "link": ""}
 		],
 		"search": {
-			"enabled": true,
+			"enabled": process.env.GATSBY_ALGOLIA_ENABLED === "true",
 			"indexName": "prod_akv2k8s",
 			"algoliaAppId": process.env.GATSBY_ALGOLIA_APP_ID,
 			"algoliaSearchKey": process.env.GATSBY_ALGOLIA_SEARCH_KEY,

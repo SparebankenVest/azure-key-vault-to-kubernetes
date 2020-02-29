@@ -45,6 +45,22 @@ const plugins = [
     },
   },
   {
+  resolve: 'gatsby-transformer-remark',
+    options: {
+      plugins: [
+        {
+          resolve: 'gatsby-remark-toc',
+          options: {
+            header: 'Table of Contents', // the custom header text
+            include: [
+              'content/**/*.md' // an include glob to match against
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
     resolve: `gatsby-transformer-remark`,
     options: {
       plugins: [
