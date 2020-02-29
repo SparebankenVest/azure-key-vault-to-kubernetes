@@ -86,6 +86,7 @@ func setLogLevel(logLevel string) {
 // the /azure-keyvault/ folder to use as auth
 func getInitContainers() []corev1.Container {
 	cmd := "cp /usr/local/bin/azure-keyvault-env /azure-keyvault/"
+	cmd = cmd + fmt.Sprint(" && chmod 777 .")
 	cmd = cmd + fmt.Sprintf(" && chmod 777 %s", "/azure-keyvault/azure-keyvault-env")
 
 	if !config.customAuth {
@@ -102,6 +103,7 @@ func getInitContainers() []corev1.Container {
 			{
 				Name:      "azure-keyvault-env",
 				MountPath: "/azure-keyvault/",
+
 			},
 		},
 	}
@@ -324,6 +326,7 @@ func getDockerImage(container corev1.Container, creds string) (*dockertypes.Imag
 	// pull image in case its not present on host yet
 	log.Infof("pulling docker image %s to get entrypoint and cmd, timeout is %d seconds", imageName, timeout/time.Second)
 	imgReader, err := cli.ImagePull(ctx, imageName, opt)
+	cli.
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull docker image '%s', error: %+v", imageName, err)
 	}
