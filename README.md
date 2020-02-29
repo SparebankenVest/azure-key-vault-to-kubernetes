@@ -82,3 +82,8 @@ Sparebanken Vest has adopted a Code of Conduct that we expect project participan
 **[License](LICENSE)**
 
 Azure Key Vault to Kubernetes is licensed under Apache License 2.0.
+
+### Contribute to the Documentation
+
+The documentation is located at [docs/](docs/). We're using Gatsby + MDX (Markdown + JSX) to generate static docs for https://akv2k8s.io. See [docs/README.md](docs/README.md) for details.
+
