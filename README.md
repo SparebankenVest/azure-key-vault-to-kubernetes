@@ -6,6 +6,8 @@
 ![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-controller?label=controller%20downloads&style=flat)
 ![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-webhook?label=env-injector%20downloads&style=flat)
 
+![Logo](akv2k8s.png)
+
 Project status: Stable - multipal financial institutions are running this project on production Kubernetes clusters
 
 Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubernetes-931f82364354
