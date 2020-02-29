@@ -95,7 +95,7 @@ func main() {
 
 	// Delete /azure-keyvault/
 	dirToRemove := "/azure-keyvault/"
-	log.Debugf("%s deleting directory '%s'", logPrefix, dirToRemove)
+	log.Debugf("%s deleting files in directory '%s'", logPrefix, dirToRemove)
 	err = clearDir(dirToRemove)
 	if err != nil {
 		log.Errorf("%s error removing directory '%s' : %s", logPrefix, dirToRemove, err.Error())
@@ -187,7 +187,7 @@ func clearDir(dir string) error {
 		log.Debugf("%s deleting file %s", logPrefix, file)
 		err = os.Remove(file)
 		if err != nil {
-			log.Errorf("%s failed to delete file %s", logPrefix, file)
+			log.Errorf("%s failed to delete file %s, error %+v", logPrefix, file, err)
 		}
 	}
 	return nil
