@@ -88,7 +88,7 @@ func getInitContainers() []corev1.Container {
 	cmd := "chmod 777 /azure-keyvault/ && cp /usr/local/bin/azure-keyvault-env /azure-keyvault/"
 
 	if !config.customAuth {
-		cmd = cmd + fmt.Sprintf(" && cp %s %s && ", config.cloudConfigHostPath, config.cloudConfigContainerPath)
+		cmd = cmd + fmt.Sprintf(" && cp %s %s", config.cloudConfigHostPath, config.cloudConfigContainerPath)
 	}
 
 	container := corev1.Container{
