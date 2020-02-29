@@ -69,8 +69,10 @@ Credit goes to Banzai Cloud for coming up with the [original idea](https://banza
 
 Development of Azure Key Vault for Kubernetes happens in the open on GitHub, and encourage users to:
 
-* Send a pull request with any security issues found and fixed
-* Send a pull request with your new features and bug fixes
+* Send a pull request with 
+  * any security issues found and fixed
+  * your new features and bug fixes
+  * updates and improvements to the documentation
 * Report issues on security or other issues you have come across
 * Help new users with issues they may encounter
 * Support the development of this project and star this repo!
