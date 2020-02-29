@@ -6,7 +6,7 @@
 ![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-controller?label=controller%20downloads&style=flat)
 ![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-webhook?label=env-injector%20downloads&style=flat)
 
-![Logo](akv2k8s.png)
+![Logo](akv2k8s_small.png) 
 
 Project status: Stable - multipal financial institutions are running this project on production Kubernetes clusters
 
