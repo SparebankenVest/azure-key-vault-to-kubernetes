@@ -29,9 +29,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	whhttp "github.com/slok/kubewebhook/pkg/http"
 	internalLog "github.com/slok/kubewebhook/pkg/log"
+	"github.com/slok/kubewebhook/pkg/observability/metrics"
 	whcontext "github.com/slok/kubewebhook/pkg/webhook/context"
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
@@ -540,7 +543,7 @@ func initConfig() {
 	viper.AutomaticEnv()
 }
 
-func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, logger internalLog.Logger) http.Handler {
+func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, recorder metrics.Recorder, logger internalLog.Logger) http.Handler {
 	webhook, err := mutating.NewWebhook(config, mutator, nil, nil, logger)
 	if err != nil {
 		log.Errorf("error creating webhook: %s", err)
@@ -561,9 +564,10 @@ func main() {
 	initConfig()
 	fmt.Fprintln(os.Stdout, "config initialized")
 
-	logger := &internalLog.Std{Debug: viper.GetBool("debug")}
+	logLevel := viper.GetString("LOG_LEVEL")
+	logger := &internalLog.Std{Debug: logLevel == "debug" || logLevel == "trace"}
 
-	setLogLevel(viper.GetString("LOG_LEVEL"))
+	setLogLevel(logLevel)
 
 	config = azureKeyVaultConfig{
 		customAuth:               viper.GetBool("CUSTOM_AUTH"),
@@ -589,11 +593,13 @@ func main() {
 	}
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
+	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
 
-	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, logger)
+	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, metricsRecorder, logger)
 
 	mux := http.NewServeMux()
 	mux.Handle("/pods", podHandler)
+	mux.Handle("/metrics", promhttp.Handler())
 
 	logger.Infof("listening on :443")
 	err := http.ListenAndServeTLS(":443", viper.GetString("tls_cert_file"), viper.GetString("tls_private_key_file"), mux)
