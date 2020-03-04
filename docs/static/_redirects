@@ -1,0 +1,38 @@
+/ /docs/
+
+# Add Developer Tools category to root docset
+/docs/resources/apollo-config/ /docs/devtools/apollo-config/
+
+# Get rid of "References" category
+/docs/references/apollo-config/ /docs/devtools/apollo-config/
+/docs/references/apollo-config.html /docs/devtools/apollo-config/
+/docs/references/setup-analytics/ /docs/graph-manager/setup-analytics/
+
+# Split "Apollo Engine guide" into two articles
+/docs/references/apollo-engine/ /docs/graph-manager
+
+# Redirect Removed Guides to Platform Features
+/docs/guides/security.html /docs/platform/operation-registry
+/docs/guides/monitoring.html /docs/platform/integrations
+/docs/guides/versioning.html /docs/platform/schema-validation#versioning
+
+# This lived here for a short period of time.
+/docs/resources/apollo-config.html /docs/devtools/apollo-config
+
+# Redirect Removed Guides to Client & Server Docs
+/docs/guides/schema-design.html /docs/apollo-server/essentials/schema
+/docs/guides/testing-react-components.html /docs/react/recipes/testing
+/docs/guides/state-management.html /docs/react/essentials/local-state
+/docs/guides/access-control.html /docs/apollo-server/features/authentication
+
+# File uploads no longer have a home, but the blog post is the same content.
+/docs/guides/file-uploads.html https://blog.apollographql.com/file-uploads-with-apollo-server-2-0-5db2f3f60675
+
+# Move our Apollo config docs to the References section
+/docs/platform/apollo-config.html /docs/devtools/apollo-config
+/docs/platform/setup-analytics.html /docs/references/setup-analytics
+/docs/platform/schema-validation.html /docs/graph-manager/schema-validation
+
+# Move Graph Manager docs to their own website
+/docs/platform/* /docs/graph-manager/:splat
+/docs/references/graph-manager-data-privacy/ /docs/graph-manager/graph-manager-data-privacy/

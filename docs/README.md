@@ -1,39 +1,30 @@
-# Documentation for Azure Key Vault to Kubernetes (akv2k8s)
+# Documentation
 
-We're using Gatsby + MDX (Markdown + JSX) to generate
-static docs for https://akv2k8s.io  
+This is the documentation **source** for this repository.
 
-## Development
+The **deployed** version of the documentation for this repository is available at:
 
-Get started by running the following commands:
+* https://www.apollographql.com/docs/
 
-```
-npm install
-npm run dev
-```
+## Documentation for the documentation
 
-Visit `http://localhost:8000/` to view the docs.
+This `README.md` is intentionally short since the [documentation for the documentation](https://docs-docs.netlify.com/docs/docs/) provides details for the documentation framework _itself_.  Additional information should generally be added to that documentation rather than here in this `README.md`, in order to provide a centralized resource that benefits all documentation deployments.
 
-## Changing / Adding Documentation
+## Running locally
 
-Documentation files are in markdown and located in the `content` folder.
+For more information, consult the documentation for the documentation, referenced above.
 
-For sub nesting in left sidebar, create a folder with the same name as the top level `.md` filename and the sub navigation is auto-generated. 
+In general though:
 
-Every page must use meta tags for title, description and index.
+* `npm install` in this directory
+* `npm start` in this directory
+* Open a browser to the link provided in the console.
 
-```markdown
----
-title: "Title of the page"
-metaTitle: "Meta Title Tag for this page"
-metaDescription: "Meta Description Tag for this page"
-index: 4
----
-```
+> **Important note:** Changes to the markdown source does not result in an automatic "hot reload" in the browser; it is necessary to reload the page manually in the browser to see it re-rendered.  Additionally, changes to `_config.yml` require stopping the server and restarting with `npm start` again.
 
-The sub navigation is ordered on each level using the `index` meta tag.
+## Deploy previews
 
-## Deploy
+Documentation repositories should be setup with a "deploy preview" feature which automatically provides "preview" links in the _status checks_ section of pull-requests.
 
-Deployment is automated with GitHub Actions and triggers on
-every push to the `/docs` folder in the `master` branch.
+In the event that it's not possible to run the documentation locally, pushing changes to the branch for a pull-request can be a suitable alternative that ensures changes to the documentation are properly rendered.
+

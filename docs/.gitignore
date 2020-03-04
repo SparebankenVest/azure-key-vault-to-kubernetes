@@ -1,7 +1,10 @@
-public
+.DS_Store
+Thumbs.db
+db.json
+*.log
+node_modules/
+public/*
+.deploy*/
+docs.json
+_multiconfig.yml
 .cache
-node_modules
-*DS_Store
-*.env
-
-.idea/

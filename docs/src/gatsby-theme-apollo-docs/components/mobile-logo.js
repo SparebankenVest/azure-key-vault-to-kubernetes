@@ -1,0 +1,1 @@
+export {ReactComponent as MobileLogo} from '../../akv2k8s_small.svg';

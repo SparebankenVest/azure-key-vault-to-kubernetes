@@ -1,0 +1,33 @@
+---
+title: Why use akv2k8s?
+---
+
+import {
+  ExpansionPanel,
+  ExpansionPanelList,
+  ExpansionPanelListItem
+} from 'gatsby-theme-apollo-docs';
+
+<ExpansionPanelList>
+<ExpansionPanelListItem number="1">
+
+## Avoid tight coupling to Azure Key Vault
+
+By default the only way for your application to access secure objects in Azure Key Vault is to use the Azure Key Vault SDK (or API). That is not a good solution, since it tightly couples your application to Azure Key Vault. It also violates [The Twelve-Factor App](https://12factor.net/) principal for how we should [handle configuration](https://12factor.net/config) in our application, by not passing configuration from the outside-in using environment variables.
+
+</ExpansionPanelListItem>
+<ExpansionPanelListItem number="2">
+
+## Sync Azure Key Vault secrets to Kubernetes
+
+3rd party containers in Kubernetes commonly depend on Kubernetes `Secret`'s to pass secrets through environment variables. If you are storing these secrets in Azure Key Vault, you have to find a solution to sync your Azure Key Vault secret to Kubernetes, or worse - manually create and keep Kubernetes `Secret`'s updated. Would it not be much easier to store everything securely in Azure Key Vault and just sync the secrets you need into Kubernetes? This is exactly what the **akv2k8s Controller** does.
+
+</ExpansionPanelListItem>
+<ExpansionPanelListItem number="3">
+
+## Inject Azure Key Vault secrets directly into your application 
+
+With the **akv2k8s Env Injector** you can securely and transparently inject Azure Key Vault secrets as environment variables into applications, without having to use native Kubernetes secrets. On top of that, these environment variables will not reveal the actual secret in Kubernetes. For more details about how the akv2k8s Env Injector works, see [How it works](how-it-works).
+
+</ExpansionPanelListItem>
+</ExpansionPanelList>
