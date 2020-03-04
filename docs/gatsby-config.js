@@ -9,13 +9,13 @@ module.exports = {
         ...themeOptions,
         root: __dirname,
         baseUrl: 'https://akv2k8s.io',
-        baseDir: '',
+        baseDir: 'docs',
         logoLink: 'https://akv2k8s.io/',
         contentDir: 'source/content/',
         siteName: '',
         pageTitle: 'akv2k8s docs',
         subtitle: '',
-        description: 'How to use get Azure Key Vault objects into Kubernetes',
+        description: 'How to get Azure Key Vault objects into Kubernetes',
         githubRepo: 'sparebankenvest/azure-key-vault-to-kubernetes',
         segmentApiKey: null,
         algoliaApiKey: '',
@@ -23,10 +23,10 @@ module.exports = {
         spectrumPath: '',
         spectrumHandle: '',
         twitterHandle: '',
-        defaultVersion: '0.1.5',
-        // versions: {
-        //   '0.1.4': 'version-0.1.4'
-        // },
+        defaultVersion: '1.0.0',
+        versions: {
+          '0.1.15': 'doc-version-0.1.15'
+        },
         sidebarCategories: {
           null: ['index', 'why-akv2k8s', 'quick-start', 'how-it-works', 'examples'],
           'Installation': [
