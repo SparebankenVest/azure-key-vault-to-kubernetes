@@ -54,6 +54,28 @@ func setLogLevel() {
 	log.SetLevel(logrusLevel)
 }
 
+// Retry will wait for a duration, retry n times, return if succeed or fails
+// Thanks to Nick Stogner: https://upgear.io/blog/simple-golang-retry-function/
+func Retry(attempts int, sleep time.Duration, fn func() error) error {
+	if err := fn(); err != nil {
+		if s, ok := err.(stop); ok {
+			// Return the original error for later checking
+			return s.error
+		}
+ 
+		if attempts--; attempts > 0 {
+			time.Sleep(sleep)
+			return retry(attempts, 2*sleep, fn)
+		}
+		return err
+	}
+	return nil
+}
+ 
+type stop struct {
+	error
+}
+
 func main() {
 	log.SetFormatter(&log.TextFormatter{
 		DisableColors:    true,
@@ -66,6 +88,23 @@ func main() {
 	namespace := os.Getenv("ENV_INJECTOR_POD_NAMESPACE")
 	if namespace == "" {
 		log.Fatalf("%s current namespace not provided in environment variable env_injector_pod_namespace", logPrefix)
+	}
+
+	retryTimes := 3
+	waitTimeBetweenRetries := time.Second * 3
+
+	retryTimesEnv, ok := os.LookupEnv("ENV_INJECTOR_RETRIES")
+	if ok {
+		if retryTimes, err = strconv.Atoi(retryTimesEnv); err != nil {
+			log.Errorf("%s failed to convert ENV_INJECTOR_RETRIES env var into int, value was '%s', using default value of %s", logPrefix, retryTimesEnv, retryTimes)
+		}
+	}
+
+	waitTimeBetweenRetriesEnv, ok := os.LookupEnv("ENV_INJECTOR_WAIT_BEFORE_RETRY")
+	if ok {
+		if waitTimeBetweenRetries, err = strconv.Atoi(retryTimesEnv); err != nil {
+			log.Errorf("%s failed to convert ENV_INJECTOR_WAIT_BEFORE_RETRY env var into int, value was '%s', using default value of %s", logPrefix, waitTimeBetweenRetriesEnv, waitTimeBetweenRetries)
+		}
 	}
 
 	log.Debugf("%s namespace: %s", logPrefix, namespace)
@@ -142,7 +181,21 @@ func main() {
 			log.Debugf("%s getting azurekeyvaultsecret resource '%s' from kubernetes", logPrefix, secretName)
 			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1alpha1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
-				log.Fatalf("%s error getting azurekeyvaultsecret resource '%s', error: %s", logPrefix, secretName, err.Error())
+				log.Errorf("%s error getting azurekeyvaultsecret resource '%s', error: %s", logPrefix, secretName, err.Error())
+				log.Infof("%s will retry getting azurekeyvaultsecret resource up to %s times, waiting %s seconds between retries", logPrefix, retryTimes, waitTimeBetweenRetries)
+
+				err = retry(retryTimes, waitTimeBetweenRetries, func() error {
+					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV1alpha1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
+					if err != nil {
+						log.Errorf("%s error getting azurekeyvaultsecret resource '%s', error: %s", logPrefix, secretName, err.Error())
+						return err
+					}
+					log.Infof("%s succeded getting azurekeyvaultsecret resource", logPrefix)
+					return nil
+				}
+				if err != nil {
+					log.Fatalf("%s error getting azurekeyvaultsecret resource '%s', error: %s", logPrefix, secretName, err.Error())
+				}
 			}
 
 			log.Debugf("%s getting secret value for '%s' from azure key vault", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name)
