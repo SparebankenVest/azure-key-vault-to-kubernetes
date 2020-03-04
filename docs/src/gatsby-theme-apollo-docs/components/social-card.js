@@ -23,7 +23,7 @@ const {fonts, image} = preval`
     .readFileSync(cssPath, 'utf-8')
     .replace('WOFF2/TTF/SourceSansPro-Regular.ttf.woff2', base64Regular)
     .replace('WOFF2/TTF/SourceSansPro-Semibold.ttf.woff2', base64Semibold);
-  const imagePath = path.resolve(__dirname, '../assets/social-bg.jpg');
+  const imagePath = path.resolve(__dirname, '../assets/social-bg.png');
   const base64Image = fs.readFileSync(imagePath, 'base64');
   module.exports = {
     fonts,
