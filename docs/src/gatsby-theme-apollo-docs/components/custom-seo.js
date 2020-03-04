@@ -8,7 +8,7 @@ export default function CustomSEO({image, baseUrl, twitterHandle, ...props}) {
   return (
     <SEO {...props} twitterCard="summary_large_image">
       <meta property="og:image" content={socialCard} />
-      {baseUrl && <meta name="twitter:image" content={baseUrl + imagePath} />}
+      {baseUrl && <meta name="twitter:image" content={baseUrl + socialCard} />}
       {twitterHandle && (
         <meta name="twitter:site" content={`@${twitterHandle}`} />
       )}
