@@ -99,14 +99,14 @@ func main() {
 	retryTimesEnv, ok := os.LookupEnv("ENV_INJECTOR_RETRIES")
 	if ok {
 		if retryTimes, err = strconv.Atoi(retryTimesEnv); err != nil {
-			log.Errorf("%s failed to convert ENV_INJECTOR_RETRIES env var into int, value was '%s', using default value of %n", logPrefix, retryTimesEnv, retryTimes)
+			log.Errorf("%s failed to convert ENV_INJECTOR_RETRIES env var into int, value was '%s', using default value of %d", logPrefix, retryTimesEnv, retryTimes)
 		}
 	}
 
 	waitTimeBetweenRetriesEnv, ok := os.LookupEnv("ENV_INJECTOR_WAIT_BEFORE_RETRY")
 	if ok {
 		if waitTimeBetweenRetries, err := strconv.Atoi(retryTimesEnv); err != nil {
-			log.Errorf("%s failed to convert ENV_INJECTOR_WAIT_BEFORE_RETRY env var into int, value was '%s', using default value of %n", logPrefix, waitTimeBetweenRetriesEnv, waitTimeBetweenRetries)
+			log.Errorf("%s failed to convert ENV_INJECTOR_WAIT_BEFORE_RETRY env var into int, value was '%s', using default value of %d", logPrefix, waitTimeBetweenRetriesEnv, waitTimeBetweenRetries)
 		}
 	}
 
@@ -184,7 +184,7 @@ func main() {
 			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1alpha1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
 				log.Errorf("%s error getting azurekeyvaultsecret resource '%s', error: %s", logPrefix, secretName, err.Error())
-				log.Infof("%s will retry getting azurekeyvaultsecret resource up to %n times, waiting %n seconds between retries", logPrefix, retryTimes, waitTimeBetweenRetries)
+				log.Infof("%s will retry getting azurekeyvaultsecret resource up to %d times, waiting %d seconds between retries", logPrefix, retryTimes, waitTimeBetweenRetries)
 
 				err = retry(retryTimes, time.Second*time.Duration(waitTimeBetweenRetries), func() error {
 					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV1alpha1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
