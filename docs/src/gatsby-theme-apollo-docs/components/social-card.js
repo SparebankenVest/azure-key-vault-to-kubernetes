@@ -25,6 +25,7 @@ const {fonts, image} = preval`
     .replace('WOFF2/TTF/SourceSansPro-Semibold.ttf.woff2', base64Semibold);
   const imagePath = path.resolve(__dirname, '../assets/social-bg.jpg');
   const base64Image = fs.readFileSync(imagePath, 'base64');
+  console.log('imagePath: ' + imagePath);
   module.exports = {
     fonts,
     image: 'data:image/jpeg;base64,' + base64Image
