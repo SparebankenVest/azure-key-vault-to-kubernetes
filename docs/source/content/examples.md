@@ -3,7 +3,7 @@ title: "Examples"
 description: "Different examples of how akv2k8s can be used."
 ---
 
-### Plain secret
+## Plain secret
 
 Define a `AzureKeyVaultSecret` resource:
 
@@ -38,7 +38,7 @@ metadata:
 type: opaque
 ```
 
-If Env Injector is installed, inject secret by referencing the **AzureKeyVaultSecret** above using a replacement marker (`<AzureKeyVaultSecret>@azurekeyvault`)`:
+If Env Injector is installed, inject secret by referencing the **AzureKeyVaultSecret** above using a replacement marker (`<AzureKeyVaultSecret>@azurekeyvault`):
 
 ```yaml
 ...
@@ -50,7 +50,7 @@ containers:
 ...
 ```
 
-### Certificate with exportable key
+## Certificate with exportable key
 
 Define a `AzureKeyVaultSecret` resource:
 

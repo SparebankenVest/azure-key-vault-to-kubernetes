@@ -4,7 +4,6 @@ import {SEO} from 'gatsby-theme-apollo-core';
 import socialCard from '../../assets/akv2k8s.png'
 
 export default function CustomSEO({image, baseUrl, twitterHandle, ...props}) {
-  const imagePath = `/social/${image}`; //'/' + image);
   return (
     <SEO {...props} twitterCard="summary_large_image">
       <meta property="og:image" content={socialCard} />
