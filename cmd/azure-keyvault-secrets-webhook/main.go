@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	whhttp "github.com/slok/kubewebhook/pkg/http"
@@ -70,6 +71,27 @@ type azureKeyVaultConfig struct {
 
 var config azureKeyVaultConfig
 
+var (
+	podsMutatedCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "akv2k8s_pod_mutations_total",
+		Help: "The total number of pods mutated",
+	})
+)
+
+var (
+	podsInspectedCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "akv2k8s_pod_inspections_total",
+		Help: "The total number of pods inspected, including mutated",
+	})
+)
+
+var (
+	podsMutatedFailedCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "akv2k8s_pod_mutations_failed_total",
+		Help: "The total number of attempted pod mutations that failed",
+	})
+)
+
 const envVarReplacementKey = "@azurekeyvault"
 
 func setLogLevel(logLevel string) {
@@ -93,7 +115,7 @@ func getInitContainers() []corev1.Container {
 
 	if !config.customAuth {
 		cmd = cmd + fmt.Sprintf(" && cp %s %s", config.cloudConfigHostPath, config.cloudConfigContainerPath)
-		cmd = cmd + fmt.Sprintf(" && chmod 777 %s", config.cloudConfigContainerPath)
+		cmd = cmd + fmt.Sprintf(" && chmod 666 %s", config.cloudConfigContainerPath)
 	}
 
 	container := corev1.Container{
@@ -159,7 +181,14 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 		return false, nil
 	}
 
-	return false, mutatePodSpec(pod)
+	podsInspectedCounter.Inc()
+	err := mutatePodSpec(pod)
+
+	if err != nil {
+		podsMutatedFailedCounter.Inc()
+	}
+
+	return false, err
 }
 
 func mutateContainers(containers []corev1.Container, creds map[string]string) (bool, error) {
@@ -530,6 +559,7 @@ func mutatePodSpec(pod *corev1.Pod) error {
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
 		podSpec.Volumes = append(podSpec.Volumes, getVolumes()...)
 		log.Info("containers mutated and pod updated with init-container and volumes")
+		podsMutatedCounter.Inc()
 	} else {
 		log.Info("no containers mutated")
 	}
