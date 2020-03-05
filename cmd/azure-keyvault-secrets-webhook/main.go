@@ -67,6 +67,8 @@ type azureKeyVaultConfig struct {
 	cloudConfigHostPath      string
 	cloudConfigContainerPath string
 	dockerPullTimeout        int
+	serveMetrics             bool
+	metricsAddress           string
 }
 
 var config azureKeyVaultConfig
@@ -606,6 +608,8 @@ func main() {
 		dockerPullTimeout:        viper.GetInt("CUSTOM_DOCKER_PULL_TIMEOUT"),
 		cloudConfigHostPath:      "/etc/kubernetes/azure.json",
 		cloudConfigContainerPath: "/azure-keyvault/azure.json",
+		serveMetrics:             viper.GetBool("METRICS_ENABLED"),
+		metricsAddress:           viper.GetString("METRICS_ADDR"),
 	}
 
 	if config.customAuth {
@@ -622,14 +626,28 @@ func main() {
 		}
 	}
 
+	if config.metricsAddress == "" {
+		config.metricsAddress = ":80"
+	}
+
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
 
 	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, metricsRecorder, logger)
 
+	if config.serveMetrics {
+		log.Infof("Metrics at http://%s", config.metricsAddress)
+
+		metricMux := http.NewServeMux()
+		metricMux.Handle("/metrics", promhttp.Handler())
+		err := http.ListenAndServe(config.metricsAddress, metricMux)
+		if err != nil {
+			log.Fatalf("error serving metrics: %s", err)
+		}
+	}
+
 	mux := http.NewServeMux()
 	mux.Handle("/pods", podHandler)
-	mux.Handle("/metrics", promhttp.Handler())
 
 	logger.Infof("listening on :443")
 	err := http.ListenAndServeTLS(":443", viper.GetString("tls_cert_file"), viper.GetString("tls_private_key_file"), mux)
