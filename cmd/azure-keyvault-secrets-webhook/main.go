@@ -93,7 +93,7 @@ func getInitContainers() []corev1.Container {
 
 	if !config.customAuth {
 		cmd = cmd + fmt.Sprintf(" && cp %s %s", config.cloudConfigHostPath, config.cloudConfigContainerPath)
-		cmd = cmd + fmt.Sprintf(" && chmod 666 %s", config.cloudConfigContainerPath)
+		cmd = cmd + fmt.Sprintf(" && chmod 777 %s", config.cloudConfigContainerPath)
 	}
 
 	container := corev1.Container{
