@@ -82,7 +82,7 @@ spec:
           - mountPath: /etc/kubernetes/azure.json
             name: azureconf
             readOnly: true
-          {{- end-}}
+          {{- end }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
