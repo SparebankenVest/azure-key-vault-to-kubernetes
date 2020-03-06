@@ -149,7 +149,7 @@ func getInitContainers() []corev1.Container {
 func getVolumes() []corev1.Volume {
 	hostPathFile := corev1.HostPathFile
 
-	return []corev1.Volume{
+	volumes := []corev1.Volume{
 		{
 			Name: "azure-keyvault-env",
 			VolumeSource: corev1.VolumeSource{
@@ -158,16 +158,22 @@ func getVolumes() []corev1.Volume {
 				},
 			},
 		},
-		{
-			Name: "azure-config",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: config.cloudConfigHostPath,
-					Type: &hostPathFile,
+	}
+	if !config.customAuth {
+		volumes = append(volumes, []corev1.Volume{
+			{
+				Name: "azure-config",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: config.cloudConfigHostPath,
+						Type: &hostPathFile,
+					},
 				},
 			},
-		},
+		}...)
 	}
+
+	return volumes
 }
 
 func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
