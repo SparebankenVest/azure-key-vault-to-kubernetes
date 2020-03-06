@@ -283,7 +283,7 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 
 	// If container.Command is set it will override both image.Entrypoint AND image.Cmd
 	// https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
-	if container.Command != nil {
+	if len(container.Command) > 0 {
 		log.Infof("found container command %v", container.Command)
 		cmd = append(cmd, container.Command...)
 	} else {
@@ -296,19 +296,19 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 			return nil, fmt.Errorf("when getting docker image description for %s, an empty description was returned", container.Image)
 		}
 
-		if image.Config.Entrypoint != nil {
-			log.Infof("found entrypoint: %v", []string(image.Config.Entrypoint))
-			cmd = append(cmd, []string(image.Config.Entrypoint)...)
+		if len(image.Config.Entrypoint) > 0 {
+			log.Infof("using entrypoint from image: %v", image.Config.Entrypoint)
+			cmd = append(cmd, image.Config.Entrypoint...)
 		} else {
-			if image.Config.Cmd != nil {
-				log.Infof("using cmd from image: %v", []string(image.Config.Cmd))
-				cmd = append(cmd, []string(image.Config.Cmd)...)
+			if len(image.Config.Cmd) > 0 {
+				log.Infof("using cmd from image: %v", image.Config.Cmd)
+				cmd = append(cmd, image.Config.Cmd...)
 			}
 		}
 	}
 
 	// If container.Args is set it will override image.Cmd
-	if container.Args != nil {
+	if len(container.Args) > 0 {
 		log.Infof("found container args (will override any cmd or args from image): %v", container.Args)
 		cmd = append(cmd, container.Args...)
 	} else {
@@ -325,9 +325,9 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 		}
 
 		// if container.Command is set it will override image.Cmd
-		if container.Command == nil && image.Config.Cmd != nil {
-			log.Infof("using cmd from image: %v", []string(image.Config.Cmd))
-			cmd = append(cmd, []string(image.Config.Cmd)...)
+		if len(container.Command) == 0 && len(image.Config.Cmd) > 0 {
+			log.Infof("using cmd from image: %v", image.Config.Cmd)
+			cmd = append(cmd, image.Config.Cmd...)
 		}
 	}
 
