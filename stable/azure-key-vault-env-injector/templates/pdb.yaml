@@ -8,6 +8,7 @@ metadata:
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}  
+    component: webhook
 spec:
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
 {{- if .Values.podDisruptionBudget.maxUnavailable }}

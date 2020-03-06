@@ -2,7 +2,7 @@
 
 installCrd: true # if installing both controller and env injector, only one can install CRD
 replicaCount: 2
-debug: false
+logLevel: Info
 
 image:
   repository: spvest/azure-keyvault-webhook
@@ -18,6 +18,10 @@ service:
   type: ClusterIP
   externalPort: 443
   internalPort: 443
+
+metrics:
+  enabled: false
+  metricsAddress: ":80"
 
 ## See `kubectl explain poddisruptionbudget.spec` for more
 ## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
@@ -42,24 +46,23 @@ webhook:
       values:
       - kube-system
 
-# Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
-customAuth:
-  enabled: false
-
-  # set to true to enable auto injection of credentials
-  autoInject: 
+keyVault:
+  # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication
+  customAuth:
     enabled: false
 
-    # if credentials are env vars, spesify name of the 
-    # secret the env injector should create for
-    # storing the credentials
-    
-    # secretName: <secret name>
-    
-    # uncomment to use aad-pod-identity (MSI) and point to a selector
-    # if used, secretName must not be set
-    
-    # podIdentitySelector: <selector name>
+    # set to true to enable auto injection of credentials
+    autoInject:
+      enabled: false
+
+      # if credentials are env vars, spesify name of the
+      # secret the env injector should create for
+      # storing the credentials
+      # secretName: <secret name>
+
+      # uncomment to use aad-pod-identity (MSI) and point to a selector
+      # if used, secretName must not be set
+      # podIdentitySelector: <selector name>
 
 resources: {}
 

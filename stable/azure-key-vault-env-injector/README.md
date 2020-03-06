@@ -47,6 +47,18 @@ helm install spv-charts/azure-key-vault-controller \
     --set installCrd=false  --namespace akv2k8s
 ```
 
+### Using custom authentication with AAD Pod Identity
+
+Requires Pod Identity: https://github.com/Azure/aad-pod-identity
+
+```bash
+helm install spv-charts/azure-key-vault-env-injector \
+  --namespace akv2k8s \
+  --set customAuth.enabled=true \
+  --set customAuth.autoInject.enabled=true \
+  --set customAuth.autoInject.podIdentitySelector=myPidIdentitySelector \
+```
+
 ### Using custom authentication with credential injection enabled
 
 ```bash
@@ -67,11 +79,6 @@ The following tables lists configurable parameters of the azure-key-vault-env-in
 |               Parameter                 |                Description                  |                  Default                 |
 | --------------------------------------- | ------------------------------------------- | -----------------------------------------|
 |affinity                                 |affinities to use                            |{}                                        |
-|customAuth.enabled                       |if custom authentication with azure key vault is enabled |false                         |
-|customAuth.autoInject.enabled            |if auto injection of credentials to pods is enabled|false                               |
-|customAuth.autoInject.secretName         |name of secret to use to store credentials   |{}                                        |
-|customAuth.autoInject.podIdentitySelector|if using aad-pod-identity, which selector to reference|{}                               |
-|debug                                    |debug logs for webhook                       |false                                     |
 |env                                      |aditional env vars to send to pod            |{}                                        |
 |envImage.repository                      |image repo that contains the env image       |spvest/azure-keyvault-env                 |
 |envImage.tag                             |image tag                                    |0.1.15                                    |
@@ -79,13 +86,21 @@ The following tables lists configurable parameters of the azure-key-vault-env-in
 |image.repository                         |image repo that contains the controller      |spvest/azure-keyvault-webhook             |
 |image.tag                                |image tag                                    |0.1.15                                    |
 |installCrd                               |install custom resource definition           |true                                      |
+|keyVault.customAuth.enabled                       |if custom authentication with azure key vault is enabled |false                         |
+|keyVault.customAuth.autoInject.enabled            |if auto injection of credentials to pods is enabled|false                               |
+|keyVault.customAuth.autoInject.secretName         |name of secret to use to store credentials   |{}                                        |
+|keyVault.customAuth.autoInject.podIdentitySelector|if using aad-pod-identity, which selector to reference|{}                               |
+|logLevel                                 |log level - Trace, Debug, Info, Warning, Error, Fatal or Panic | Info                   |
+|metrics.enabled                          |if prometheus metrics is enabled             |false                                     |
+|metrics.address                          |listening address for prometheus metrics     |':80'                                     |
 |nodeSelector                             |node selector to use                         |{}                                        |
-|podDisruptionBudget.minAvailable         |pod disruption minimum available             |nil                                       |
+|podDisruptionBudget.enabled              |if pod disruption budget is enabled          |true                                      |
+|podDisruptionBudget.minAvailable         |pod disruption minimum available             |1                                         |
 |podDisruptionBudget.maxUnavailable       |pod disruption maximum unavailable           |nil                                       |
 |replicaCount                             |number of replicas                           |1                                         |
 |resources                                |resources to request                         |{}                                        |
 |service.externalPort                     |webhook service external port                |443                                       |
 |service.internalPort                     |webhook service external port                |443                                       |
-|service.name                             |webhook service name                         |vault-secrets-webhook                     |
+|service.name                             |webhook service name                         |azure-keyvault-secrets-webhook            |
 |service.type                             |webhook service type                         |ClusterIP                                 |
 |tolerations                              |tolerations to add                           |[]                                        |

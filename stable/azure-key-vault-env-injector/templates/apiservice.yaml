@@ -21,6 +21,12 @@ items:
   kind: MutatingWebhookConfiguration
   metadata:
     name: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
+    labels:
+      app: {{ template "azure-key-vault-to-kubernetes.name" . }}
+      chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+      release: {{ .Release.Name }}
+      heritage: {{ .Release.Service }}
+      component: webhook
   webhooks:
   - name: pods.{{ template "azure-key-vault-to-kubernetes.name" . }}.admission.spv.no
     clientConfig:
