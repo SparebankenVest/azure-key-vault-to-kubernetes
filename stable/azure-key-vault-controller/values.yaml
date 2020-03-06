@@ -1,4 +1,4 @@
-# Default values 
+# Default values
 
 installCrd: true # if installing both controller and env injector, only one can install CRD
 image:
@@ -6,12 +6,18 @@ image:
   tag: 0.1.15
 
 keyVault:
-  # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication 
+  # Set to true to use custom auth - see https://akv2k8s.io/security/authentication/#custom-authentication-for-the-controller
   customAuth:
     enabled: false
 
     # Uncomment to use aad-pod-identity (MSI) and point to a selector
     # podIdentitySelector: azure-key-vault
+
+# Uncomment to use client-id / secret - see https://akv2k8s.io/security/authentication/#custom-authentication-options
+# env:
+#   AZURE_TENANT_ID: <tenantId>
+#   AZURE_CLIENT_ID: <clientId>
+#   AZURE_CLIENT_SECRET: <clientSecret>
 
   polling:
     normalInterval: 1m
