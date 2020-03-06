@@ -1,4 +1,7 @@
-# Azure Key Vault Env Injector
+---
+title: "Env-Injector Helm Chart"
+description: "Azure Key Vault Env-Injector reference"
+---
 
 This chart will install a Custom Resource Definition (`AzureKeyVaultEnvSecret`) and a mutating admission webhook, that together enable transparent injection of Azure Key Vault secrets to containers as environment variables.
 
