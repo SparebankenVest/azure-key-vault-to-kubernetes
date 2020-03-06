@@ -1,5 +1,5 @@
 ---
-title: "Azure Key Vault Controller Helm Chart"
+title: "Controller Helm Chart"
 description: "Azure Key Vault Controller reference"
 ---
 
