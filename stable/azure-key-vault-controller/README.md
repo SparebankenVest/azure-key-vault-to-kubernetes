@@ -1,4 +1,7 @@
-# Azure Key Vault Controller
+---
+title: "Azure Key Vault Controller"
+description: "Azure Key Vault Controller reference"
+---
 
 This chart will install a Kubernetes controller and a Custom Resource Definition (`AzureKeyVaultSecret`), that together enable secrets from Azure Key Vault to be stored as Kubernetes native `Secret` resources.
 
