@@ -208,7 +208,7 @@ func main() {
 				}
 			}
 
-			log.Debugf("%s getting secret value for '%s' from azure key vault", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name)
+			log.Debugf("%s getting secret value for '%s' from azure key vault, to inject into env var %s", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name, name)
 			secret, err := getSecretFromKeyVault(keyVaultSecretSpec, secretQuery, vaultService)
 			if err != nil {
 				log.Fatalf("%s failed to read secret '%s', error %+v", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name, err)
@@ -217,19 +217,19 @@ func main() {
 			if secret == "" {
 				log.Fatalf("%s secret not found in azure key vault: %s", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name)
 			} else {
+				log.Infof("%s secret %s injected into evn var %s for executable %s", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name, name, origCommand)
 				environ[i] = fmt.Sprintf("%s=%s", name, secret)
 			}
 		}
 	}
 
-	log.Infof("starting process %s %v", origCommand, origArgs)
+	log.Infof("%s starting process %s %v with secrets in env vars", logPrefix, origCommand, origArgs)
 	err = syscall.Exec(origCommand, origArgs, environ)
 	if err != nil {
 		log.Fatalf("%s failed to exec process '%s': %s", logPrefix, origCommand, err.Error())
 	}
 
-	log.Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
-	log.Debugf("%s azure key vault env injector", logPrefix)
+	log.Infof("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
 }
 
 func deleteSensitiveFiles() {
