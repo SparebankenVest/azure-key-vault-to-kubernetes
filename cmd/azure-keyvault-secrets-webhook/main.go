@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -53,8 +54,10 @@ import (
 )
 
 const (
-	dockerHubHost    = "index.docker.io"
-	oldDockerHubHost = "docker.io"
+	dockerHubHost      = "index.docker.io"
+	oldDockerHubHost   = "docker.io"
+	injectorDir        = "/azure-keyvault/"
+	injectorExecutable = "azure-keyvault-env"
 )
 
 type azureKeyVaultConfig struct {
@@ -108,12 +111,12 @@ func setLogLevel(logLevel string) {
 	log.SetLevel(logrusLevel)
 }
 
-// This init-container copies a program to /azure-keyvault and
+// This init-container copies a program to /azure-keyvault/ and
 // if default auth copies a read only version of azure config into
 // the /azure-keyvault/ folder to use as auth
 func getInitContainers() []corev1.Container {
-	cmd := "chmod 777 /azure-keyvault/ && cp /usr/local/bin/azure-keyvault-env /azure-keyvault/"
-	cmd = cmd + fmt.Sprintf(" && chmod 777 %s", "/azure-keyvault/azure-keyvault-env")
+	cmd := fmt.Sprintf("chmod 777 %s && cp /usr/local/bin/%s %s", injectorDir, injectorExecutable, injectorDir)
+	cmd = cmd + fmt.Sprintf(" && chmod 777 %s", filepath.Join(injectorDir, injectorExecutable))
 
 	if !config.customAuth {
 		cmd = cmd + fmt.Sprintf(" && cp %s %s", config.cloudConfigHostPath, config.cloudConfigContainerPath)
@@ -128,7 +131,7 @@ func getInitContainers() []corev1.Container {
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "azure-keyvault-env",
-				MountPath: "/azure-keyvault/",
+				MountPath: injectorDir,
 			},
 		},
 	}
