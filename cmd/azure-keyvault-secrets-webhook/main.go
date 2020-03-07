@@ -118,7 +118,7 @@ func getInitContainers() []corev1.Container {
 	fullExecPath := filepath.Join(injectorDir, injectorExecutable)
 	cmd := fmt.Sprintf("echo 'Copying %s to %s'", fullExecPath, injectorDir)
 	// cmd := fmt.Sprintf("chmod 777 %s", injectorDir)
-	cmd = cmd + fmt.Sprintf(" && [ -f /usr/local/bin/%s ] && cp /usr/local/bin/%s %s || { echo 'File not found: /usr/local/bin/%s' ; return 1 }", fullExecPath, injectorExecutable, injectorDir, fullExecPath)
+	cmd = cmd + fmt.Sprintf(" && [ -f /usr/local/bin/%s ] && cp /usr/local/bin/%s %s || { echo 'File not found: /usr/local/bin/%s' ; exit 1; }", injectorExecutable, injectorExecutable, injectorDir, injectorExecutable)
 	// cmd = cmd + fmt.Sprintf(" && chmod 777 %s", fullExecPath)
 
 	if !config.customAuth {
