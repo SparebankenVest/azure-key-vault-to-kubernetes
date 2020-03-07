@@ -143,7 +143,7 @@ func main() {
 			log.Fatalf("%s binary not found: %s", logPrefix, err)
 		}
 
-		origArgs = os.Args[1:]
+		origArgs = os.Args[2:]
 
 		log.Infof("%s found original container command to be %s %s", logPrefix, origCommand, origArgs)
 	}
