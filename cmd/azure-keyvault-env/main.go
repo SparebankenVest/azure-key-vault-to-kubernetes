@@ -261,16 +261,20 @@ func getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret, query s
 
 	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
 	case akv.AzureKeyVaultObjectTypeSecret:
+		log.Debugf("%s creating secret transformer for AKV object Secret", logPrefix)
 		transformator, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
 		if err != nil {
 			return "", err
 		}
 		secretHandler = NewAzureKeyVaultSecretHandler(azureKeyVaultSecret, query, *transformator, vaultService)
 	case akv.AzureKeyVaultObjectTypeCertificate:
+		log.Debugf("%s creating secret transformer for AKV object Certificate", logPrefix)
 		secretHandler = NewAzureKeyVaultCertificateHandler(azureKeyVaultSecret, query, vaultService)
 	case akv.AzureKeyVaultObjectTypeKey:
+		log.Debugf("%s creating secret transformer for AKV object Key", logPrefix)
 		secretHandler = NewAzureKeyVaultKeyHandler(azureKeyVaultSecret, query, vaultService)
 	case akv.AzureKeyVaultObjectTypeMultiKeyValueSecret:
+		log.Debugf("%s creating secret transformer for AKV object and akv2k8s type MultiKeyValueSecret", logPrefix)
 		secretHandler = NewAzureKeyVaultMultiKeySecretHandler(azureKeyVaultSecret, query, vaultService)
 	default:
 		return "", fmt.Errorf("azure key vault object type '%s' not currently supported", azureKeyVaultSecret.Spec.Vault.Object.Type)
