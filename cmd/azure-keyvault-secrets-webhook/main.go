@@ -115,12 +115,15 @@ func setLogLevel(logLevel string) {
 // if default auth copies a read only version of azure config into
 // the /azure-keyvault/ folder to use as auth
 func getInitContainers() []corev1.Container {
-	cmd := fmt.Sprintf("chmod 777 %s && cp /usr/local/bin/%s %s", injectorDir, injectorExecutable, injectorDir)
-	cmd = cmd + fmt.Sprintf(" && chmod 777 %s", filepath.Join(injectorDir, injectorExecutable))
+	fullExecPath := filepath.Join(injectorDir, injectorExecutable)
+	cmd := fmt.Sprintf("echo 'Copying %s to %s", fullExecPath, injectorDir)
+	// cmd := fmt.Sprintf("chmod 777 %s", injectorDir)
+	cmd = cmd + fmt.Sprintf(" && [ -f %s ] && cp /usr/local/bin/%s %s || echo 'File not found: %s'", fullExecPath, injectorExecutable, injectorDir, fullExecPath)
+	// cmd = cmd + fmt.Sprintf(" && chmod 777 %s", fullExecPath)
 
 	if !config.customAuth {
 		cmd = cmd + fmt.Sprintf(" && cp %s %s", config.cloudConfigHostPath, config.cloudConfigContainerPath)
-		cmd = cmd + fmt.Sprintf(" && chmod 666 %s", config.cloudConfigContainerPath)
+		// cmd = cmd + fmt.Sprintf(" && chmod 666 %s", config.cloudConfigContainerPath)
 	}
 
 	container := corev1.Container{
@@ -244,13 +247,14 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 
 		mutated = true
 
-		container.Command = []string{"/azure-keyvault/azure-keyvault-env"}
+		fullExecPath := filepath.Join(injectorDir, injectorExecutable)
+		container.Command = []string{fullExecPath}
 		container.Args = autoArgs
 
 		container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
 			{
 				Name:      "azure-keyvault-env",
-				MountPath: "/azure-keyvault/",
+				MountPath: injectorDir,
 			},
 		}...)
 
