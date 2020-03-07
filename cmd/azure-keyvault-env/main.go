@@ -134,14 +134,6 @@ func main() {
 
 	vaultService := vault.NewService(creds)
 
-	// Delete /azure-keyvault/
-	dirToRemove := "/azure-keyvault/"
-	log.Debugf("%s deleting files in directory '%s'", logPrefix, dirToRemove)
-	err = clearDir(dirToRemove)
-	if err != nil {
-		log.Errorf("%s error removing directory '%s' : %s", logPrefix, dirToRemove, err.Error())
-	}
-
 	log.Debugf("%s reading azurekeyvaultsecret's referenced in env variables", logPrefix)
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
@@ -221,6 +213,9 @@ func main() {
 		if err != nil {
 			log.Fatalf("%s binary not found: %s", logPrefix, os.Args[1])
 		}
+
+		deleteSensitiveFiles()
+
 		log.Infof("starting process %s %v", binary, os.Args[1:])
 		err = syscall.Exec(binary, os.Args[1:], environ)
 		if err != nil {
@@ -231,6 +226,15 @@ func main() {
 
 	log.Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
 	log.Debugf("%s azure key vault env injector", logPrefix)
+}
+
+func deleteSensitiveFiles() {
+	dirToRemove := "/azure-keyvault/"
+	log.Debugf("%s deleting files in directory '%s'", logPrefix, dirToRemove)
+	err := clearDir(dirToRemove)
+	if err != nil {
+		log.Errorf("%s error removing directory '%s' : %s", logPrefix, dirToRemove, err.Error())
+	}
 }
 
 func clearDir(dir string) error {
