@@ -649,14 +649,16 @@ func main() {
 	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, metricsRecorder, logger)
 
 	if config.serveMetrics {
-		log.Infof("Metrics at http://%s", config.metricsAddress)
+		go func() {
+			log.Infof("Metrics at http://%s", config.metricsAddress)
 
-		metricMux := http.NewServeMux()
-		metricMux.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(config.metricsAddress, metricMux)
-		if err != nil {
-			log.Fatalf("error serving metrics: %s", err)
-		}
+			metricMux := http.NewServeMux()
+			metricMux.Handle("/metrics", promhttp.Handler())
+			err := http.ListenAndServe(config.metricsAddress, metricMux)
+			if err != nil {
+				log.Fatalf("error serving metrics: %s", err)
+			}
+		}()
 	}
 
 	mux := http.NewServeMux()
