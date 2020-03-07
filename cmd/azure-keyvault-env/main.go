@@ -143,7 +143,7 @@ func main() {
 			log.Fatalf("%s binary not found: %s", logPrefix, err)
 		}
 
-		origArgs = os.Args[2:]
+		origArgs = os.Args[1:]
 
 		log.Infof("%s found original container command to be %s %s", logPrefix, origCommand, origArgs)
 	}
@@ -227,8 +227,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("%s failed to exec process '%s': %s", logPrefix, origCommand, err.Error())
 	}
-
-	deleteSensitiveFiles()
 
 	log.Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
 	log.Debugf("%s azure key vault env injector", logPrefix)
