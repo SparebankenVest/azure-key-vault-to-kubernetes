@@ -11,7 +11,7 @@ DOCKER_AKV2K8S_TEST_IMAGE=akv2k8s-env-test
 DOCKER_INTERNAL_TAG := $(shell git rev-parse --short HEAD)
 DOCKER_RELEASE_TAG := $(shell git describe --tags)
 
-BUILD_DATE := $(shell Get-Date -u +"%Y-%m-%dT%H:%M:%SZ")
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_URL := https://$(PACKAGE)
 
 .PHONY: build build-controller build-webhook build-vaultenv test push push-controller push-webhook push-vaultenv pull-release tag-release push-release
