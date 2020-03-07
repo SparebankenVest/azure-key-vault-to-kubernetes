@@ -248,7 +248,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 		mutated = true
 
 		fullExecPath := filepath.Join(injectorDir, injectorExecutable)
-		container.Command = []string{fmt.Sprintf("[ -f %s ] && { ls -al %s; %s; } || { echo 'File not found: %s'; ls -al %s; }", fullExecPath, injectorDir, fullExecPath, fullExecPath, injectorDir)}
+		container.Command = []string{fullExecPath}
 		container.Args = autoArgs
 
 		container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{

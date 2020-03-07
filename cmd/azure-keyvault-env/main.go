@@ -84,6 +84,9 @@ func main() {
 		DisableTimestamp: true,
 	})
 
+	var origCommand string
+	var origArgs []string
+
 	setLogLevel()
 
 	log.Debugf("%s azure key vault env injector initializing", logPrefix)
@@ -130,6 +133,19 @@ func main() {
 		if err != nil {
 			log.Fatalf("%s failed to get credentials for azure key vault, error %+v", logPrefix, err)
 		}
+	}
+
+	if len(os.Args) == 1 {
+		log.Fatalf("%s no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly", logPrefix)
+	} else {
+		origCommand, err = exec.LookPath(os.Args[1])
+		if err != nil {
+			log.Fatalf("%s binary not found: %s", logPrefix, err)
+		}
+
+		origArgs = os.Args[1:]
+
+		log.Infof("%s found original container command to be %s %s", logPrefix, origCommand, origArgs)
 	}
 
 	vaultService := vault.NewService(creds)
@@ -206,23 +222,13 @@ func main() {
 		}
 	}
 
-	if len(os.Args) == 1 {
-		log.Fatalf("%s no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly", logPrefix)
-	} else {
-		binary, err := exec.LookPath(os.Args[1])
-		if err != nil {
-			log.Fatalf("%s binary not found: %s", logPrefix, os.Args[1])
-		}
-
-		deleteSensitiveFiles()
-
-		log.Infof("starting process %s %v", binary, os.Args[1:])
-		err = syscall.Exec(binary, os.Args[1:], environ)
-		if err != nil {
-			log.Fatalf("%s failed to exec process '%s': %s", logPrefix, binary, err.Error())
-		}
-
+	log.Infof("starting process %s %v", origCommand, origArgs)
+	err = syscall.Exec(origCommand, origArgs, environ)
+	if err != nil {
+		log.Fatalf("%s failed to exec process '%s': %s", logPrefix, origCommand, err.Error())
 	}
+
+	deleteSensitiveFiles()
 
 	log.Debugf("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
 	log.Debugf("%s azure key vault env injector", logPrefix)
