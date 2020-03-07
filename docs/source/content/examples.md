@@ -1,7 +1,15 @@
 ---
 title: "Examples"
-description: "Different examples of how akv2k8s can be used."
+description: "Simple examples of how akv2k8s can be used."
 ---
+
+These examples require:
+
+* a functioning Kubernetes cluster or [Minikube](https://kubernetes.io/docs/setup/learning-environment/minikube/)
+* successful [installation](installation/) of akv2k8s
+* `default` namespace labeled `azure-key-vault-env-injection: enabled`
+
+For more more detailed examples and walkthroughs, see the [tutorials](tutorials/introduction).
 
 ## Plain secret
 
