@@ -108,6 +108,7 @@ func main() {
 	var err error
 	retryTimes := 3
 	waitTimeBetweenRetries := 3
+	cleanUp := true
 
 	retryTimesEnv, ok := os.LookupEnv("ENV_INJECTOR_RETRIES")
 	if ok {
@@ -160,9 +161,17 @@ func main() {
 		logger.Infof("found original container command to be %s %s", origCommand, origArgs)
 	}
 
-	err = deleteSensitiveFiles()
-	if err != nil {
-		logger.Fatalf("failed to delete sensitive files, error: %+v", err)
+	if deleteFiles, exists := os.LookupEnv("DELETE_SENSITIVE_FILES"); exists {
+		if s, err := strconv.ParseBool(deleteFiles); err != nil {
+			cleanUp = s
+		}
+	}
+
+	if cleanUp {
+		err = deleteSensitiveFiles()
+		if err != nil {
+			logger.Fatalf("failed to delete sensitive files, error: %+v", err)
+		}
 	}
 
 	vaultService := vault.NewService(creds)
