@@ -306,42 +306,9 @@ func getContainerCmd(container corev1.Container, creds string) ([]string, error)
 		if len(container.Args) == 0 {
 			cmd = append(cmd, image.Config.Cmd...)
 		}
-		// if len(image.Config.Entrypoint) > 0 {
-		// 	log.Infof("using entrypoint from image: %v", image.Config.Entrypoint)
-		// 	cmd = append(cmd, image.Config.Entrypoint...)
-		// } else {
-		// 	if len(image.Config.Cmd) > 0 {
-		// 		log.Infof("using cmd from image: %v", image.Config.Cmd)
-		// 		cmd = append(cmd, image.Config.Cmd...)
-		// 	}
-		// }
 	}
 
 	cmd = append(cmd, container.Args...)
-
-	// // If container.Args is set it will override image.Cmd
-	// if len(container.Args) > 0 {
-	// 	log.Infof("found container args (will override any cmd or args from image): %v", container.Args)
-	// 	cmd = append(cmd, container.Args...)
-	// } else {
-	// 	if image == nil {
-	// 		log.Infof("getting docker image %s", container.Image)
-	// 		image, err = getDockerImage(container, creds)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-
-	// 		if image == nil {
-	// 			return nil, fmt.Errorf("when getting docker image description for %s, an empty description was returned", container.Image)
-	// 		}
-	// 	}
-
-	// 	// if container.Command is set it will override image.Cmd
-	// 	if len(container.Command) == 0 && len(image.Config.Cmd) > 0 {
-	// 		log.Infof("using cmd from image: %v", image.Config.Cmd)
-	// 		cmd = append(cmd, image.Config.Cmd...)
-	// 	}
-	// }
 
 	return cmd, nil
 }
