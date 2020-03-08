@@ -148,6 +148,8 @@ func main() {
 		log.Infof("%s found original container command to be %s %s", logPrefix, origCommand, origArgs)
 	}
 
+	deleteSensitiveFiles()
+
 	vaultService := vault.NewService(creds)
 
 	log.Debugf("%s reading azurekeyvaultsecret's referenced in env variables", logPrefix)
@@ -228,8 +230,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("%s failed to exec process '%s': %s", logPrefix, origCommand, err.Error())
 	}
-
-	deleteSensitiveFiles()
 
 	log.Infof("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
 }
