@@ -585,6 +585,7 @@ func mutatePodSpec(pod *corev1.Pod) error {
 func initConfig() {
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
 	viper.SetDefault("custom_docker_pull_timeout", 120)
+	viper.SetDefault("custom_auth_inject_secret_name", "akv2k8s-akv-credentials")
 	viper.AutomaticEnv()
 }
 
