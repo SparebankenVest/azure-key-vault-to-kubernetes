@@ -117,13 +117,13 @@ func setLogLevel(logLevel string) {
 func getInitContainers() []corev1.Container {
 	fullExecPath := filepath.Join(injectorDir, injectorExecutable)
 	cmd := fmt.Sprintf("echo 'Copying %s to %s'", fullExecPath, injectorDir)
-	// cmd := fmt.Sprintf("chmod 777 %s", injectorDir)
-	cmd = cmd + fmt.Sprintf(" && [ -f /usr/local/bin/%s ] && cp /usr/local/bin/%s %s || { echo 'File not found: /usr/local/bin/%s' ; exit 1; }", injectorExecutable, injectorExecutable, injectorDir, injectorExecutable)
-	// cmd = cmd + fmt.Sprintf(" && chmod 777 %s", fullExecPath)
+	cmd = cmd + fmt.Sprintf(" && chmod 777 %s", injectorDir)
+	cmd = cmd + fmt.Sprintf(" && cp /usr/local/bin/%s %s", injectorExecutable, injectorDir)
+	cmd = cmd + fmt.Sprintf(" && chmod 777 %s", fullExecPath)
 
 	if !config.customAuth {
 		cmd = cmd + fmt.Sprintf(" && cp %s %s", config.cloudConfigHostPath, config.cloudConfigContainerPath)
-		// cmd = cmd + fmt.Sprintf(" && chmod 666 %s", config.cloudConfigContainerPath)
+		cmd = cmd + fmt.Sprintf(" && chmod 666 %s", config.cloudConfigContainerPath)
 	}
 
 	container := corev1.Container{
