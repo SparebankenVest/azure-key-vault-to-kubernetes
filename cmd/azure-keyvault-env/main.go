@@ -41,9 +41,21 @@ const (
 	envLookupKey = "@azurekeyvault"
 )
 
-func setLogLevel() {
+var logger *log.Entry
+
+func formatLogger() {
 	var logLevel string
 	var ok bool
+
+	log.SetFormatter(&log.TextFormatter{
+		DisableColors: true,
+		FullTimestamp: true,
+	})
+
+	logger = log.WithFields(log.Fields{
+		"component":   "akv2k8s",
+		"application": "env-injector",
+	})
 
 	if logLevel, ok = os.LookupEnv("ENV_INJECTOR_LOG_LEVEL"); !ok {
 		logLevel = log.InfoLevel.String()
@@ -79,21 +91,20 @@ type stop struct {
 }
 
 func main() {
-	log.SetFormatter(&log.TextFormatter{
-		DisableColors:    true,
-		DisableTimestamp: true,
-	})
-
 	var origCommand string
 	var origArgs []string
 
-	setLogLevel()
+	formatLogger()
 
-	log.Debugf("%s azure key vault env injector initializing", logPrefix)
+	logger.Debugf("%s azure key vault env injector initializing", logPrefix)
 	namespace := os.Getenv("ENV_INJECTOR_POD_NAMESPACE")
 	if namespace == "" {
-		log.Fatalf("%s current namespace not provided in environment variable env_injector_pod_namespace", logPrefix)
+		logger.Fatalf("%s current namespace not provided in environment variable env_injector_pod_namespace", logPrefix)
 	}
+
+	logger = logger.WithFields(log.Fields{
+		"namespace": namespace,
+	})
 
 	var err error
 	retryTimes := 3
@@ -102,65 +113,67 @@ func main() {
 	retryTimesEnv, ok := os.LookupEnv("ENV_INJECTOR_RETRIES")
 	if ok {
 		if retryTimes, err = strconv.Atoi(retryTimesEnv); err != nil {
-			log.Errorf("%s failed to convert ENV_INJECTOR_RETRIES env var into int, value was '%s', using default value of %d", logPrefix, retryTimesEnv, retryTimes)
+			logger.Errorf("%s failed to convert ENV_INJECTOR_RETRIES env var into int, value was '%s', using default value of %d", logPrefix, retryTimesEnv, retryTimes)
 		}
 	}
 
 	waitTimeBetweenRetriesEnv, ok := os.LookupEnv("ENV_INJECTOR_WAIT_BEFORE_RETRY")
 	if ok {
 		if waitTimeBetweenRetries, err := strconv.Atoi(retryTimesEnv); err != nil {
-			log.Errorf("%s failed to convert ENV_INJECTOR_WAIT_BEFORE_RETRY env var into int, value was '%s', using default value of %d", logPrefix, waitTimeBetweenRetriesEnv, waitTimeBetweenRetries)
+			logger.Errorf("%s failed to convert ENV_INJECTOR_WAIT_BEFORE_RETRY env var into int, value was '%s', using default value of %d", logPrefix, waitTimeBetweenRetriesEnv, waitTimeBetweenRetries)
 		}
 	}
 
-	log.Debugf("%s namespace: %s", logPrefix, namespace)
-
 	customAuth := strings.ToLower(os.Getenv("ENV_INJECTOR_CUSTOM_AUTH"))
-	log.Debugf("%s use custom auth: %s", logPrefix, customAuth)
+	logger.Debugf("%s use custom auth: %s", logPrefix, customAuth)
+
+	logger = logger.WithFields(log.Fields{
+		"custom_auth": customAuth,
+	})
 
 	var creds *vault.AzureKeyVaultCredentials
 
 	if customAuth == "true" {
-		log.Debugf("%s getting credentials for azure key vault using azure credentials supplied to pod", logPrefix)
+		logger.Debugf("%s getting credentials for azure key vault using azure credentials supplied to pod", logPrefix)
 
 		creds, err = vault.NewAzureKeyVaultCredentialsFromEnvironment()
 		if err != nil {
-			log.Fatalf("%s failed to get credentials for azure key vault, error %+v", logPrefix, err)
+			logger.Fatalf("%s failed to get credentials for azure key vault, error %+v", logPrefix, err)
 		}
 	} else {
-		log.Debugf("%s getting credentials for azure key vault using azure credentials from cloud config", logPrefix)
+		logger.Debugf("%s getting credentials for azure key vault using azure credentials from cloud config", logPrefix)
 		creds, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig("/azure-keyvault/azure.json")
 		if err != nil {
-			log.Fatalf("%s failed to get credentials for azure key vault, error %+v", logPrefix, err)
+			logger.Fatalf("%s failed to get credentials for azure key vault, error %+v", logPrefix, err)
 		}
 	}
 
 	if len(os.Args) == 1 {
-		log.Fatalf("%s no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly", logPrefix)
+		logger.Fatalf("%s no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly", logPrefix)
 	} else {
 		origCommand, err = exec.LookPath(os.Args[1])
 		if err != nil {
-			log.Fatalf("%s binary not found: %s", logPrefix, err)
+			logger.Fatalf("%s binary not found: %s", logPrefix, err)
 		}
 
 		origArgs = os.Args[1:]
 
-		log.Infof("%s found original container command to be %s %s", logPrefix, origCommand, origArgs)
+		logger.Infof("%s found original container command to be %s %s", logPrefix, origCommand, origArgs)
 	}
 
 	deleteSensitiveFiles()
 
 	vaultService := vault.NewService(creds)
 
-	log.Debugf("%s reading azurekeyvaultsecret's referenced in env variables", logPrefix)
+	logger.Debugf("%s reading azurekeyvaultsecret's referenced in env variables", logPrefix)
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
-		log.Fatalf("%s error building kubeconfig: %s", logPrefix, err.Error())
+		logger.Fatalf("%s error building kubeconfig: %s", logPrefix, err.Error())
 	}
 
 	azureKeyVaultSecretClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
-		log.Fatalf("%s error building azurekeyvaultsecret clientset: %s", logPrefix, err.Error())
+		logger.Fatalf("%s error building azurekeyvaultsecret clientset: %s", logPrefix, err.Error())
 	}
 
 	environ := os.Environ()
@@ -173,73 +186,73 @@ func main() {
 		// e.g. my-akv-secret-name@azurekeyvault?some-sub-key
 		if strings.Contains(value, envLookupKey) {
 			// e.g. my-akv-secret-name?some-sub-key
-			log.Debugf("%s found env var '%s' to get azure key vault secret for", logPrefix, name)
+			logger.Debugf("%s found env var '%s' to get azure key vault secret for", logPrefix, name)
 			secretName := strings.Join(strings.Split(value, envLookupKey), "")
 
 			if secretName == "" {
-				log.Fatalf("%s error extracting secret name from env variable '%s' with lookup value '%s' - not properly formatted", logPrefix, name, value)
+				logger.Fatalf("%s error extracting secret name from env variable '%s' with lookup value '%s' - not properly formatted", logPrefix, name, value)
 			}
 
 			var secretQuery string
 			if query := strings.Split(secretName, "?"); len(query) > 1 {
 				if len(query) > 2 {
-					log.Fatalf("%s error extracting secret query from '%s' - has multiple query elements defined with '?' - only one supported", logPrefix, secretName)
+					logger.Fatalf("%s error extracting secret query from '%s' - has multiple query elements defined with '?' - only one supported", logPrefix, secretName)
 				}
 				secretName = query[0]
 				secretQuery = query[1]
-				log.Debugf("%s found query in env var '%s', '%s'", logPrefix, value, secretQuery)
+				logger.Debugf("%s found query in env var '%s', '%s'", logPrefix, value, secretQuery)
 			}
 
-			log.Debugf("%s getting azurekeyvaultsecret resource '%s' from kubernetes", logPrefix, secretName)
+			logger.Debugf("%s getting azurekeyvaultsecret resource '%s' from kubernetes", logPrefix, secretName)
 			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1alpha1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
-				log.Errorf("%s error getting azurekeyvaultsecret resource '%s', error: %s", logPrefix, secretName, err.Error())
-				log.Infof("%s will retry getting azurekeyvaultsecret resource up to %d times, waiting %d seconds between retries", logPrefix, retryTimes, waitTimeBetweenRetries)
+				logger.Errorf("%s error getting azurekeyvaultsecret resource '%s', error: %s", logPrefix, secretName, err.Error())
+				logger.Infof("%s will retry getting azurekeyvaultsecret resource up to %d times, waiting %d seconds between retries", logPrefix, retryTimes, waitTimeBetweenRetries)
 
 				err = retry(retryTimes, time.Second*time.Duration(waitTimeBetweenRetries), func() error {
 					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV1alpha1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
 					if err != nil {
-						log.Errorf("%s error getting azurekeyvaultsecret resource '%s', error: %s", logPrefix, secretName, err.Error())
+						logger.Errorf("%s error getting azurekeyvaultsecret resource '%s', error: %s", logPrefix, secretName, err.Error())
 						return err
 					}
-					log.Infof("%s succeded getting azurekeyvaultsecret resource", logPrefix)
+					logger.Infof("%s succeded getting azurekeyvaultsecret resource", logPrefix)
 					return nil
 				})
 				if err != nil {
-					log.Fatalf("%s error getting azurekeyvaultsecret resource '%s', error: %s", logPrefix, secretName, err.Error())
+					logger.Fatalf("%s error getting azurekeyvaultsecret resource '%s', error: %s", logPrefix, secretName, err.Error())
 				}
 			}
 
-			log.Debugf("%s getting secret value for '%s' from azure key vault, to inject into env var %s", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name, name)
+			logger.Debugf("%s getting secret value for '%s' from azure key vault, to inject into env var %s", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name, name)
 			secret, err := getSecretFromKeyVault(keyVaultSecretSpec, secretQuery, vaultService)
 			if err != nil {
-				log.Fatalf("%s failed to read secret '%s', error %+v", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name, err)
+				logger.Fatalf("%s failed to read secret '%s', error %+v", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name, err)
 			}
 
 			if secret == "" {
-				log.Fatalf("%s secret not found in azure key vault: %s", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name)
+				logger.Fatalf("%s secret not found in azure key vault: %s", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name)
 			} else {
-				log.Infof("%s secret %s injected into evn var %s for executable %s", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name, name, origCommand)
+				logger.Infof("%s secret %s injected into evn var %s for executable %s", logPrefix, keyVaultSecretSpec.Spec.Vault.Object.Name, name, origCommand)
 				environ[i] = fmt.Sprintf("%s=%s", name, secret)
 			}
 		}
 	}
 
-	log.Infof("%s starting process %s %v with secrets in env vars", logPrefix, origCommand, origArgs)
+	logger.Infof("%s starting process %s %v with secrets in env vars", logPrefix, origCommand, origArgs)
 	err = syscall.Exec(origCommand, origArgs, environ)
 	if err != nil {
-		log.Fatalf("%s failed to exec process '%s': %s", logPrefix, origCommand, err.Error())
+		logger.Fatalf("%s failed to exec process '%s': %s", logPrefix, origCommand, err.Error())
 	}
 
-	log.Infof("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
+	logger.Infof("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
 }
 
 func deleteSensitiveFiles() {
 	dirToRemove := "/azure-keyvault/"
-	log.Debugf("%s deleting files in directory '%s'", logPrefix, dirToRemove)
+	logger.Debugf("%s deleting files in directory '%s'", logPrefix, dirToRemove)
 	err := clearDir(dirToRemove)
 	if err != nil {
-		log.Errorf("%s error removing directory '%s' : %s", logPrefix, dirToRemove, err.Error())
+		logger.Errorf("%s error removing directory '%s' : %s", logPrefix, dirToRemove, err.Error())
 	}
 }
 
@@ -249,10 +262,10 @@ func clearDir(dir string) error {
 		return err
 	}
 	for _, file := range files {
-		log.Debugf("%s deleting file %s", logPrefix, file)
+		logger.Debugf("%s deleting file %s", logPrefix, file)
 		err = os.Remove(file)
 		if err != nil {
-			log.Errorf("%s failed to delete file %s, error %+v", logPrefix, file, err)
+			logger.Errorf("%s failed to delete file %s, error %+v", logPrefix, file, err)
 		}
 	}
 	return nil
@@ -263,20 +276,16 @@ func getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret, query s
 
 	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
 	case akv.AzureKeyVaultObjectTypeSecret:
-		log.Debugf("%s creating secret transformer for AKV object Secret", logPrefix)
 		transformator, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
 		if err != nil {
 			return "", err
 		}
 		secretHandler = NewAzureKeyVaultSecretHandler(azureKeyVaultSecret, query, *transformator, vaultService)
 	case akv.AzureKeyVaultObjectTypeCertificate:
-		log.Debugf("%s creating secret transformer for AKV object Certificate", logPrefix)
 		secretHandler = NewAzureKeyVaultCertificateHandler(azureKeyVaultSecret, query, vaultService)
 	case akv.AzureKeyVaultObjectTypeKey:
-		log.Debugf("%s creating secret transformer for AKV object Key", logPrefix)
 		secretHandler = NewAzureKeyVaultKeyHandler(azureKeyVaultSecret, query, vaultService)
 	case akv.AzureKeyVaultObjectTypeMultiKeyValueSecret:
-		log.Debugf("%s creating secret transformer for AKV object and akv2k8s type MultiKeyValueSecret", logPrefix)
 		secretHandler = NewAzureKeyVaultMultiKeySecretHandler(azureKeyVaultSecret, query, vaultService)
 	default:
 		return "", fmt.Errorf("azure key vault object type '%s' not currently supported", azureKeyVaultSecret.Spec.Vault.Object.Type)
