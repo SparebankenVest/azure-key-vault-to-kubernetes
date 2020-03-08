@@ -81,14 +81,14 @@ The following tables lists configurable parameters of the azure-key-vault-env-in
 |affinity                                 |affinities to use                            |{}                                        |
 |env                                      |aditional env vars to send to pod            |{}                                        |
 |envImage.repository                      |image repo that contains the env image       |spvest/azure-keyvault-env                 |
-|envImage.tag                             |image tag                                    |0.1.15                                    |
+|envImage.tag                             |image tag                                    |1.0.0                                    |
 |image.pullPolicy                         |image pull policy                            |IfNotPresent                              |
 |image.repository                         |image repo that contains the controller      |spvest/azure-keyvault-webhook             |
-|image.tag                                |image tag                                    |0.1.15                                    |
+|image.tag                                |image tag                                    |0.0.0                                    |
 |installCrd                               |install custom resource definition           |true                                      |
 |keyVault.customAuth.enabled                       |if custom authentication with azure key vault is enabled |false                         |
 |keyVault.customAuth.autoInject.enabled            |if auto injection of credentials to pods is enabled|false                               |
-|keyVault.customAuth.autoInject.secretName         |name of secret to use to store credentials   |{}                                        |
+|keyVault.customAuth.autoInject.secretName         |name of secret to use to store credentials   |akv2k8s-akv-credentials                   |
 |keyVault.customAuth.autoInject.podIdentitySelector|if using aad-pod-identity, which selector to reference|{}                               |
 |logLevel                                 |log level - Trace, Debug, Info, Warning, Error, Fatal or Panic | Info                   |
 |metrics.enabled                          |if prometheus metrics is enabled             |false                                     |

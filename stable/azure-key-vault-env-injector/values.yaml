@@ -6,12 +6,12 @@ logLevel: Info
 
 image:
   repository: spvest/azure-keyvault-webhook
-  tag: 0.1.15
+  tag: 1.0.0
   pullPolicy: IfNotPresent
 
 envImage:
   repository: spvest/azure-keyvault-env
-  tag: 0.1.15
+  tag: 1.0.0
   
 service:
   name: azure-keyvault-secrets-webhook
@@ -55,10 +55,9 @@ keyVault:
     autoInject:
       enabled: false
 
-      # if credentials are env vars, spesify name of the
-      # secret the env injector should create for
-      # storing the credentials
-      # secretName: <secret name>
+      # the name of the secret the env injector 
+      # should create for storing the credentials
+      secretName: akv2k8s-akv-credentials
 
       # uncomment to use aad-pod-identity (MSI) and point to a selector
       # if used, secretName must not be set
