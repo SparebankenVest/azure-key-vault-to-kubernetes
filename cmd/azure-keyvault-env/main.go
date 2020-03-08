@@ -171,11 +171,11 @@ func main() {
 		// e.g. my-akv-secret-name@azurekeyvault?some-sub-key
 		if strings.Contains(value, envLookupKey) {
 			// e.g. my-akv-secret-name?some-sub-key
-			log.Debugf("%s found env var '%s' to get azure key vault secret for", logPrefix, value)
+			log.Debugf("%s found env var '%s' to get azure key vault secret for", logPrefix, name)
 			secretName := strings.Join(strings.Split(value, envLookupKey), "")
 
 			if secretName == "" {
-				log.Fatalf("%s error extracting secret name from env variable '%s' - not properly formatted", logPrefix, value)
+				log.Fatalf("%s error extracting secret name from env variable '%s' with lookup value '%s' - not properly formatted", logPrefix, name, value)
 			}
 
 			var secretQuery string
@@ -228,6 +228,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("%s failed to exec process '%s': %s", logPrefix, origCommand, err.Error())
 	}
+
+	deleteSensitiveFiles()
 
 	log.Infof("%s azure key vault env injector successfully injected env variables with secrets", logPrefix)
 }
