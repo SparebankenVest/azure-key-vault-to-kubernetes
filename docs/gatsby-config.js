@@ -107,7 +107,7 @@ module.exports = {
             'reference/vault-object-types',
             'reference/kubernetes-secret-types',
             'stable/azure-key-vault-controller/README',
-            'stable/azure-key-vault-env-injector  /README',
+            'stable/azure-key-vault-env-injector/README',
           ],
         },
         navConfig: {},
