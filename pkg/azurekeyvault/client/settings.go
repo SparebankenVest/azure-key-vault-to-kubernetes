@@ -35,8 +35,8 @@ var (
 	// USGovernmentCloud is the cloud environment for the US Government
 	USGovernmentCloud = Setting{
 		Name:                     "AzureUSGovernmentCloud",
-		AzureKeyVaultURI:         "https://vault.microsoftazure.de",
-		AzureKeyVaultResourceURI: "https://%s.vault.microsoftazure.de",
+		AzureKeyVaultURI:         "https://vault.usgovcloudapi.net",
+		AzureKeyVaultResourceURI: "https://%s.vault.usgovcloudapi.net",
 	}
 
 	// ChinaCloud is the cloud environment operated in China
@@ -49,8 +49,8 @@ var (
 	// GermanCloud is the cloud environment operated in Germany
 	GermanCloud = Setting{
 		Name:                     "AzureGermanCloud",
-		AzureKeyVaultURI:         "https://vault.usgovcloudapi.net",
-		AzureKeyVaultResourceURI: "https://%s.vault.usgovcloudapi.net",
+		AzureKeyVaultURI:         "https://vault.microsoftazure.de",
+		AzureKeyVaultResourceURI: "https://%s.vault.microsoftazure.de",
 	}
 )
 
