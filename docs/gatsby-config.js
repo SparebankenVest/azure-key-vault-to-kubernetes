@@ -63,11 +63,6 @@ module.exports = {
         spectrumPath: '',
         spectrumHandle: '',
         twitterHandle: '',
-        // defaultVersion: '1.0.0',
-        // versions: {
-        //   '1.0.0': 'doc-version-1.0.0',
-        //   '0.1.15': 'doc-version-0.1.15'
-        // },
         sidebarCategories: {
           null: ['index', 'why-akv2k8s', 'quick-start', 'how-it-works', 'examples'],
           'Installation': [
