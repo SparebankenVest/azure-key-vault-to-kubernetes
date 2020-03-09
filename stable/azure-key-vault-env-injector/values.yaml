@@ -6,12 +6,12 @@ logLevel: Info
 
 image:
   repository: spvest/azure-keyvault-webhook
-  tag: 1.0.0
+  tag: 1.0.1
   pullPolicy: IfNotPresent
 
 envImage:
   repository: spvest/azure-keyvault-env
-  tag: 1.0.0
+  tag: 1.0.1
   
 service:
   name: azure-keyvault-secrets-webhook
