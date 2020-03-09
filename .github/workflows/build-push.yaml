@@ -4,8 +4,10 @@ on:
   push:
     branches:
     - master
-    paths-ignore:
-    - 'docs/**'
+    paths:
+    - 'cmd/**'
+    - 'pkg/**'
+    - '!docs/**'
 
 jobs:
   build-deploy:
@@ -23,6 +25,11 @@ jobs:
 
     - name: Create Docker Image
       run: make build
+
+    - name: Docker Push
+      run: |
+        docker login -u ${{secrets.PUBLIC_REGISTRY_USERNAME}} -p ${{secrets.PUBLIC_REGISTRY_PASSWORD}}
+        make release DOCKER_RELEASE_TAG=${GITHUB_REF##*/}
 
     - name: Docker Login
       run: docker login -u ${{secrets.PRIVATE_REGISTRY_USERNAME}} -p ${{secrets.PRIVATE_REGISTRY_PASSWORD}} dokken.azurecr.io
