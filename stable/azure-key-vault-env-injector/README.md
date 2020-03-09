@@ -9,7 +9,7 @@ For more information see the main GitHub repository at https://github.com/Spareb
 
 ## Note about installing both Azure Key Vault Env Injector AND Azure Key Vault Controller
 
-If installing both the [Env Injector](https://github.com/SparebankenVest/public-helm-charts/azure-key-vault-env-injector) and the Controller, they share the same Custom Resource Definition (CRD), so only one of them can install it. Set `installCrd` to `false` for either this Chart or the [Controller](../azure-key-vault-controller) Chart. 
+If installing both the [Controller](https://github.com/SparebankenVest/public-helm-charts/azure-key-vault-controller) and the Controller, they share the same Custom Resource Definition (CRD), so only one of them can install it. Set `installCrd` to `false` for either this Chart or the [Controller](https://github.com/SparebankenVest/azure-key-vault-controller) Chart. 
 
 ## Installing the Chart
 
