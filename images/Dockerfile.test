@@ -5,7 +5,7 @@ RUN apk add --update --no-cache ca-certificates
 RUN addgroup -g 1000 -S test && \
 adduser -u 1000 -S test -G test
 
-# USER test
+USER test
 
-ENTRYPOINT ["printenv"]
-CMD ["TEST_SECRET"]
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD ["printenv TEST_SECRET && echo 'waiting forever...'; while true; do sleep 10; done"]
