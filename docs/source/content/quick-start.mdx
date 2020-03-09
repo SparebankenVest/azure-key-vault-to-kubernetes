@@ -14,41 +14,14 @@ import {
 
 ## Installation
 
-Requirements:
-
-* Kubernetes version >= 1.9 
-* Enabled admission controllers: MutatingAdmissionWebhook and ValidatingAdmissionWebhook
-* RBAC enabled
-* Install in a dedicated namespace
-* Default [authentication](security/authentication) requires Kubernetes cluster running in Azure - use custom authentication if running outside Azure
-
-Akv2k8s is installed using Helm charts.
-
-Add Helm repository:
-
-```bash
-helm repo add spv-charts http://charts.spvapi.no
-helm repo update
-```
-
-Install both Controller and Env-Injector:
-
-```bash
-helm install spv-charts/azure-key-vault-controller
-  --namespace akv2k8s
-
-helm install spv-charts/azure-key-vault-env-injector \
-  --set installCrd=false --namespace akv2k8s
-```
-
-For other installation details and options, see [installation](installation).
+See [installation](installation).
 
 </ExpansionPanelListItem>
 <ExpansionPanelListItem number="2">
 
 ## Ensure Kubernetes can access objects in Azure Key Vault
 
-By default akv2k8s use the AKS cluster credentials to authenticate with Azure Key Vault. Run the following command to authorize akv2k8s to access `secret`-objects in Azure Key Vault.
+By default akv2k8s use the AKS cluster credentials to authenticate with Azure Key Vault (if you run outside Azure, see using [custom credentials](security/authentication#custom-authentication)). Run the following command to authorize akv2k8s to access `secret`-objects in Azure Key Vault.
 
 ```bash
 az keyvault set-policy \
@@ -94,16 +67,15 @@ $ kubectl apply -f secret-sync.yaml
 azurekeyvaultsecret.spv.no/secret-sync created
 ```
 
-Shortly you should have a Kubernetes `Secret` resource in the namespace `akv-test`, containing the value from Azure Key Vault. 
+</ExpansionPanelListItem>
+<ExpansionPanelListItem number="check">
+
+## Done
+
+Shortly you should have a Kubernetes `Secret` resource in the namespace `akv-test`, containing the value from Azure Key Vault!
+
+To see how to use the Env-Injector to bypass using Kubernetes Secrets entirely and other options, check out the [tutorials](tutorials). 
 
 </ExpansionPanelListItem>
-<ExpansionPanelListItem number="4">
-
-## Inject Azure Key Vault object as env variable into your container
-
-### Label namespace
-
-</ExpansionPanelListItem>
-
 </ExpansionPanelList> 
  

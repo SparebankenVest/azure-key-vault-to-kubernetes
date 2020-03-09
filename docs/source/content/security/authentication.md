@@ -3,37 +3,43 @@ title: "Authentication"
 description: "Learn about the different options for authenticating with Azure Key Vault."
 ---
 
-By default both the Controller and the Env Injector will use the credentials found in Cloud Config on the host to authenticate with Azure Key Vault. This is the same credentials as the Kubernetes cluster use when interacting with Azure to create VM's, Load Balancers and other cloud infrastructure.
+By default both the Controller and the Env Injector will assume it is running on Azure (since Azure Key Vault is most commonly used in Azure) - and use the default AKS service principal for authentication - unless custom authentication is provided (see [Custom Authentication](#custom-authentication) below). 
 
-> **Note: if you do not run Kubernetes on Azure [override default authentication](#override-default-authentication).**
+Default authentication is the AKS credentials that are available on all Nodes (hosts) at `/etc/kubernetes/azure.json`. These credentials are the same as the Kubernetes cluster use when interacting with Azure to create VM's, Load Balancers and other cloud infrastructure. 
 
-Cloud Config for Azure is located at `/etc/kubernetes/azure.json`. The Controller will map this as a read only volume and read the credentials. For the Env Injector it's a bit different. Since the Env Injector is not in full control over how the original container is setup, it will copy the azure.json to a local shared volume, chmod `azure.json` to 444 in case the original container is running under a less privileged user (which is a good practice) and not get access to the credentials.
+> **Note: The preferred solution would be to use [Azure Managed Identities](https://docs.microsoft.com/en-us/azure/aks/use-managed-identity), but this is still in preview - so for now we rely on the default AKS service principal.**
 
-Currently only one situations has been identified, where the above does not work:
+## Situations where Default Authentication does not Work
 
-* When a [Pod Security Policy](https://kubernetes.io/docs/concepts/policy/pod-security-policy/) is configured in the cluster, preventing containers from reading from the host, two solutions exists:  
+Currently only one situations has been identified, where default authentication does not work inside Azure.
+
+**When a [Pod Security Policy](https://kubernetes.io/docs/concepts/policy/pod-security-policy/) is configured in the cluster, preventing containers from reading from the host.**
+
+Two solutions exists:  
   1. Change the Pod Security Policy to list `/etc/kubernetes/azure.json` under [AllowedHostPaths](https://kubernetes.io/docs/concepts/policy/pod-security-policy/#volumes-and-file-systems) 
-  2. Or [override default authentication](#override-default-authentication). 
+  2. Or [use custom authentication](#custom-authentication). 
 
-**For default authentication move to the next section about [Authorization](authorization). To override default authentication, read on.**
+## Custom Authentication
 
-## Override default authentication
-
-It is possible to give the Controller and/or the Env Injector specific credentials to authenticate with Azure Key Vault.
-
-The authentication requirements for the Controller and Env Injector are covered below.
+It is possible to give the Controller and/or the Env Injector specific credentials to authenticate with Azure Key Vault. The authentication requirements for the Controller and Env Injector are covered below.
 
 ## Custom Authentication for the Controller 
 
-The Controller will need Azure Key Vault credentials to get Secrets from Azure Key Vault and store them as Kubernetes Secrets. See [Authentication options](#custom-authentication-options) below.
+The Controller will need Azure Key Vault credentials to get Secrets from Azure Key Vault and store them as Kubernetes Secrets. In order to provide custom credentials, pass inn the value `keyVault.customAuth.enabled=true` to the Controller Helm Chart together with one of the [Authentication options](#custom-authentication-options) described below.
+
+Fore more details, see the [Controller Helm Chart](/stable/azure-key-vault-controller/README/#installing-the-chart).
 
 ## Custom Authentication for Env Injector
 
-To use custom authentication for the Env Injector, set  the environment variable `CUSTOM_AUTH` to `true`.
+To use custom authentication for the Env Injector there are two options:
 
-By default each Pod using the Env Injector pattern must provide their own credentials for Azure Key Vault using [Authentication options](#custom-authentication-options) below.
+1. Use Microsft's [AAD Pod Identity](https://github.com/Azure/aad-pod-identity) (see [Using Custom Authentication with AAD Pod Identity](/stable/azure-key-vault-env-injector/README/#using-custom-authentication-with-aad-pod-identity))
+2. Use custom credentials through credential injection (see [Using Custom Authentication with Credential Injection Enabled](/stable/azure-key-vault-env-injector/README/#using-custom-authentication-with-credential-injection-enabled))
+3. Provide credentials for each Pod using the Env Injector pattern using [Authentication options](#custom-authentication-options) below.
 
-To avoid that, support for a more convenient solution is added where the Azure Key Vault credentials in the Env Injector (using [Authentication options](#custom-authentication-options) below) is "forwarded" to the the Pods. This is enabled by setting the environment variable `CUSTOM_AUTH_INJECT` to `true`. Env Injector will then create a Kubernetes Secret containing the credentials and modify the Pod's env section to reference the credentials in the Secret. 
+To avoid using option no. 3, support for a more convenient solution (no. 2) is supported where the Azure Key Vault credentials in the Env Injector (using [Authentication options](#custom-authentication-options) below) is "forwarded" to the the Pods. The Env Injector will create a Kubernetes Secret containing the credentials and mutate the Pod's env section to reference the credentials in the Secret. 
+
+Fore more details, see the [Env Injector Helm Chart](/stable/azure-key-vault-env-injector/README/#installing-the-chart).
 
 ## Custom Authentication Options
 

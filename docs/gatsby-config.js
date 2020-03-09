@@ -64,7 +64,7 @@ module.exports = {
         spectrumHandle: '',
         twitterHandle: '',
         sidebarCategories: {
-          null: ['index', 'why-akv2k8s', 'quick-start', 'how-it-works', 'examples'],
+          null: ['index', 'why-akv2k8s', 'quick-start', 'how-it-works'],
           'Installation': [
             'installation/index',
             'installation/requirements',
@@ -72,7 +72,7 @@ module.exports = {
             'installation/installing-without-helm',
           ],
           Tutorials: [
-            'tutorials/introduction',
+            'tutorials/index',
             'tutorials/prerequisites',
             'tutorials/sync/1-secret',
             'tutorials/sync/2-certificate',
@@ -88,6 +88,7 @@ module.exports = {
             'security/introduction',
             'security/authentication',
             'security/authorization',
+            'security/enable-env-injection',
           ],
           'Availability': [
             'getting-started/scaling',
@@ -98,6 +99,7 @@ module.exports = {
             'troubleshooting/known-issues',
           ],
           Reference: [
+            'reference/index',
             'reference/azure-key-vault-secret',
             'stable/azure-key-vault-controller/README',
             'stable/azure-key-vault-env-injector/README',

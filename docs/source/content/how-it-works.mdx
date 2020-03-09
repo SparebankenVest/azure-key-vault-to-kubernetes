@@ -11,9 +11,9 @@ import {
 
 Akv2k8s consist of three main components to integrate with Azure Key Vault:
 
+* a Custom Resource Definition called `AzureKeyVaultSecret`
 * Controller
 * Env Injector
-* a Custom Resource Definition called `AzureKeyVaultSecret`
 
 ## The AzureKeyVaultSecret CRD
 
@@ -64,7 +64,7 @@ The Env Injector is a bit more complex than the Controller and consists of:
 * a Docker image (spvest/azure-keyvault-env) containing the `azure-keyvault-env` executable
 
 Below is an outline of the steps that gets executed when a Pod is scheduled to start, in a namespace enabled for Env-Injector.
-
+  
 <ExpansionPanelList>
 <ExpansionPanelListItem number="1">
 
