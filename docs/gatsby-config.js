@@ -103,9 +103,7 @@ module.exports = {
             'troubleshooting/known-issues',
           ],
           Reference: [
-            'reference/reference',
-            'reference/vault-object-types',
-            'reference/kubernetes-secret-types',
+            'reference/azure-key-vault-secret',
             'stable/azure-key-vault-controller/README',
             'stable/azure-key-vault-env-injector/README',
           ],
