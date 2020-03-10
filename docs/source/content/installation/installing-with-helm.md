@@ -36,8 +36,8 @@ helm install azure-key-vault-env-injector \
 For more details about installation options, see the 
 individual Helm charts:
 
-* Controller: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-controller
-* Env Injector: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector
+* [Controller](../stable/azure-key-vault-controller/README)
+* [Env Injector](../stable/azure-key-vault-env-injector/README)
 
 ## Installing with Helm outside Azure AKS
 
