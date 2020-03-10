@@ -8,7 +8,7 @@ description: "Sync a secret from Azure Key Vault into a Kubernetes Secret"
 We start by creating a definition for the Azure Key Vault secret
 we want to sync:
 
-```yaml{8,10,11,14,15}:title=akvs-secret-sync.yaml
+```yaml:title=akvs-secret-sync.yaml
 apiVersion: spv.no/v1alpha1
 kind: AzureKeyVaultSecret
 metadata:

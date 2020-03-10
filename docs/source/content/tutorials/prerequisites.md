@@ -47,13 +47,23 @@ Authorize Access to Certificates:
 az keyvault set-policy --n akv2k8s-test --spn <spn for akv2k8s> --certificate-permissions get 
 ```
 
+### Add signing key - required for signing-key-tutorials
+
+```bash
+az keyvault key create --vault-name akv2k8s-test --name my-key
+```
+
+Authorize Access to Keys:
+
+```bash
+az keyvault set-policy --n akv2k8s-test --spn <spn for akv2k8s> --key-permissions get 
+```
+
 ## Kubernetes Resources
 
 Create namespace:
 
-```yaml
-# namespace.yaml
-
+```yaml:title=namespace.yaml
 apiVersion: v1
 kind: Namespace
 metadata:

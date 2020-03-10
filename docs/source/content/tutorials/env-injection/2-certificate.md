@@ -7,7 +7,7 @@ description: "Inject an Azure Key Vault certificate key pair directly into a con
 
 We start by creating a definition for the Azure Key Vault secret pointing to the certificate we want to sync:
 
-```yaml{4,8,10,11}:title=akvs-certificate-inject.yaml
+```yaml:title=akvs-certificate-inject.yaml
 apiVersion: spv.no/v1alpha1
 kind: AzureKeyVaultSecret
 metadata:
@@ -38,7 +38,7 @@ certificate-inject  akv2k8s-test   my-certificate
 
 Then we deploy a Pod having a env-variable pointing to the secret above.
 
-```yaml{4,18-20,22-23}:title=certificate-deployment.yaml
+```yaml:title=certificate-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -75,7 +75,7 @@ deployment.apps/akvs-certificate-app created
 
 Things to note from the Deployment yaml above:
 
-```yaml
+```yaml{3,4,6-9}
 containers:
 - name: akv2k8s-env-test
   image: spvest/akv2k8s-env-test # 1.

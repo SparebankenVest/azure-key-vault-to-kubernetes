@@ -7,7 +7,7 @@ description: "Inject an Azure Key Vault secret directly into a container applica
 
 We start by creating a definition for the Azure Key Vault secret we want to inject:
 
-```yaml{4,8,10,11}:title=akvs-secret-inject.yaml
+```yaml:title=akvs-secret-inject.yaml
 apiVersion: spv.no/v1alpha1
 kind: AzureKeyVaultSecret
 metadata:
@@ -32,14 +32,13 @@ List AzureKeyVaultSecret's:
 
 ```bash
 $ kubectl -n akv-test get akvs
-
 NAME           VAULT          VAULT OBJECT   SECRET NAME         SYNCHED
 secret-inject  akv2k8s-test   my-secret
 ```
 
 Then we deploy a Pod having a env-variable pointing to the secret above.
 
-```yaml{4,18-20,22-23}:title=secret-deployment.yaml
+```yaml:title=secret-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
