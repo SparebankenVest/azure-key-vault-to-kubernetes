@@ -32,7 +32,7 @@ Make it simple, secure and low risk to transfer Azure Key Vault secrets into Kub
 </ExpansionPanelListItem>
 <ExpansionPanelListItem number="3">
 
-Securely and transparently be able to inject Azure Key Vault secrets as environment variables to applications, without having to use native Kubernetes secrets
+Bypass using Kubernetes Secrets entirely and transparently inject Azure Key Vault secrets directly into container applications
 
 </ExpansionPanelListItem>
 <ExpansionPanelListItem number="check">
@@ -57,7 +57,7 @@ The diagram below illustrate the two options:
 
 For more information about the inner workings of Azure Key Vault for Kubernetes, see [How it Works](how-it-works).
 
-## Recommendation is to install both
+## Install both
 
 The recommendation is to install both the Controller and the Env Injector, enabling native Kubernetes secrets when needed and transparently injecting environment variables for all other cases.
 
@@ -80,16 +80,18 @@ Use the Env Injector if:
 * preventing Kubernetes users to gain access to Azure Key Vault secret content is important
 * secret environment variable values should not be revealed to Kubernetes resources like Pod specs, stored on disks, visible in logs or exposed in any way other than in-memory for the application 
 
-### Want to get started?
+## Not convinced yet?
 
-When you understand the difference between the Controller and the Injector, and when to use which - walking through some tutorials will get you quickly started.
-  
+Go check out [Why use akv2k8s?](how-it-works) to see if that changes your mind.
+
+## Want to get started?
+
 <div>
   <Button
     size="large"
     color={colors.primary}
-    as={<Link to="/tutorials/introduction" />}
+    as={<Link to="/quick-start" />}
   >
-    Start the tutorials!
+    Do the Quick Start!
   </Button>
  </div>

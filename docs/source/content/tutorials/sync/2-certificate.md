@@ -5,14 +5,9 @@ description: "Sync a certificate from Azure Key Vault into a Kubernetes Secret."
 
 > **Note: The [prerequisites](../prerequisites) are required to complete this tutorial.**
 
-*This tutorial will cover how to sync a certificate from Azure Key Vault into a native Kubernetes Secret.*
+We start by creating a definition for the Azure Key Vault secret pointing to the certificate we want to sync:
 
-We start by creating a definition for the Azure Key Vault secret pointing to the certificate
-we want to sync (certificate created in [prerequisites](../prerequisites)):
-
-```yaml
-# certificate-sync.yaml
-
+```yaml{8,10,11,14,15}:title=akvs-certificate-sync.yaml
 apiVersion: spv.no/v1alpha1
 kind: AzureKeyVaultSecret
 metadata:
@@ -24,10 +19,10 @@ spec:
     object:
       name: my-certificate
       type: certificate
-  output: # Only needed by the Controller
+  output: 
     secret:
       name: my-certificate-from-akv # kubernetes secret name
-      type: kubernetes.io/tls
+      type: kubernetes.io/tls # kubernetes secret type
 ```
 
 Apply to Kubernetes:
@@ -71,4 +66,10 @@ metadata:
   name: keyvault-certificate
   namespace: default
 type: kubernetes.io/tls
+```
+
+### Cleanup
+
+```bash
+kubectl delete -f certificate-sync.yaml
 ```

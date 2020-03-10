@@ -1,13 +1,13 @@
 ---
 title: "Prerequisites"
-description: "A set of commands to create all prerequisite resources needed to complete tutorials"
+description: "A quick overview of the prerequisites needed to complete the tutorials"
 ---
 
-Below are a set of common prerequisites for all the tutorials.
+Below are a set of Azure Key Vault and Kubernetes resources that must be in place to walk through the tutorials.
+
+> Note: The resource names used below are optional (like AKV `akv2k8s-test`), but sticking with the suggested names will make it easier and more consistent as you walk through the tutorials
 
 ## Azure Resources
-
-Below are a set of Azure CLI commands to create necessary Azure resources.
 
 Azure Resource Group:
 
@@ -68,4 +68,4 @@ Apply configuration:
 kubectl apply -f namespace.yaml
 ```
 
-The Env Injector is developed using a Mutating Admission Webhook that triggers just before every Pod gets created. To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the `azure-key-vault-env-injection` label.
+### That's it! You should now be ready to do all or any of the tutorials of akv2k8s!

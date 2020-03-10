@@ -8,7 +8,7 @@ description: "Sync a secret from Azure Key Vault into a Kubernetes Secret"
 We start by creating a definition for the Azure Key Vault secret
 we want to sync:
 
-```yaml{8,10,11,14,15}:title=secret-sync.yaml
+```yaml{8,10,11,14,15}:title=akvs-secret-sync.yaml
 apiVersion: spv.no/v1alpha1
 kind: AzureKeyVaultSecret
 metadata:
@@ -29,7 +29,7 @@ spec:
 Apply to Kubernetes:
 
 ```bash
-$ kubectl apply -f secret-sync.yaml
+$ kubectl apply -f akvs-secret-sync.yaml
 azurekeyvaultsecret.spv.no/secret-sync created
 ```
 
@@ -52,5 +52,5 @@ my-secret-from-akv  Opaque  1     1m
 ### Cleanup
 
 ```bash
-kubectl -n akv-test delete AzureKeyVaultSecret secret-sync 
+kubectl delete -f akvs-secret-sync.yaml
 ```

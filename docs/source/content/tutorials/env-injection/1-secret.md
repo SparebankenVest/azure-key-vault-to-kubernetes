@@ -1,17 +1,13 @@
 ---
 title: "Inject Secret"
-description: "Inject a Azure Key Vault secret as environment variable into an application"
+description: "Inject an Azure Key Vault secret directly into a container application"
 ---
 
 > **Note: The [prerequisites](../prerequisites) are required to complete this tutorial.**
 
-This tutorial will cover how to inject a secret from Azure Key Vault directly into a container as environment variable.
-
 We start by creating a definition for the Azure Key Vault secret we want to inject:
 
-```yaml
-# secret-inject.yaml
-
+```yaml{4,8,10,11}:title=akvs-secret-inject.yaml
 apiVersion: spv.no/v1alpha1
 kind: AzureKeyVaultSecret
 metadata:
@@ -28,8 +24,8 @@ spec:
 Apply to Kubernetes:
 
 ```bash
-$ kubectl apply -f secret-sync.yaml
-azurekeyvaultsecret.spv.no/secret-sync created
+$ kubectl apply -f akvs-secret-inject.yaml
+azurekeyvaultsecret.spv.no/secret-inject created
 ```
 
 List AzureKeyVaultSecret's:
@@ -37,76 +33,71 @@ List AzureKeyVaultSecret's:
 ```bash
 $ kubectl -n akv-test get akvs
 
-NAME          VAULT          VAULT OBJECT   SECRET NAME         SYNCHED
-secret-sync   akv2k8s-test   my-secret
+NAME           VAULT          VAULT OBJECT   SECRET NAME         SYNCHED
+secret-inject  akv2k8s-test   my-secret
 ```
 
 Then we deploy a Pod having a env-variable pointing to the secret above.
 
-```yaml
-# deployment.yaml
-
+```yaml{4,18-20,22-23}:title=secret-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: akv2k8s-test-injection
+  name: akvs-secret-app
   namespace: akv-test
   labels:
-    app: akv2k8s-test-injection
+    app: akvs-secret-app
 spec:
   selector:
     matchLabels:
-      app: akv2k8s-test-injection
+      app: akvs-secret-app
   template:
     metadata:
       labels:
-        app: akv2k8s-test-injection
+        app: akvs-secret-app
     spec:
       containers:
       - name: akv2k8s-env-test
-        image: spvest/akv2k8s-env-test
+        image: spvest/akv2k8s-env-test:2.0.1
+        args: ["TEST_SECRET"]
         env:
         - name: TEST_SECRET
-          value: "secret-inject@azurekeyvault"
-        - name: ENV_INJECTOR_LOG_LEVEL
-          value: debug
+          value: "secret-inject@azurekeyvault" # ref to akvs
 ```
 
 Apply to Kubernetes:
 
 ```bash
-$ kubectl apply -f deployment.yaml
-azurekeyvaultsecret.spv.no/secret-inject created
+$ kubectl apply -f secret-deployment.yaml
+deployment.apps/akvs-secret-app created
 ```
 
 Things to note from the Deployment yaml above:
 
-```yaml
+```yaml{3,4,6,7}
 containers:
   - name: akv2k8s-env-test
-    image: spvest/akv2k8s-env-test # 1.
+    image: spvest/akv2k8s-env-test:2.0.1 # 1.
+    args: ["TEST_SECRET"] # 2.
     env:
-    - name: TEST_SECRET # 2.
-      value: "secret-inject@azurekeyvault" # 3.
-    - name: ENV_INJECTOR_LOG_LEVEL # 3.
-      value: debug
+    - name: TEST_SECRET # 3.
+      value: "secret-inject@azurekeyvault" # 4.
 ```
 
-1. We use a custom built Docker image that only outputs the content of the env-variable `TEST_SECRET` to the console. Feel free to replace this with your own Docker image.
-
-2. The env-variable this Docker image expects and will output. When using your own Docker image, set the env-variables your image expects using convention in 3.
-
-3. We use the akv2k8s injector convention to reference the AzureKeyVaultSecret `secret-inject` we created earlier ([akvs-name]@azurekeyvault). The env-injector will download this secret from Azure Key Vault and inject into the executable running in your Container.
-
-4. A optional env-variable you can pass to your container to set the log-level of the env-injector and optionally get detailed log output during startup of your pod.
+1. We use a custom built Docker image for testing purposes that only outputs the content of the env-variables passed in as args in #2. Feel free to replace this with your own Docker image.
+2. Again, specific for the Docker test image we are using (in #1), we pass in which environment variables we want the container to print values for 
+3. Name of the environment variable
+4. By using the special akv2k8s Env Injector convention `<azure-key-vault-secret-name>@azurekeyvault` to reference the AzureKeyVaultSecret `secret-inject` we created earlier. The env-injector will download this secret from Azure Key Vault and inject into the executable running in your Container.
 
 To see the log output from your Pod, execute the following command:
 
-`kubectl -n akv-test logs deployment/akv2k8s-test-injection`
+```
+kubectl -n akv-test logs deployment/akvs-secret-app
+```
 
 ### Cleanup
 
 ```bash
-kubectl -n akv-test delete AzureKeyVaultSecret secret-inject
-kubectl -n akv-test delete deployment akv2k8s-test-injection
+kubectl delete -f akvs-secret-inject.yaml
+kubectl delete -f secret-deployment.yaml
 ```
