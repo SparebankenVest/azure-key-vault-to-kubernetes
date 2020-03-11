@@ -248,12 +248,16 @@ func main() {
 		logger.Fatalf("failed to exec process '%s': %s", origCommand, err.Error())
 	}
 
-	if clearSensitiveFiles {
-		err = deleteSensitiveFiles()
-		if err != nil {
-			logger.Fatalf("failed to delete sensitive files, error: %+v", err)
-		}
-	}
+	// Temp removed - awaiting proper solution for handling AKS service principal without storing
+	//                inside container
+
+	// if clearSensitiveFiles {
+	// 	err = deleteSensitiveFiles()
+	// 	if err != nil {
+	// 		logger.Fatalf("failed to delete sensitive files, error: %+v", err)
+	// 	}
+	// }
+
 	logger.Info("azure key vault env injector successfully injected env variables with secrets")
 }
 
