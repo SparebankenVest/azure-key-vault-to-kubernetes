@@ -108,7 +108,7 @@ func main() {
 	var err error
 	retryTimes := 3
 	waitTimeBetweenRetries := 3
-	clearSensitiveFiles := true
+	// clearSensitiveFiles := true
 
 	retryTimesEnv, ok := os.LookupEnv("ENV_INJECTOR_RETRIES")
 	if ok {
@@ -161,11 +161,11 @@ func main() {
 		logger.Infof("found original container command to be %s %s", origCommand, origArgs)
 	}
 
-	if keepSensitiveFiles, exists := os.LookupEnv("ENV_INJECTOR_KEEP_SENSITIVE_FILES"); exists {
-		if s, err := strconv.ParseBool(keepSensitiveFiles); err != nil && s {
-			clearSensitiveFiles = false
-		}
-	}
+	// if keepSensitiveFiles, exists := os.LookupEnv("ENV_INJECTOR_KEEP_SENSITIVE_FILES"); exists {
+	// 	if s, err := strconv.ParseBool(keepSensitiveFiles); err != nil && s {
+	// 		clearSensitiveFiles = false
+	// 	}
+	// }
 
 	vaultService := vault.NewService(creds)
 
