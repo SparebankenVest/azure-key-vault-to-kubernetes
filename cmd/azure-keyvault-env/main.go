@@ -108,7 +108,7 @@ func main() {
 	var err error
 	retryTimes := 3
 	waitTimeBetweenRetries := 3
-	cleanUp := true
+	clearSensitiveFiles := true
 
 	retryTimesEnv, ok := os.LookupEnv("ENV_INJECTOR_RETRIES")
 	if ok {
@@ -161,16 +161,9 @@ func main() {
 		logger.Infof("found original container command to be %s %s", origCommand, origArgs)
 	}
 
-	if deleteFiles, exists := os.LookupEnv("DELETE_SENSITIVE_FILES"); exists {
-		if s, err := strconv.ParseBool(deleteFiles); err != nil {
-			cleanUp = s
-		}
-	}
-
-	if cleanUp {
-		err = deleteSensitiveFiles()
-		if err != nil {
-			logger.Fatalf("failed to delete sensitive files, error: %+v", err)
+	if keepSensitiveFiles, exists := os.LookupEnv("ENV_INJECTOR_KEEP_SENSITIVE_FILES"); exists {
+		if s, err := strconv.ParseBool(keepSensitiveFiles); err != nil && s {
+			clearSensitiveFiles = false
 		}
 	}
 
@@ -255,6 +248,12 @@ func main() {
 		logger.Fatalf("failed to exec process '%s': %s", origCommand, err.Error())
 	}
 
+	if clearSensitiveFiles {
+		err = deleteSensitiveFiles()
+		if err != nil {
+			logger.Fatalf("failed to delete sensitive files, error: %+v", err)
+		}
+	}
 	logger.Info("azure key vault env injector successfully injected env variables with secrets")
 }
 
