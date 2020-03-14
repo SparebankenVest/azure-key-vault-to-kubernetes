@@ -2,6 +2,7 @@
 {{ $svcName := include "azure-key-vault-to-kubernetes.fullname" . }}
 {{ $cn := printf "%s.%s.svc" $svcName .Release.Namespace }}
 {{ $server := genSignedCert $cn nil nil 365 $ca }}
+{{ $clientCert := genSignedCert $cn nil nil 365 $ca }}
 
 apiVersion: v1
 kind: List
@@ -16,6 +17,14 @@ items:
     servingCert: {{ b64enc $server.Cert }}
     servingKey: {{ b64enc $server.Key }}
     caCert: {{ b64enc $ca.Cert }}
+
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: {{ template "azure-key-vault-to-kubernetes.fullname" . }}-client
+  data:
+    clientCert: {{ b64enc $clientCert.Cert }}
+    clientKey: {{ b64enc $clientCert.Key }}
 
 - apiVersion: admissionregistration.k8s.io/v1beta1
   kind: MutatingWebhookConfiguration

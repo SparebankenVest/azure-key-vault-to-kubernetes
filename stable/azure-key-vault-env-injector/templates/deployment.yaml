@@ -38,6 +38,12 @@ spec:
             value: /var/serving-cert/servingCert
           - name: TLS_PRIVATE_KEY_FILE
             value: /var/serving-cert/servingKey
+          - name: TLS_CA_FILE
+            value: /var/serving-cert/caCert
+          - name: TLS_CLIENT_FILE
+            value: /var/client-cert/clientCert
+          - name: TLS_CLIENT_KEY_FILE
+            value: /var/client-cert/clientKey
           - name: AZUREKEYVAULT_ENV_IMAGE
             value: {{ .Values.envImage.repository }}:{{ .Values.envImage.tag }}
           - name: AAD_POD_BINDING_LABEL
@@ -75,6 +81,8 @@ spec:
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
+          - mountPath: /var/client-cert
+            name: client-cert
           - mountPath: /var/run/docker.sock
             name: dockersock
             readOnly: true
@@ -90,6 +98,10 @@ spec:
         secret:
           defaultMode: 420
           secretName: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
+      - name: client-cert
+        secret:
+          defaultMode: 420
+          secretName: {{ template "azure-key-vault-to-kubernetes.fullname" . }}-client
       - name: dockersock
         hostPath:
           path: /var/run/docker.sock
