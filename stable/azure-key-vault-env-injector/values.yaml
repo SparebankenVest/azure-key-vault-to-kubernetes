@@ -6,18 +6,24 @@ logLevel: Info
 
 image:
   repository: spvest/azure-keyvault-webhook
-  tag: 1.0.2
+  tag: 1.0.3-beta.1
   pullPolicy: IfNotPresent
 
 envImage:
   repository: spvest/azure-keyvault-env
-  tag: 1.0.2
+  tag: 1.0.3-beta.1
   
 service:
   name: azure-keyvault-secrets-webhook
   type: ClusterIP
   externalPort: 443
   internalPort: 443
+
+authService:
+  name: azure-keyvault-secrets-auth
+  type: ClusterIP
+  externalPort: 8443
+  internalPort: 8443
 
 metrics:
   enabled: false
