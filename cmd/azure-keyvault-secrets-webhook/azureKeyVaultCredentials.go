@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 
+	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -48,7 +50,7 @@ func NewCredentials() (*AzureKeyVaultCredentials, error) {
 func (c *AzureKeyVaultCredentials) GetKubernetesSecret(secretName string) (*corev1.Secret, error) {
 	switch c.CredentialsType {
 	case CredentialsTypeClientCredentials:
-		c, err := c.envSettings.GetClientCredentials()
+		creds, err := c.envSettings.GetClientCredentials()
 		if err != nil {
 			return nil, err
 		}
@@ -58,14 +60,14 @@ func (c *AzureKeyVaultCredentials) GetKubernetesSecret(secretName string) (*core
 				Name: secretName,
 			},
 			StringData: map[string]string{
-				"client-id":     c.ClientID,
-				"client-secret": c.ClientSecret,
-				"tenant-id":     c.TenantID,
+				"client-id":     creds.ClientID,
+				"client-secret": creds.ClientSecret,
+				"tenant-id":     creds.TenantID,
 			},
 		}, nil
 
 	case CredentialsTypeClientCertificate:
-		c, err := c.envSettings.GetClientCertificate()
+		creds, err := c.envSettings.GetClientCertificate()
 		if err != nil {
 			return nil, err
 		}
@@ -75,15 +77,15 @@ func (c *AzureKeyVaultCredentials) GetKubernetesSecret(secretName string) (*core
 				Name: secretName,
 			},
 			StringData: map[string]string{
-				"client-id":            c.ClientID,
-				"client-cert-path":     c.CertificatePath,
-				"client-cert-password": c.CertificatePassword,
-				"tenant-id":            c.TenantID,
+				"client-id":            creds.ClientID,
+				"client-cert-path":     creds.CertificatePath,
+				"client-cert-password": creds.CertificatePassword,
+				"tenant-id":            creds.TenantID,
 			},
 		}, nil
 
 	case CredentialsTypeClientUsernamePassword:
-		c, err := c.envSettings.GetUsernamePassword()
+		creds, err := c.envSettings.GetUsernamePassword()
 		if err != nil {
 			return nil, err
 		}
@@ -93,10 +95,10 @@ func (c *AzureKeyVaultCredentials) GetKubernetesSecret(secretName string) (*core
 				Name: secretName,
 			},
 			StringData: map[string]string{
-				"client-id": c.ClientID,
-				"username":  c.Username,
-				"password":  c.Password,
-				"tenant-id": c.TenantID,
+				"client-id": creds.ClientID,
+				"username":  creds.Username,
+				"password":  creds.Password,
+				"tenant-id": creds.TenantID,
 			},
 		}, nil
 
@@ -134,6 +136,39 @@ func (c *AzureKeyVaultCredentials) GetEnvVarFromSecret(secretName string) *[]cor
 	default:
 		envVars := make([]corev1.EnvVar, 0)
 		return &envVars
+	}
+}
+
+// GetAzureToken uses current credentials to get a oauth token from Azure
+func (c *AzureKeyVaultCredentials) GetAzureToken() (string, error) {
+	switch c.CredentialsType {
+	case CredentialsTypeClientCredentials:
+		settings, err := vault.GetSettingFromEnvironment()
+		if err != nil {
+			return "", fmt.Errorf("failed to get settings from environment: %+v", err)
+		}
+		creds, err := c.envSettings.GetClientCredentials()
+		if err != nil {
+			return "", fmt.Errorf("failed to get client credentials: %+v", err)
+		}
+
+		conf, err := adal.NewOAuthConfig(creds.AADEndpoint, creds.TenantID)
+		if err != nil {
+			return "", fmt.Errorf("failed to create oauth config: %+v", err)
+		}
+
+		token, err := adal.NewServicePrincipalToken(*conf, creds.ClientID, creds.ClientSecret, settings.AzureKeyVaultURI)
+		if err != nil {
+			return "", fmt.Errorf("failed to create token: %+v", err)
+		}
+		token.SetAutoRefresh(false)
+		if err := token.Refresh(); err != nil {
+			return "", fmt.Errorf("failed to get a token with service principal: %+v", err)
+		}
+
+		return token.OAuthToken(), nil
+	default:
+		return "", fmt.Errorf("credential type %s not currently supported for token", c.CredentialsType)
 	}
 }
 
