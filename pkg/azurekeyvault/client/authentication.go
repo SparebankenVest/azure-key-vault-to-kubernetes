@@ -7,7 +7,6 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"gopkg.in/yaml.v2"
 
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
 	cloudAuth "k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth"
 )
@@ -30,7 +29,7 @@ func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (*AzureK
 // NewAzureKeyVaultCredentialsFromClient creates a credentials object from a servbice principal to use with Azure Key Vault
 func NewAzureKeyVaultCredentialsFromClient(clientID, clientSecret, tenantID string) (*AzureKeyVaultCredentials, error) {
 
-	authSettings, err := auth.GetSettingsFromEnvironment()
+	authSettings, err := azureAuth.GetSettingsFromEnvironment()
 	if err != nil {
 		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
 	}
@@ -47,6 +46,7 @@ func NewAzureKeyVaultCredentialsFromClient(clientID, clientSecret, tenantID stri
 	return &AzureKeyVaultCredentials{
 		getAuthorizer: func() (autorest.Authorizer, error) {
 			authorizer, err := cred.Authorizer()
+
 			if err != nil {
 				return nil, fmt.Errorf("failed to create authorizer based on service principal credentials, err: %+v", err)
 			}
@@ -65,7 +65,7 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (*AzureKeyVaultCredentials, er
 				return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
 			}
 
-			authorizer, err := auth.NewAuthorizerFromEnvironmentWithResource(settings.AzureKeyVaultURI)
+			authorizer, err := azureAuth.NewAuthorizerFromEnvironmentWithResource(settings.AzureKeyVaultURI)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create authorizer from environment, err: %+v", err)
 			}
@@ -76,6 +76,7 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (*AzureKeyVaultCredentials, er
 
 // Authorizer gets an Authorizer from credentials
 func (c AzureKeyVaultCredentials) Authorizer() (autorest.Authorizer, error) {
+	azureAuth.GetSettingsFromEnvironment()
 	return c.getAuthorizer()
 }
 
