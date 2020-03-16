@@ -573,7 +573,9 @@ func mutatePodSpec(pod *corev1.Pod) error {
 					}
 				}
 			}
-		} else if config.namespace != "" && !config.customAuth {
+		}
+
+		if config.namespace != "" && !config.customAuth || (config.customAuth && !config.customAuthAutoInject) {
 			log.Infof("creating client cert secret in new namespace '%s'...", config.namespace)
 
 			clientCertSecret, err := createClientCertSecret(config.clientCertSecretName)
@@ -637,6 +639,7 @@ func initConfig() {
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
 	viper.SetDefault("custom_docker_pull_timeout", 120)
 	viper.SetDefault("custom_auth_inject_secret_name", "akv2k8s-akv-credentials")
+	viper.SetDefault("client_cert_secret_name", "akv2k8s-client-cert")
 	viper.AutomaticEnv()
 }
 
