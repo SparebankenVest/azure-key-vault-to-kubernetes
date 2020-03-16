@@ -81,7 +81,8 @@ type azureKeyVaultConfig struct {
 	clientCertFile           string
 	clientKeyFile            string
 	clientCertSecretName     string
-	webhookServiceName       string
+	webhookAuthServiceName   string
+	webhookAuthServicePort   string
 }
 
 var config azureKeyVaultConfig
@@ -328,7 +329,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 			},
 			{
 				Name:  "ENV_INJECTOR_AUTH_SERVICE",
-				Value: fmt.Sprintf("%s.%s.svc.cluster.local", config.webhookServiceName, namespace()),
+				Value: fmt.Sprintf("%s.%s.svc.cluster.local:%s", config.webhookAuthServiceName, namespace(), config.webhookAuthServicePort),
 			},
 		}...)
 
@@ -728,7 +729,8 @@ func main() {
 		clientCertFile:           viper.GetString("tls_client_file"),
 		clientKeyFile:            viper.GetString("tls_client_key_file"),
 		clientCertSecretName:     viper.GetString("client_cert_secret_name"),
-		webhookServiceName:       viper.GetString("webhook_auth_service"),
+		webhookAuthServiceName:   viper.GetString("webhook_auth_service"),
+		webhookAuthServicePort:   viper.GetString("webhook_auth_service_port"),
 	}
 
 	if config.customAuth {
