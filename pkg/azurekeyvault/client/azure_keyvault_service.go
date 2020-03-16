@@ -66,8 +66,11 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvs.AzureKeyVault) (string,
 		return "", err
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	baseURL := fmt.Sprintf(settings.AzureKeyVaultResourceURI, vaultSpec.Name)
-	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
+	secretBundle, err := vaultClient.GetSecret(ctx, baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 
 	if err != nil {
 		return "", err
@@ -91,8 +94,11 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvs.AzureKeyVault) (string, er
 		return "", err
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	baseURL := fmt.Sprintf(settings.AzureKeyVaultResourceURI, vaultSpec.Name)
-	keyBundle, err := vaultClient.GetKey(context.Background(), baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
+	keyBundle, err := vaultClient.GetKey(ctx, baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 
 	if err != nil {
 		return "", err
@@ -114,9 +120,12 @@ func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, exp
 		return nil, err
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	baseURL := fmt.Sprintf(settings.AzureKeyVaultResourceURI, vaultSpec.Name)
 
-	certBundle, err := vaultClient.GetCertificate(context.Background(), baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
+	certBundle, err := vaultClient.GetCertificate(ctx, baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get certificate from azure key vault, error: %+v", err)
 	}
@@ -125,7 +134,7 @@ func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, exp
 		if !*certBundle.Policy.KeyProperties.Exportable {
 			return nil, fmt.Errorf("cannot export private key because key is not exportable in azure key vault")
 		}
-		secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
+		secretBundle, err := vaultClient.GetSecret(ctx, baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get private certificate from azure key vault, error: %+v", err)
 		}
