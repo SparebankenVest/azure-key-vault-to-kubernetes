@@ -25,7 +25,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -45,6 +44,10 @@ const (
 )
 
 var logger *log.Entry
+
+type stop struct {
+	error
+}
 
 func formatLogger() {
 	var logLevel string
@@ -89,56 +92,29 @@ func retry(attempts int, sleep time.Duration, fn func() error) error {
 	return nil
 }
 
-type stop struct {
-	error
+func getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret, query string, vaultService vault.Service) (string, error) {
+	var secretHandler EnvSecretHandler
+
+	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
+	case akv.AzureKeyVaultObjectTypeSecret:
+		transformator, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
+		if err != nil {
+			return "", err
+		}
+		secretHandler = NewAzureKeyVaultSecretHandler(azureKeyVaultSecret, query, *transformator, vaultService)
+	case akv.AzureKeyVaultObjectTypeCertificate:
+		secretHandler = NewAzureKeyVaultCertificateHandler(azureKeyVaultSecret, query, vaultService)
+	case akv.AzureKeyVaultObjectTypeKey:
+		secretHandler = NewAzureKeyVaultKeyHandler(azureKeyVaultSecret, query, vaultService)
+	case akv.AzureKeyVaultObjectTypeMultiKeyValueSecret:
+		secretHandler = NewAzureKeyVaultMultiKeySecretHandler(azureKeyVaultSecret, query, vaultService)
+	default:
+		return "", fmt.Errorf("azure key vault object type '%s' not currently supported", azureKeyVaultSecret.Spec.Vault.Object.Type)
+	}
+	return secretHandler.Handle()
 }
 
-func main() {
-	var origCommand string
-	var origArgs []string
-
-	formatLogger()
-
-	logger.Debugf("azure key vault env injector initializing")
-	namespace := os.Getenv("ENV_INJECTOR_POD_NAMESPACE")
-	if namespace == "" {
-		logger.Fatalf("current namespace not provided in environment variable env_injector_pod_namespace")
-	}
-
-	logger = logger.WithFields(log.Fields{
-		"namespace": namespace,
-	})
-
-	var err error
-	retryTimes := 3
-	waitTimeBetweenRetries := 3
-	// clearSensitiveFiles := true
-
-	retryTimesEnv, ok := os.LookupEnv("ENV_INJECTOR_RETRIES")
-	if ok {
-		if retryTimes, err = strconv.Atoi(retryTimesEnv); err != nil {
-			logger.Errorf("failed to convert ENV_INJECTOR_RETRIES env var into int, value was '%s', using default value of %d", retryTimesEnv, retryTimes)
-		}
-	}
-
-	waitTimeBetweenRetriesEnv, ok := os.LookupEnv("ENV_INJECTOR_WAIT_BEFORE_RETRY")
-	if ok {
-		if waitTimeBetweenRetries, err := strconv.Atoi(retryTimesEnv); err != nil {
-			logger.Errorf("failed to convert ENV_INJECTOR_WAIT_BEFORE_RETRY env var into int, value was '%s', using default value of %d", waitTimeBetweenRetriesEnv, waitTimeBetweenRetries)
-		}
-	}
-
-	customAuth := strings.ToLower(os.Getenv("ENV_INJECTOR_CUSTOM_AUTH"))
-	logger.Debugf("use custom auth: %s", customAuth)
-
-	hasClientCert, err := strconv.ParseBool(os.Getenv("ENV_INJECTOR_HAS_CLIENT_CERT"))
-
-	logger = logger.WithFields(log.Fields{
-		"custom_auth": customAuth,
-	})
-
-	var creds *vault.AzureKeyVaultCredentials
-
+func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCredentials, error) {
 	if hasClientCert {
 		addr, ok := os.LookupEnv("ENV_INJECTOR_AUTH_SERVICE")
 		if !ok {
@@ -181,20 +157,71 @@ func main() {
 			log.Fatal(err)
 		}
 
-		creds, err = vault.NewAzureKeyVaultCredentialsFromOauthToken(string(token))
+		creds, err := vault.NewAzureKeyVaultCredentialsFromOauthToken(string(token))
 		if err != nil {
-			logger.Fatalf("failed to get credentials for azure key vault, error %+v", err)
+			return nil, fmt.Errorf("failed to get credentials for azure key vault, error %+v", err)
 		}
-	} else if customAuth == "true" {
+		return creds, nil
+	}
+
+	if customAuth {
 		logger.Debug("getting credentials for azure key vault using azure credentials supplied to pod")
 
-		creds, err = vault.NewAzureKeyVaultCredentialsFromEnvironment()
+		creds, err := vault.NewAzureKeyVaultCredentialsFromEnvironment()
 		if err != nil {
-			logger.Fatalf("failed to get credentials for azure key vault, error %+v", err)
+			return nil, fmt.Errorf("failed to get credentials for azure key vault, error %+v", err)
 		}
-	} else {
-		log.Fatal(fmt.Errorf("unable to authenticate: neither client cert or custom auth exists"))
+		return creds, nil
 	}
+
+	return nil, fmt.Errorf("unable to authenticate: neither client cert or custom auth exists")
+}
+
+func main() {
+	var origCommand string
+	var origArgs []string
+
+	formatLogger()
+
+	logger.Debugf("azure key vault env injector initializing")
+	namespace := os.Getenv("ENV_INJECTOR_POD_NAMESPACE")
+	if namespace == "" {
+		logger.Fatalf("current namespace not provided in environment variable env_injector_pod_namespace")
+	}
+
+	logger = logger.WithFields(log.Fields{
+		"namespace": namespace,
+	})
+
+	var err error
+	retryTimes := 3
+	waitTimeBetweenRetries := 3
+
+	retryTimesEnv, ok := os.LookupEnv("ENV_INJECTOR_RETRIES")
+	if ok {
+		if retryTimes, err = strconv.Atoi(retryTimesEnv); err != nil {
+			logger.Errorf("failed to convert ENV_INJECTOR_RETRIES env var into int, value was '%s', using default value of %d", retryTimesEnv, retryTimes)
+		}
+	}
+
+	waitTimeBetweenRetriesEnv, ok := os.LookupEnv("ENV_INJECTOR_WAIT_BEFORE_RETRY")
+	if ok {
+		if waitTimeBetweenRetries, err := strconv.Atoi(retryTimesEnv); err != nil {
+			logger.Errorf("failed to convert ENV_INJECTOR_WAIT_BEFORE_RETRY env var into int, value was '%s', using default value of %d", waitTimeBetweenRetriesEnv, waitTimeBetweenRetries)
+		}
+	}
+
+	customAuth, err := strconv.ParseBool(os.Getenv("ENV_INJECTOR_CUSTOM_AUTH"))
+	if err != nil {
+		log.Fatal("failed to parse env var ENV_INJECTOR_CUSTOM_AUTH as bool, error: %+v", err)
+	}
+	logger.Debugf("use custom auth: %s", customAuth)
+
+	logger = logger.WithFields(log.Fields{
+		"custom_auth": customAuth,
+	})
+
+	hasClientCert, err := strconv.ParseBool(os.Getenv("ENV_INJECTOR_HAS_CLIENT_CERT"))
 
 	if len(os.Args) == 1 {
 		logger.Fatal("no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly")
@@ -209,11 +236,10 @@ func main() {
 		logger.Infof("found original container command to be %s %s", origCommand, origArgs)
 	}
 
-	// if keepSensitiveFiles, exists := os.LookupEnv("ENV_INJECTOR_KEEP_SENSITIVE_FILES"); exists {
-	// 	if s, err := strconv.ParseBool(keepSensitiveFiles); err != nil && s {
-	// 		clearSensitiveFiles = false
-	// 	}
-	// }
+	creds, err := getCredentials(hasClientCert, customAuth)
+	if err != nil {
+		log.Fatal("failed to get credentials, error: %+v", err)
+	}
 
 	vaultService := vault.NewService(creds)
 
@@ -296,65 +322,5 @@ func main() {
 		logger.Fatalf("failed to exec process '%s': %s", origCommand, err.Error())
 	}
 
-	// Temp removed - awaiting proper solution for handling AKS service principal without storing
-	//                inside container
-
-	// if clearSensitiveFiles {
-	// 	err = deleteSensitiveFiles()
-	// 	if err != nil {
-	// 		logger.Fatalf("failed to delete sensitive files, error: %+v", err)
-	// 	}
-	// }
-
 	logger.Info("azure key vault env injector successfully injected env variables with secrets")
-}
-
-func deleteSensitiveFiles() error {
-	dirToRemove := "/azure-keyvault/"
-	logger.Debugf("deleting files in directory '%s'", dirToRemove)
-
-	err := clearDir(dirToRemove)
-	if err != nil {
-		return fmt.Errorf("error removing directory '%s' : %+v", dirToRemove, err)
-	}
-	return nil
-}
-
-func clearDir(dir string) error {
-	files, err := filepath.Glob(filepath.Join(dir, "*"))
-
-	if err != nil {
-		return err
-	}
-
-	for _, file := range files {
-		logger.Debugf("deleting file %s", file)
-		err = os.Remove(file)
-		if err != nil {
-			return fmt.Errorf("failed to delete file %s, error %+v", file, err)
-		}
-	}
-	return nil
-}
-
-func getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret, query string, vaultService vault.Service) (string, error) {
-	var secretHandler EnvSecretHandler
-
-	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
-	case akv.AzureKeyVaultObjectTypeSecret:
-		transformator, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
-		if err != nil {
-			return "", err
-		}
-		secretHandler = NewAzureKeyVaultSecretHandler(azureKeyVaultSecret, query, *transformator, vaultService)
-	case akv.AzureKeyVaultObjectTypeCertificate:
-		secretHandler = NewAzureKeyVaultCertificateHandler(azureKeyVaultSecret, query, vaultService)
-	case akv.AzureKeyVaultObjectTypeKey:
-		secretHandler = NewAzureKeyVaultKeyHandler(azureKeyVaultSecret, query, vaultService)
-	case akv.AzureKeyVaultObjectTypeMultiKeyValueSecret:
-		secretHandler = NewAzureKeyVaultMultiKeySecretHandler(azureKeyVaultSecret, query, vaultService)
-	default:
-		return "", fmt.Errorf("azure key vault object type '%s' not currently supported", azureKeyVaultSecret.Spec.Vault.Object.Type)
-	}
-	return secretHandler.Handle()
 }
