@@ -47,7 +47,9 @@ spec:
           - name: AZUREKEYVAULT_ENV_IMAGE
             value: {{ .Values.envImage.repository }}:{{ .Values.envImage.tag }}
           - name: WEBHOOK_AUTH_SERVICE
-            value: {{ template "azure-key-vault-to-kubernetes.fullname" . }}:{{ .Values.authService.externalPort }}
+            value: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
+          - name: WEBHOOK_AUTH_SERVICE_PORT
+            value: {{ .Values.authService.externalPort }}
           - name: AAD_POD_BINDING_LABEL
             valueFrom:
               fieldRef:
