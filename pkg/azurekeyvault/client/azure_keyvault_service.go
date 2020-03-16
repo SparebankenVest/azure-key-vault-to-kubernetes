@@ -66,8 +66,6 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvs.AzureKeyVault) (string,
 		return "", err
 	}
 
-	vaultClient.PollingDelay
-
 	baseURL := fmt.Sprintf(settings.AzureKeyVaultResourceURI, vaultSpec.Name)
 	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 
