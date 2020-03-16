@@ -77,6 +77,9 @@ type azureKeyVaultConfig struct {
 	certFile                 string
 	keyFile                  string
 	caFile                   string
+	clientCertFile           string
+	clientKeyFile            string
+	clientCertSecretName     string
 }
 
 var config azureKeyVaultConfig
@@ -122,14 +125,14 @@ func setLogLevel(logLevel string) {
 func getInitContainers() []corev1.Container {
 	fullExecPath := filepath.Join(injectorDir, injectorExecutable)
 	cmd := fmt.Sprintf("echo 'Copying %s to %s'", fullExecPath, injectorDir)
-	cmd = cmd + fmt.Sprintf(" && chmod 777 %s", injectorDir)
+	// cmd = cmd + fmt.Sprintf(" && chmod 777 %s", injectorDir)
 	cmd = cmd + fmt.Sprintf(" && cp /usr/local/bin/%s %s", injectorExecutable, injectorDir)
-	cmd = cmd + fmt.Sprintf(" && chmod 777 %s", fullExecPath)
+	// cmd = cmd + fmt.Sprintf(" && chmod 777 %s", fullExecPath)
 
-	if !config.customAuth {
-		cmd = cmd + fmt.Sprintf(" && cp %s %s", config.cloudConfigHostPath, config.cloudConfigContainerPath)
-		cmd = cmd + fmt.Sprintf(" && chmod 666 %s", config.cloudConfigContainerPath)
-	}
+	// if !config.customAuth {
+	// 	cmd = cmd + fmt.Sprintf(" && cp %s %s", config.cloudConfigHostPath, config.cloudConfigContainerPath)
+	// 	cmd = cmd + fmt.Sprintf(" && chmod 666 %s", config.cloudConfigContainerPath)
+	// }
 
 	container := corev1.Container{
 		Name:            "copy-azurekeyvault-env",
@@ -144,22 +147,20 @@ func getInitContainers() []corev1.Container {
 		},
 	}
 
-	if !config.customAuth {
-		container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
-			{
-				Name:      "azure-config",
-				MountPath: config.cloudConfigHostPath,
-				ReadOnly:  true,
-			},
-		}...)
-	}
+	// if !config.customAuth {
+	// 	container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
+	// 		{
+	// 			Name:      "azure-config",
+	// 			MountPath: config.cloudConfigHostPath,
+	// 			ReadOnly:  true,
+	// 		},
+	// 	}...)
+	// }
 
 	return []corev1.Container{container}
 }
 
 func getVolumes() []corev1.Volume {
-	hostPathFile := corev1.HostPathFile
-
 	volumes := []corev1.Volume{
 		{
 			Name: "azure-keyvault-env",
@@ -171,6 +172,8 @@ func getVolumes() []corev1.Volume {
 		},
 	}
 	if !config.customAuth {
+		hostPathFile := corev1.HostPathFile
+
 		volumes = append(volumes, []corev1.Volume{
 			{
 				Name: "azure-config",
@@ -178,6 +181,14 @@ func getVolumes() []corev1.Volume {
 					HostPath: &corev1.HostPathVolumeSource{
 						Path: config.cloudConfigHostPath,
 						Type: &hostPathFile,
+					},
+				},
+			},
+			{
+				Name: "client-cert",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: config.clientCertSecretName,
 					},
 				},
 			},
@@ -546,6 +557,25 @@ func mutatePodSpec(pod *corev1.Pod) error {
 					}
 				}
 			}
+		} else if config.namespace != "" && !config.customAuth {
+			log.Infof("creating client cert secret in new namespace '%s'...", config.namespace)
+
+			clientCertSecret, err := createClientCertSecret(config.clientCertSecretName)
+			if err != nil {
+				return err
+			}
+
+			_, err = clientset.CoreV1().Secrets(config.namespace).Create(clientCertSecret)
+			if err != nil {
+				if errors.IsAlreadyExists(err) {
+					_, err = clientset.CoreV1().Secrets(config.namespace).Update(clientCertSecret)
+					if err != nil {
+						return err
+					}
+				} else {
+					return err
+				}
+			}
 		}
 
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
@@ -557,6 +587,34 @@ func mutatePodSpec(pod *corev1.Pod) error {
 	}
 
 	return nil
+}
+
+func createClientCertSecret(secretName string) (*corev1.Secret, error) {
+	clientCert, err := ioutil.ReadFile(config.clientCertFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read client cert file from %s, error: %+v", config.clientCertFile, err)
+	}
+
+	clientKey, err := ioutil.ReadFile(config.clientKeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read client key file from %s, error: %+v", config.clientKeyFile, err)
+	}
+
+	caCert, err := ioutil.ReadFile(config.caFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read ca cert file from %s, error: %+v", config.caFile, err)
+	}
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: secretName,
+		},
+		StringData: map[string]string{
+			"clientCert": string(clientCert),
+			"clientKey":  string(clientKey),
+			"caCert":     string(caCert),
+		},
+	}, nil
 }
 
 func initConfig() {
@@ -621,6 +679,9 @@ func main() {
 		certFile:                 viper.GetString("tls_cert_file"),
 		keyFile:                  viper.GetString("tls_private_key_file"),
 		caFile:                   viper.GetString("tls_ca_file"),
+		clientCertFile:           viper.GetString("tls_client_file"),
+		clientKeyFile:            viper.GetString("tls_client_key_file"),
+		clientCertSecretName:     viper.GetString("client_cert_secret_name"),
 	}
 
 	if config.customAuth {

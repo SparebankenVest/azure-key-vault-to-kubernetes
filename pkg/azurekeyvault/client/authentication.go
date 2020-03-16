@@ -16,6 +16,20 @@ type AzureKeyVaultCredentials struct {
 	getAuthorizer func() (autorest.Authorizer, error)
 }
 
+type AzureKeyVaultToken struct {
+	token string
+}
+
+func (t AzureKeyVaultToken) OAuthToken() string {
+	return t.token
+}
+
+func NewAzureKeyVaultToken(token string) AzureKeyVaultToken {
+	return AzureKeyVaultToken{
+		token: token,
+	}
+}
+
 // NewAzureKeyVaultCredentialsFromCloudConfig gets a credentials object from cloud config to use with Azure Key Vault
 func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (*AzureKeyVaultCredentials, error) {
 	config, err := readCloudConfig(cloudConfigPath)
@@ -24,6 +38,18 @@ func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (*AzureK
 	}
 
 	return NewAzureKeyVaultCredentialsFromClient(config.AADClientID, config.AADClientSecret, config.TenantID)
+}
+
+// NewAzureKeyVaultCredentialsFromCloudConfig gets a credentials object from cloud config to use with Azure Key Vault
+func NewAzureKeyVaultCredentialsFromOauthToken(token string) (*AzureKeyVaultCredentials, error) {
+	tokenProvider := AzureKeyVaultToken{token: token}
+	authorizer := autorest.NewBearerAuthorizer(tokenProvider)
+
+	return &AzureKeyVaultCredentials{
+		getAuthorizer: func() (autorest.Authorizer, error) {
+			return authorizer, nil
+		},
+	}, nil
 }
 
 // NewAzureKeyVaultCredentialsFromClient creates a credentials object from a servbice principal to use with Azure Key Vault
