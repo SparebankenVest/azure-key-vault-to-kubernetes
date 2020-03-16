@@ -213,9 +213,9 @@ func main() {
 
 	customAuth, err := strconv.ParseBool(os.Getenv("ENV_INJECTOR_CUSTOM_AUTH"))
 	if err != nil {
-		log.Fatal("failed to parse env var ENV_INJECTOR_CUSTOM_AUTH as bool, error: %+v", err)
+		log.Fatalf("failed to parse env var ENV_INJECTOR_CUSTOM_AUTH as bool, error: %+v", err)
 	}
-	logger.Debugf("use custom auth: %s", customAuth)
+	logger.Debugf("use custom auth: %t", customAuth)
 
 	logger = logger.WithFields(log.Fields{
 		"custom_auth": customAuth,
@@ -238,7 +238,7 @@ func main() {
 
 	creds, err := getCredentials(hasClientCert, customAuth)
 	if err != nil {
-		log.Fatal("failed to get credentials, error: %+v", err)
+		log.Fatalf("failed to get credentials, error: %+v", err)
 	}
 
 	vaultService := vault.NewService(creds)
