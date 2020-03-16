@@ -18,7 +18,11 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -127,13 +131,61 @@ func main() {
 	customAuth := strings.ToLower(os.Getenv("ENV_INJECTOR_CUSTOM_AUTH"))
 	logger.Debugf("use custom auth: %s", customAuth)
 
+	hasClientCert, err := strconv.ParseBool(os.Getenv("ENV_INJECTOR_HAS_CLIENT_CERT"))
+
 	logger = logger.WithFields(log.Fields{
 		"custom_auth": customAuth,
 	})
 
 	var creds *vault.AzureKeyVaultCredentials
 
-	if customAuth == "true" {
+	if hasClientCert {
+		addr, ok := os.LookupEnv("ENV_INJECTOR_AUTH_SERVICE")
+		if !ok {
+			log.Fatal(fmt.Errorf("cannot call auth service: env var ENV_INJECTOR_AUTH_SERVICE does not exist"))
+		}
+
+		// Get token from Auth endpoint
+		cert, err := tls.LoadX509KeyPair("/client-cert/clientCert", "/client-cert/clientKey")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Create a CA certificate pool and add cert.pem to it
+		caCert, err := ioutil.ReadFile("/client-cert/caCert")
+		if err != nil {
+			log.Fatal(err)
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		// Create a HTTPS client and supply the created CA pool and certificate
+		client := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs:      caCertPool,
+					Certificates: []tls.Certificate{cert},
+				},
+			},
+		}
+
+		r, err := client.Get(fmt.Sprintf("%s/auth", addr))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Read the response body
+		defer r.Body.Close()
+		token, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		creds, err = vault.NewAzureKeyVaultCredentialsFromOauthToken(string(token))
+		if err != nil {
+			logger.Fatalf("failed to get credentials for azure key vault, error %+v", err)
+		}
+	} else if customAuth == "true" {
 		logger.Debug("getting credentials for azure key vault using azure credentials supplied to pod")
 
 		creds, err = vault.NewAzureKeyVaultCredentialsFromEnvironment()
@@ -141,11 +193,7 @@ func main() {
 			logger.Fatalf("failed to get credentials for azure key vault, error %+v", err)
 		}
 	} else {
-		logger.Debug("getting credentials for azure key vault using azure credentials from cloud config")
-		creds, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig("/azure-keyvault/azure.json")
-		if err != nil {
-			logger.Fatalf("failed to get credentials for azure key vault, error %+v", err)
-		}
+		log.Fatal(fmt.Errorf("unable to authenticate: neither client cert or custom auth exists"))
 	}
 
 	if len(os.Args) == 1 {

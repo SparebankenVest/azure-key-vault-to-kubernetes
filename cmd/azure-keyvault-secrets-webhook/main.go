@@ -81,6 +81,7 @@ type azureKeyVaultConfig struct {
 	clientCertFile           string
 	clientKeyFile            string
 	clientCertSecretName     string
+	webhookServiceName       string
 }
 
 var config azureKeyVaultConfig
@@ -118,6 +119,10 @@ func setLogLevel(logLevel string) {
 		log.Fatalf("error setting log level: %s", err.Error())
 	}
 	log.SetLevel(logrusLevel)
+}
+
+func useClientCert() bool {
+	return !config.customAuth || (config.customAuth && !config.customAuthAutoInject)
 }
 
 // This init-container copies a program to /azure-keyvault/ and
@@ -189,7 +194,7 @@ func getVolumes() []corev1.Volume {
 	// 	}...)
 	// }
 
-	if !config.customAuth || (config.customAuth && !config.customAuthAutoInject) {
+	if useClientCert() {
 		volumes = append(volumes, []corev1.Volume{
 			{
 				Name: "client-cert",
@@ -203,6 +208,20 @@ func getVolumes() []corev1.Volume {
 	}
 
 	return volumes
+}
+
+func namespace() string {
+	if ns, ok := os.LookupEnv("POD_NAMESPACE"); ok {
+		return ns
+	}
+
+	if data, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
+		if ns := strings.TrimSpace(string(data)); len(ns) > 0 {
+			return ns
+		}
+	}
+
+	return "default"
 }
 
 func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
@@ -281,7 +300,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 			},
 		}...)
 
-		if !config.customAuth || (config.customAuth && !config.customAuthAutoInject) {
+		if useClientCert() {
 			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
 				{
 					Name:      "client-cert",
@@ -302,6 +321,14 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 			{
 				Name:  "ENV_INJECTOR_CUSTOM_AUTH",
 				Value: strconv.FormatBool(config.customAuth),
+			},
+			{
+				Name:  "ENV_INJECTOR_HAS_CLIENT_CERT",
+				Value: strconv.FormatBool(useClientCert()),
+			},
+			{
+				Name:  "ENV_INJECTOR_AUTH_SERVICE",
+				Value: fmt.Sprintf("%s.%s.svc.cluster.local", config.webhookServiceName, namespace()),
 			},
 		}...)
 
@@ -575,7 +602,7 @@ func mutatePodSpec(pod *corev1.Pod) error {
 			}
 		}
 
-		if config.namespace != "" && !config.customAuth || (config.customAuth && !config.customAuthAutoInject) {
+		if config.namespace != "" && useClientCert() {
 			log.Infof("creating client cert secret in new namespace '%s'...", config.namespace)
 
 			clientCertSecret, err := createClientCertSecret(config.clientCertSecretName)
@@ -701,6 +728,7 @@ func main() {
 		clientCertFile:           viper.GetString("tls_client_file"),
 		clientKeyFile:            viper.GetString("tls_client_key_file"),
 		clientCertSecretName:     viper.GetString("client_cert_secret_name"),
+		webhookServiceName:       viper.GetString("webhook_auth_service"),
 	}
 
 	if config.customAuth {
