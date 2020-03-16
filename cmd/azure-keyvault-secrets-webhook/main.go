@@ -329,7 +329,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 			},
 			{
 				Name:  "ENV_INJECTOR_AUTH_SERVICE",
-				Value: fmt.Sprintf("%s.%s.svc.cluster.local:%s", config.webhookAuthServiceName, namespace(), config.webhookAuthServicePort),
+				Value: fmt.Sprintf("%s.%s.svc:%s", config.webhookAuthServiceName, namespace(), config.webhookAuthServicePort),
 			},
 		}...)
 
