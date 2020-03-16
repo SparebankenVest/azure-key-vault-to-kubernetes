@@ -60,6 +60,7 @@ const (
 	oldDockerHubHost   = "docker.io"
 	injectorDir        = "/azure-keyvault/"
 	injectorExecutable = "azure-keyvault-env"
+	clientCertDir      = "/client-cert/"
 )
 
 type azureKeyVaultConfig struct {
@@ -171,19 +172,25 @@ func getVolumes() []corev1.Volume {
 			},
 		},
 	}
-	if !config.customAuth {
-		hostPathFile := corev1.HostPathFile
 
+	// if !config.customAuth {
+	// 	hostPathFile := corev1.HostPathFile
+
+	// 	volumes = append(volumes, []corev1.Volume{
+	// 		{
+	// 			Name: "azure-config",
+	// 			VolumeSource: corev1.VolumeSource{
+	// 				HostPath: &corev1.HostPathVolumeSource{
+	// 					Path: config.cloudConfigHostPath,
+	// 					Type: &hostPathFile,
+	// 				},
+	// 			},
+	// 		},
+	// 	}...)
+	// }
+
+	if !config.customAuth || (config.customAuth && !config.customAuthAutoInject) {
 		volumes = append(volumes, []corev1.Volume{
-			{
-				Name: "azure-config",
-				VolumeSource: corev1.VolumeSource{
-					HostPath: &corev1.HostPathVolumeSource{
-						Path: config.cloudConfigHostPath,
-						Type: &hostPathFile,
-					},
-				},
-			},
 			{
 				Name: "client-cert",
 				VolumeSource: corev1.VolumeSource{
@@ -273,6 +280,15 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 				MountPath: injectorDir,
 			},
 		}...)
+
+		if !config.customAuth || (config.customAuth && !config.customAuthAutoInject) {
+			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
+				{
+					Name:      "client-cert",
+					MountPath: clientCertDir,
+				},
+			}...)
+		}
 
 		container.Env = append(container.Env, []corev1.EnvVar{
 			{
