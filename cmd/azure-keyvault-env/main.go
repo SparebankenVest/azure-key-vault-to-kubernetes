@@ -169,7 +169,7 @@ func main() {
 			},
 		}
 
-		r, err := client.Get(fmt.Sprintf("%s/auth", addr))
+		r, err := client.Get(fmt.Sprintf("https://%s/auth", addr))
 		if err != nil {
 			log.Fatal(err)
 		}
