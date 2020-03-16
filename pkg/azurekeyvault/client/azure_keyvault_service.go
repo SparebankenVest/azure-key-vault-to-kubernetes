@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	akvs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
@@ -64,6 +65,8 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvs.AzureKeyVault) (string,
 	if err != nil {
 		return "", err
 	}
+
+	vaultClient.PollingDelay
 
 	baseURL := fmt.Sprintf(settings.AzureKeyVaultResourceURI, vaultSpec.Name)
 	secretBundle, err := vaultClient.GetSecret(context.Background(), baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
@@ -153,6 +156,10 @@ func (a *azureKeyVaultService) getClient(resource string) (*keyvault.BaseClient,
 	}
 
 	keyClient := keyvault.New()
+	keyClient.Client.PollingDelay = 5 * time.Second
+	keyClient.Client.PollingDuration = 20 * time.Second
+	keyClient.Client.RetryAttempts = 2
+	keyClient.Client.RetryDuration = 5 * time.Second
 	keyClient.Authorizer = authorizer
 
 	return &keyClient, nil
