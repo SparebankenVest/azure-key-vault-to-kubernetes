@@ -186,7 +186,7 @@ func verifyPKCS(signature string, plaintext string, pubkey rsa.PublicKey) bool {
 	sig, _ := base64.StdEncoding.DecodeString(signature)
 	hashed := sha256.Sum256([]byte(plaintext))
 	err := rsa.VerifyPKCS1v15(&pubkey, crypto.SHA256, hashed[:], sig)
-	return err != nil
+	return err == nil
 }
 
 func parseRsaPublicKey(pubPem string) (*rsa.PublicKey, error) {
