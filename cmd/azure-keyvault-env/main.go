@@ -264,12 +264,12 @@ func main() {
 		}
 
 		signature := os.Getenv("ENV_INJECTOR_ARGS_SIGNATURE")
-		if signature != "" {
+		if signature == "" {
 			log.Fatalf("failed to get ENV_INJECTOR_ARGS_SIGNATURE, error: %+v", err)
 		}
 
 		pubKey := os.Getenv("ENV_INJECTOR_ARGS_KEY")
-		if pubKey != "" {
+		if pubKey == "" {
 			log.Fatalf("failed to get ENV_INJECTOR_ARGS_KEY, error: %+v", err)
 		}
 
