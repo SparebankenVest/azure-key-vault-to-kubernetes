@@ -7,6 +7,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"gopkg.in/yaml.v2"
 
+	"github.com/Azure/go-autorest/autorest/adal"
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
 	cloudAuth "k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth"
 )
@@ -16,14 +17,17 @@ type AzureKeyVaultCredentials struct {
 	getAuthorizer func() (autorest.Authorizer, error)
 }
 
+// AzureKeyVaultToken is a oauth token to use with Azure Key Vault
 type AzureKeyVaultToken struct {
 	token string
 }
 
+// OAuthToken gets the oauth token as string
 func (t AzureKeyVaultToken) OAuthToken() string {
 	return t.token
 }
 
+// NewAzureKeyVaultToken creates a new oauth token to use with Azure Key Vault
 func NewAzureKeyVaultToken(token string) AzureKeyVaultToken {
 	return AzureKeyVaultToken{
 		token: token,
@@ -40,7 +44,52 @@ func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (*AzureK
 	return NewAzureKeyVaultCredentialsFromClient(config.AADClientID, config.AADClientSecret, config.TenantID)
 }
 
-// NewAzureKeyVaultCredentialsFromCloudConfig gets a credentials object from cloud config to use with Azure Key Vault
+// NewAzureKeyVaultOauthTokenFromCloudConfig gets a oauth token from cloud config to use with Azure Key Vault
+func NewAzureKeyVaultOauthTokenFromCloudConfig(cloudConfigPath string) (*AzureKeyVaultToken, error) {
+	config, err := readCloudConfig(cloudConfigPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewAzureKeyVaultOAuthTokenFromClient(config.AADClientID, config.AADClientSecret, config.TenantID)
+}
+
+// NewAzureKeyVaultOAuthTokenFromClient gets a oauth token from client credentials to use with Azure Key Vault
+func NewAzureKeyVaultOAuthTokenFromClient(clientID, clientSecret, tenantID string) (*AzureKeyVaultToken, error) {
+	authSettings, err := azureAuth.GetSettingsFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+	}
+
+	settings, err := GetSettingFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+	}
+
+	cred := azureAuth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
+	cred.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
+	cred.Resource = settings.AzureKeyVaultURI
+
+	conf, err := adal.NewOAuthConfig(cred.AADEndpoint, cred.TenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create oauth config: %+v", err)
+	}
+
+	token, err := adal.NewServicePrincipalToken(*conf, cred.ClientID, cred.ClientSecret, settings.AzureKeyVaultURI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token: %+v", err)
+	}
+	token.SetAutoRefresh(false)
+	if err := token.Refresh(); err != nil {
+		return nil, fmt.Errorf("failed to refresh token: %+v", err)
+	}
+
+	return &AzureKeyVaultToken{
+		token: token.OAuthToken(),
+	}, nil
+}
+
+// NewAzureKeyVaultCredentialsFromOauthToken gets a credentials object from a oauth token to use with Azure Key Vault
 func NewAzureKeyVaultCredentialsFromOauthToken(token string) (*AzureKeyVaultCredentials, error) {
 	tokenProvider := AzureKeyVaultToken{token: token}
 	authorizer := autorest.NewBearerAuthorizer(tokenProvider)
@@ -54,7 +103,6 @@ func NewAzureKeyVaultCredentialsFromOauthToken(token string) (*AzureKeyVaultCred
 
 // NewAzureKeyVaultCredentialsFromClient creates a credentials object from a servbice principal to use with Azure Key Vault
 func NewAzureKeyVaultCredentialsFromClient(clientID, clientSecret, tenantID string) (*AzureKeyVaultCredentials, error) {
-
 	authSettings, err := azureAuth.GetSettingsFromEnvironment()
 	if err != nil {
 		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)

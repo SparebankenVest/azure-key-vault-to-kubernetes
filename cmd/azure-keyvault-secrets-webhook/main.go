@@ -241,14 +241,17 @@ func main() {
 	if config.customAuth {
 		azureCreds, err := NewCredentials()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error getting credentials: %s", err)
-			os.Exit(1)
+			log.Fatalf("error getting credentials: %+v", err)
 		}
 
 		config.credentials = azureCreds
 
 		if azureCreds.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
 			config.aadPodBindingLabel = viper.GetString("aad_pod_binding_label")
+		}
+	} else {
+		config.credentials = &AzureKeyVaultCredentials{
+			CredentialsType: CredentialsTypeClusterCredentials,
 		}
 	}
 

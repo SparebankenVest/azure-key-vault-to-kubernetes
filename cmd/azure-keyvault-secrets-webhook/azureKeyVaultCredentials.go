@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
 	corev1 "k8s.io/api/core/v1"
@@ -14,6 +13,9 @@ import (
 type CredentialsType string
 
 const (
+	// CredentialsTypeClusterCredentials represent Azure AKS cluster credentials
+	CredentialsTypeClusterCredentials CredentialsType = "clusterCredentials"
+
 	// CredentialsTypeClientCredentials represent Azure Client Credentials
 	CredentialsTypeClientCredentials CredentialsType = "clientCredentials"
 
@@ -142,29 +144,20 @@ func (c *AzureKeyVaultCredentials) GetEnvVarFromSecret(secretName string) *[]cor
 // GetAzureToken uses current credentials to get a oauth token from Azure
 func (c *AzureKeyVaultCredentials) GetAzureToken() (string, error) {
 	switch c.CredentialsType {
-	case CredentialsTypeClientCredentials:
-		settings, err := vault.GetSettingFromEnvironment()
+	case CredentialsTypeClusterCredentials:
+		token, err := vault.NewAzureKeyVaultOauthTokenFromCloudConfig(config.cloudConfigHostPath)
 		if err != nil {
-			return "", fmt.Errorf("failed to get settings from environment: %+v", err)
+			return "", fmt.Errorf("failed to get oauth token: %+v", err)
 		}
+		return token.OAuthToken(), nil
+
+	case CredentialsTypeClientCredentials:
 		creds, err := c.envSettings.GetClientCredentials()
 		if err != nil {
 			return "", fmt.Errorf("failed to get client credentials: %+v", err)
 		}
 
-		conf, err := adal.NewOAuthConfig(creds.AADEndpoint, creds.TenantID)
-		if err != nil {
-			return "", fmt.Errorf("failed to create oauth config: %+v", err)
-		}
-
-		token, err := adal.NewServicePrincipalToken(*conf, creds.ClientID, creds.ClientSecret, settings.AzureKeyVaultURI)
-		if err != nil {
-			return "", fmt.Errorf("failed to create token: %+v", err)
-		}
-		token.SetAutoRefresh(false)
-		if err := token.Refresh(); err != nil {
-			return "", fmt.Errorf("failed to get a token with service principal: %+v", err)
-		}
+		token, err := vault.NewAzureKeyVaultOAuthTokenFromClient(creds.ClientID, creds.ClientSecret, creds.TenantID)
 
 		return token.OAuthToken(), nil
 	default:
