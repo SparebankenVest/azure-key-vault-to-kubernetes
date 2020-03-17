@@ -124,7 +124,23 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 			return false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
 		}
 
-		log.Infof("using '%s' as arguments for env-injector", strings.Join(autoArgs, " "))
+		autoArgsStr := strings.Join(autoArgs, " ")
+		log.Infof("using '%s' as arguments for env-injector", autoArgsStr)
+
+		privKey, pubKey, err := newKeyPair()
+		if err != nil {
+			return false, fmt.Errorf("failed to create signing key pair, error: %+v", err)
+		}
+
+		signature, err := signPKCS(autoArgsStr, *privKey)
+		if err != nil {
+			return false, fmt.Errorf("failed to sign command args, error: %+v", err)
+		}
+
+		publicSigningKey, err := exportRsaPublicKey(pubKey)
+		if err != nil {
+			return false, fmt.Errorf("failed to export public rsa key to pem, error: %+v", err)
+		}
 
 		mutated = true
 
@@ -160,6 +176,14 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 			{
 				Name:  "ENV_INJECTOR_CUSTOM_AUTH",
 				Value: strconv.FormatBool(config.customAuth),
+			},
+			{
+				Name:  "ENV_INJECTOR_ARGS_SIGNATURE",
+				Value: signature,
+			},
+			{
+				Name:  "ENV_INJECTOR_ARGS_KEY",
+				Value: publicSigningKey,
 			},
 			{
 				Name:  "ENV_INJECTOR_HAS_CLIENT_CERT",

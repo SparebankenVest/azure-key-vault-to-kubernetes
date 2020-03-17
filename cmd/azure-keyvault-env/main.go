@@ -18,8 +18,13 @@
 package main
 
 import (
+	"crypto"
+	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -177,6 +182,33 @@ func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCr
 	return nil, fmt.Errorf("unable to authenticate: neither client cert or custom auth exists")
 }
 
+func verifyPKCS(signature string, plaintext string, pubkey rsa.PublicKey) bool {
+	sig, _ := base64.StdEncoding.DecodeString(signature)
+	hashed := sha256.Sum256([]byte(plaintext))
+	err := rsa.VerifyPKCS1v15(&pubkey, crypto.SHA256, hashed[:], sig)
+	return err != nil
+}
+
+func parseRsaPublicKey(pubPem string) (*rsa.PublicKey, error) {
+	block, _ := pem.Decode([]byte(pubPem))
+	if block == nil {
+		return nil, fmt.Errorf("failed to parse PEM block containing public signing key")
+	}
+
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	switch pub := pub.(type) {
+	case *rsa.PublicKey:
+		return pub, nil
+	default:
+		break // fall through
+	}
+	return nil, fmt.Errorf("Key type is not RSA")
+}
+
 func main() {
 	var origCommand string
 	var origArgs []string
@@ -231,7 +263,27 @@ func main() {
 			logger.Fatalf("binary not found: %+v", err)
 		}
 
+		signature := os.Getenv("ENV_INJECTOR_ARGS_SIGNATURE")
+		if signature != "" {
+			log.Fatalf("failed to get ENV_INJECTOR_ARGS_SIGNATURE, error: %+v", err)
+		}
+
+		pubKey := os.Getenv("ENV_INJECTOR_ARGS_KEY")
+		if pubKey != "" {
+			log.Fatalf("failed to get ENV_INJECTOR_ARGS_KEY, error: %+v", err)
+		}
+
 		origArgs = os.Args[1:]
+		origArgsStr := strings.Join(origArgs, " ")
+
+		pubRsaKey, err := parseRsaPublicKey(pubKey)
+		if err != nil {
+			logger.Fatalf("failed to parse rsa public key to verify args: %+v", err)
+		}
+
+		if !verifyPKCS(signature, origArgsStr, *pubRsaKey) {
+			logger.Fatal("args does not match original args defined by env-injector: %+v")
+		}
 
 		logger.Infof("found original container command to be %s %s", origCommand, origArgs)
 	}
