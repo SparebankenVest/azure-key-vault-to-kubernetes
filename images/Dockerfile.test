@@ -5,7 +5,8 @@ RUN apk add --update --no-cache ca-certificates
 RUN addgroup -g 1000 -S test && \
 adduser -u 1000 -S test -G test
 
+COPY entrypoint.sh /usr/local/bin/
+
 USER test
 
-ENTRYPOINT ["/bin/sh", "-c"]
-CMD ["printenv TEST_SECRET && echo 'waiting forever...'; while true; do sleep 10; done"]
+ENTRYPOINT ["entrypoint.sh"]
