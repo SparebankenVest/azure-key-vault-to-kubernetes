@@ -282,7 +282,7 @@ func main() {
 		}
 
 		if !verifyPKCS(signature, origArgsStr, *pubRsaKey) {
-			logger.Fatal("args does not match original args defined by env-injector: %+v")
+			logger.Fatal("args does not match original args defined by env-injector")
 		}
 
 		logger.Infof("found original container command to be %s %s", origCommand, origArgs)
