@@ -83,8 +83,6 @@ spec:
           ports:
           - name: webhook
             containerPort: {{ .Values.service.internalPort }}
-          - name: auth
-            containerPort: {{ .Values.authService.internalPort }}
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
@@ -100,6 +98,36 @@ spec:
           {{- end }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
+        - name: {{ .Values.authService.containerName }}
+          image: "{{ .Values.authService.image.repository }}:{{ .Values.authService.image.tag }}"
+          env:
+          - name: TLS_CERT_FILE
+            value: /var/serving-cert/servingCert
+          - name: TLS_PRIVATE_KEY_FILE
+            value: /var/serving-cert/servingKey
+          - name: TLS_CA_FILE
+            value: /var/serving-cert/caCert
+          - name: WEBHOOK_AUTH_SERVICE
+            value: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
+          - name: WEBHOOK_AUTH_SERVICE_PORT
+            value: {{ .Values.authService.port.externalPort | quote }}
+          {{- if .Values.keyVault.customAuth.enabled }}
+          - name: CUSTOM_AUTH
+            value: {{ .Values.keyVault.customAuth.enabled | quote }}
+          {{- end}}
+          - name: LOG_LEVEL
+            value: {{ .Values.log_level | quote }}
+          ports:
+          - name: auth
+            containerPort: {{ .Values.authService.port.internalPort }}
+          volumeMounts:
+          - mountPath: /var/serving-cert
+            name: serving-cert
+          {{- if not .Values.keyVault.customAuth.enabled }}
+          - mountPath: /etc/kubernetes/azure.json
+            name: azureconf
+            readOnly: true
+          {{- end }}
       volumes:
       - name: serving-cert
         secret:

@@ -15,9 +15,9 @@ spec:
       port: {{ .Values.service.externalPort }}
       targetPort: {{ .Values.service.internalPort }}
       protocol: TCP
-    - name: {{ .Values.authService.name }}
-      port: {{ .Values.authService.externalPort }}
-      targetPort: {{ .Values.authService.internalPort }}
+    - name: {{ .Values.authService.port.name }}
+      port: {{ .Values.authService.port.externalPort }}
+      targetPort: {{ .Values.authService.port.internalPort }}
       protocol: TCP
   selector:
     app: {{ template "azure-key-vault-to-kubernetes.name" . }}
