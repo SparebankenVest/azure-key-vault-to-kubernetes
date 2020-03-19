@@ -291,9 +291,13 @@ func main() {
 			logger.Fatalf("binary not found: %+v", err)
 		}
 
-		skipArgsValidation, err := strconv.ParseBool(os.Getenv("ENV_INJECTOR_SKIP_ARGS_VALIDATION"))
-		if err != nil {
-			log.Fatalf("failed to parse env var ENV_INJECTOR_SKIP_ARGS_VALIDATION as bool, error: %+v", err)
+		skipArgsValidation := false
+
+		if skipArgsValidationValue, exists := os.LookupEnv("ENV_INJECTOR_SKIP_ARGS_VALIDATION"); exists {
+			skipArgsValidation, err = strconv.ParseBool(skipArgsValidationValue)
+			if err != nil {
+				log.Fatalf("failed to parse env var ENV_INJECTOR_SKIP_ARGS_VALIDATION as bool, error: %+v", err)
+			}
 		}
 
 		origArgs = os.Args[1:]
