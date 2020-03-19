@@ -5,7 +5,7 @@ DOCKER_RELEASE_REG=spvest
 
 DOCKER_CONTROLLER_IMAGE=azure-keyvault-controller
 DOCKER_WEBHOOK_IMAGE=azure-keyvault-webhook
-DOCKER_AUTH_SERVICE_IMAGE=azure-auth-service
+DOCKER_AUTH_SERVICE_IMAGE=azure-keyvault-auth-service
 DOCKER_VAULTENV_IMAGE=azure-keyvault-env
 DOCKER_AKV2K8S_TEST_IMAGE=akv2k8s-env-test
 
