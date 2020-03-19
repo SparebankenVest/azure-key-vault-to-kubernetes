@@ -58,24 +58,24 @@ func NewAzureKeyVaultOauthTokenFromCloudConfig(cloudConfigPath string) (*AzureKe
 func NewAzureKeyVaultOAuthTokenFromClient(clientID, clientSecret, tenantID string) (*AzureKeyVaultToken, error) {
 	authSettings, err := azureAuth.GetSettingsFromEnvironment()
 	if err != nil {
-		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
 	}
 
-	settings, err := GetSettingFromEnvironment()
+	azureEnvSettings, err := GetAzureEnvironmentSetting()
 	if err != nil {
-		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+		return nil, fmt.Errorf("failed getting azure environment settings, err: %+v", err)
 	}
 
 	cred := azureAuth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
 	cred.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
-	cred.Resource = settings.AzureKeyVaultURI
+	cred.Resource = azureEnvSettings.AzureKeyVaultURI
 
 	conf, err := adal.NewOAuthConfig(cred.AADEndpoint, cred.TenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create oauth config: %+v", err)
 	}
 
-	token, err := adal.NewServicePrincipalToken(*conf, cred.ClientID, cred.ClientSecret, settings.AzureKeyVaultURI)
+	token, err := adal.NewServicePrincipalToken(*conf, cred.ClientID, cred.ClientSecret, azureEnvSettings.AzureKeyVaultURI)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token: %+v", err)
 	}
@@ -105,17 +105,17 @@ func NewAzureKeyVaultCredentialsFromOauthToken(token string) (*AzureKeyVaultCred
 func NewAzureKeyVaultCredentialsFromClient(clientID, clientSecret, tenantID string) (*AzureKeyVaultCredentials, error) {
 	authSettings, err := azureAuth.GetSettingsFromEnvironment()
 	if err != nil {
-		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
 	}
 
-	settings, err := GetSettingFromEnvironment()
+	azureEnvSettings, err := GetAzureEnvironmentSetting()
 	if err != nil {
-		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+		return nil, fmt.Errorf("failed getting azure environment settings, err: %+v", err)
 	}
 
 	cred := azureAuth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
 	cred.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
-	cred.Resource = settings.AzureKeyVaultURI
+	cred.Resource = azureEnvSettings.AzureKeyVaultURI
 
 	return &AzureKeyVaultCredentials{
 		getAuthorizer: func() (autorest.Authorizer, error) {
@@ -134,12 +134,12 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (*AzureKeyVaultCredentials, er
 	return &AzureKeyVaultCredentials{
 		getAuthorizer: func() (autorest.Authorizer, error) {
 
-			settings, err := GetSettingFromEnvironment()
+			azureEnvSettings, err := GetAzureEnvironmentSetting()
 			if err != nil {
-				return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
+				return nil, fmt.Errorf("failed getting azure environment settings, err: %+v", err)
 			}
 
-			authorizer, err := azureAuth.NewAuthorizerFromEnvironmentWithResource(settings.AzureKeyVaultURI)
+			authorizer, err := azureAuth.NewAuthorizerFromEnvironmentWithResource(azureEnvSettings.AzureKeyVaultURI)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create authorizer from environment, err: %+v", err)
 			}
