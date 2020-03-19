@@ -130,11 +130,11 @@ func main() {
 
 	vaultService := vault.NewService(vaultAuth)
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
-	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V1alpha1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
+	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
 
 	controller := controller.NewController(handler,
 		kubeInformerFactory.Core().V1().Secrets(),
-		azureKeyVaultSecretInformerFactory.Azurekeyvault().V1alpha1().AzureKeyVaultSecrets(),
+		azureKeyVaultSecretInformerFactory.Azurekeyvault().V1().AzureKeyVaultSecrets(),
 		azurePollFrequency)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)

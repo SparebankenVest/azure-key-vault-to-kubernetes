@@ -18,6 +18,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -179,7 +180,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 			},
 			{
 				Name:  "ENV_INJECTOR_ARGS_SIGNATURE",
-				Value: signature,
+				Value: base64.StdEncoding.EncodeToString([]byte(signature)),
 			},
 			{
 				Name:  "ENV_INJECTOR_ARGS_KEY",

@@ -37,7 +37,7 @@ import (
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
-	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -209,6 +209,34 @@ func parseRsaPublicKey(pubPem string) (*rsa.PublicKey, error) {
 	return nil, fmt.Errorf("Key type is not RSA")
 }
 
+func validateArgsSignature(origArgs string) {
+	signatureB64 := os.Getenv("ENV_INJECTOR_ARGS_SIGNATURE")
+	if signatureB64 == "" {
+		log.Fatalf("failed to get ENV_INJECTOR_ARGS_SIGNATURE")
+	}
+
+	signatureArray, err := base64.StdEncoding.DecodeString(signatureB64)
+	if err != nil {
+		logger.Fatalf("failed to decode base64 signature string, error: %+v", err)
+	}
+
+	signature := string(signatureArray)
+
+	pubKey := os.Getenv("ENV_INJECTOR_ARGS_KEY")
+	if pubKey == "" {
+		log.Fatalf("failed to get ENV_INJECTOR_ARGS_KEY, error: %+v", err)
+	}
+
+	pubRsaKey, err := parseRsaPublicKey(pubKey)
+	if err != nil {
+		logger.Fatalf("failed to parse rsa public key to verify args: %+v", err)
+	}
+
+	if !verifyPKCS(signature, origArgs, *pubRsaKey) {
+		logger.Fatal("args does not match original args defined by env-injector")
+	}
+}
+
 func main() {
 	var origCommand string
 	var origArgs []string
@@ -263,26 +291,15 @@ func main() {
 			logger.Fatalf("binary not found: %+v", err)
 		}
 
-		signature := os.Getenv("ENV_INJECTOR_ARGS_SIGNATURE")
-		if signature == "" {
-			log.Fatalf("failed to get ENV_INJECTOR_ARGS_SIGNATURE, error: %+v", err)
-		}
-
-		pubKey := os.Getenv("ENV_INJECTOR_ARGS_KEY")
-		if pubKey == "" {
-			log.Fatalf("failed to get ENV_INJECTOR_ARGS_KEY, error: %+v", err)
+		skipArgsValidation, err := strconv.ParseBool(os.Getenv("ENV_INJECTOR_SKIP_ARGS_VALIDATION"))
+		if err != nil {
+			log.Fatalf("failed to parse env var ENV_INJECTOR_SKIP_ARGS_VALIDATION as bool, error: %+v", err)
 		}
 
 		origArgs = os.Args[1:]
-		origArgsStr := strings.Join(origArgs, " ")
 
-		pubRsaKey, err := parseRsaPublicKey(pubKey)
-		if err != nil {
-			logger.Fatalf("failed to parse rsa public key to verify args: %+v", err)
-		}
-
-		if !verifyPKCS(signature, origArgsStr, *pubRsaKey) {
-			logger.Fatal("args does not match original args defined by env-injector")
+		if !skipArgsValidation {
+			validateArgsSignature(strings.Join(origArgs, " "))
 		}
 
 		logger.Infof("found original container command to be %s %s", origCommand, origArgs)
@@ -334,13 +351,13 @@ func main() {
 			}
 
 			logger.Debugf("getting azurekeyvaultsecret resource '%s' from kubernetes", secretName)
-			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1alpha1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
+			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
 				logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %s", secretName, err.Error())
 				logger.Infof("will retry getting azurekeyvaultsecret resource up to %d times, waiting %d seconds between retries", retryTimes, waitTimeBetweenRetries)
 
 				err = retry(retryTimes, time.Second*time.Duration(waitTimeBetweenRetries), func() error {
-					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV1alpha1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
+					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
 					if err != nil {
 						logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %+v", secretName, err)
 						return err

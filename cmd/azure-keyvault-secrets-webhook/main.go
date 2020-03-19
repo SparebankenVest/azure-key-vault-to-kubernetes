@@ -19,10 +19,7 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -154,23 +151,6 @@ func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, rec
 	return handler
 }
 
-// accept a client certificate for authentication (which is be provided by init-container)
-func authHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		token, err := config.credentials.GetAzureToken()
-		if err != nil {
-			fmt.Fprintf(w, "failed to get azure token: %s", err.Error())
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		fmt.Fprint(w, token)
-		w.WriteHeader(http.StatusOK)
-	} else {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-	}
-}
-
 func serveMetrics() {
 	log.Infof("Metrics at http://%s", config.metricsAddress)
 
@@ -179,35 +159,6 @@ func serveMetrics() {
 	err := http.ListenAndServe(config.metricsAddress, metricMux)
 	if err != nil {
 		log.Fatalf("error serving metrics: %s", err)
-	}
-}
-
-func serveAuth() {
-	caCert, err := ioutil.ReadFile(config.caFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-	tlsConfig := &tls.Config{
-		ClientCAs:  caCertPool,
-		ClientAuth: tls.RequireAndVerifyClientCert,
-	}
-	tlsConfig.BuildNameToCertificate()
-
-	authMux := http.NewServeMux()
-	authMux.HandleFunc("/auth", authHandler)
-
-	authServer := &http.Server{
-		Addr:      ":8443",
-		TLSConfig: tlsConfig,
-		Handler:   authMux,
-	}
-
-	log.Infof("auth listening on :8443")
-	err = authServer.ListenAndServeTLS(config.certFile, config.keyFile)
-	if err != nil {
-		log.Fatalf("error serving webhook auth endpoint: %+v", err)
 	}
 }
 
@@ -268,8 +219,6 @@ func main() {
 	if config.serveMetrics {
 		go serveMetrics()
 	}
-
-	go serveAuth()
 
 	mux := http.NewServeMux()
 	mux.Handle("/pods", podHandler)

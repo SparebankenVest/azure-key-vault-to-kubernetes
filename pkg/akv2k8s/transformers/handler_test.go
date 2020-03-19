@@ -19,7 +19,7 @@ package transformers
 import (
 	"testing"
 
-	akvsv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	akvsv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 )
 
 const (

@@ -27,7 +27,7 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 ${GOPATH}/src/k8s.io/co
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis \
-  azurekeyvault:v1alpha1 \
+  azurekeyvault:v1alpha1,v1 \
   --go-header-file ${SCRIPT_ROOT}/hack/custom-boilerplate.go.txt
 
 # Generate both v1alpha1 and v1
