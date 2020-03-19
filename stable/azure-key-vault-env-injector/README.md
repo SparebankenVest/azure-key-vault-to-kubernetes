@@ -54,9 +54,9 @@ Requires Pod Identity: https://github.com/Azure/aad-pod-identity
 ```bash
 helm install spv-charts/azure-key-vault-env-injector \
   --namespace akv2k8s \
-  --set customAuth.enabled=true \
-  --set customAuth.autoInject.enabled=true \
-  --set customAuth.autoInject.podIdentitySelector=myPidIdentitySelector \
+  --set keyVault.customAuth.enabled=true \
+  --set keyVault.customAuth.autoInject.enabled=true \
+  --set keyVault.customAuth.autoInject.podIdentitySelector=myPidIdentitySelector \
 ```
 
 ### Using custom authentication with credential injection enabled
@@ -64,9 +64,9 @@ helm install spv-charts/azure-key-vault-env-injector \
 ```bash
 helm install spv-charts/azure-key-vault-env-injector \
   --namespace akv2k8s \
-  --set customAuth.enabled=true \
-  --set customAuth.autoInject.enabled=true \
-  --set customAuth.autoInject.secretName=azure-key-vault-secret \
+  --set keyVault.customAuth.enabled=true \
+  --set keyVault.customAuth.autoInject.enabled=true \
+  --set keyVault.customAuth.autoInject.secretName=azure-key-vault-secret \
   --set env.AZURE_TENANT_ID=... \
   --set env.AZURE_CLIENT_ID=... \
   --set env.AZURE_CLIENT_SECRET=...
