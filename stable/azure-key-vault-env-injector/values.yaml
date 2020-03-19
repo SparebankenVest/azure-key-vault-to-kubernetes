@@ -6,18 +6,18 @@ logLevel: Info
 
 image:
   repository: spvest/azure-keyvault-webhook
-  tag: 1.1.0-beta.9
+  tag: 1.1.0-beta.10
   pullPolicy: IfNotPresent
 
 envImage:
   repository: spvest/azure-keyvault-env
-  tag: 1.1.0-beta.9
+  tag: 1.1.0-beta.10
 
 authService:
   containerName: azure-keyvault-auth-service
   image:
     repository: spvest/azure-keyvault-auth-service
-    tag: 1.1.0-beta.9
+    tag: 1.1.0-beta.10
   port:
     name: azure-keyvault-secrets-auth
     externalPort: 8443

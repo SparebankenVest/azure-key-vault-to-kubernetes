@@ -101,6 +101,8 @@ spec:
         - name: {{ .Values.authService.containerName }}
           image: "{{ .Values.authService.image.repository }}:{{ .Values.authService.image.tag }}"
           env:
+          - name: PORT
+            value: {{ .Values.authService.port.internalPort | quote }}
           - name: TLS_CERT_FILE
             value: /var/serving-cert/servingCert
           - name: TLS_PRIVATE_KEY_FILE
