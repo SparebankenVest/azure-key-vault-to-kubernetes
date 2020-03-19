@@ -5,7 +5,7 @@ DOCKER_RELEASE_REG=spvest
 
 DOCKER_CONTROLLER_IMAGE=azure-keyvault-controller
 DOCKER_WEBHOOK_IMAGE=azure-keyvault-webhook
-DOCKER_AUTH_SERVICE_IMAGE=azure-keyvault-auth-service
+DOCKER_AUTH_SERVICE_IMAGE=azure-auth-service
 DOCKER_VAULTENV_IMAGE=azure-keyvault-env
 DOCKER_AKV2K8S_TEST_IMAGE=akv2k8s-env-test
 
@@ -15,14 +15,12 @@ DOCKER_RELEASE_TAG := $(shell git describe --tags)
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_URL := https://$(PACKAGE)
 
-.PHONY: run-docs-dev build-all build-controller build-webhook build-auth-service build-vaultenv build-akv2k8s-env-test test push push-controller push-webhook push-auth-service push-vaultenv push-akv2k8s-env-test pull-release release release-controller release-webhook release-auth-service release-vaultenv
+.PHONY: run-docs-dev build build-controller build-webhook build-auth-service build-vaultenv build-akv2k8s-env-test test push push-controller push-webhook push-auth-service push-vaultenv push-akv2k8s-env-test pull-release release release-controller release-webhook release-auth-service release-vaultenv
 
 run-docs-dev:
 	cd ./docs && npm install && GATSBY_ALGOLIA_ENABLED=false npm run start
 
-# build: build-controller build-webhook build-auth-service build-vaultenv
-build-all:
-	docker build . -t $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) -f images/controller/Dockerfile --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
+build: build-controller build-webhook build-auth-service build-vaultenv
 
 build-controller:
 	docker build . -t $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) -f images/controller/Dockerfile --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
