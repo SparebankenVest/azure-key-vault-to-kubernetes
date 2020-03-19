@@ -41,6 +41,7 @@ type azureKeyVaultConfig struct {
 	certFile            string
 	keyFile             string
 	caFile              string
+	port                string
 }
 
 var config azureKeyVaultConfig
@@ -59,6 +60,7 @@ func setLogLevel(logLevel string) {
 
 func initConfig() {
 	viper.SetDefault("client_cert_secret_name", "akv2k8s-client-cert")
+	viper.SetDefault("port", "8443")
 	viper.AutomaticEnv()
 }
 
@@ -93,6 +95,7 @@ func main() {
 		certFile:            viper.GetString("tls_cert_file"),
 		keyFile:             viper.GetString("tls_private_key_file"),
 		caFile:              viper.GetString("tls_ca_file"),
+		port:                viper.GetString("port"),
 	}
 
 	if config.customAuth {
@@ -128,12 +131,12 @@ func main() {
 	authMux.HandleFunc("/auth", authHandler)
 
 	authServer := &http.Server{
-		Addr:      ":443",
+		Addr:      fmt.Sprintf(":%s", config.port),
 		TLSConfig: tlsConfig,
 		Handler:   authMux,
 	}
 
-	log.Infof("auth listening on :443")
+	log.Infof("auth listening on :%s", config.port)
 	err = authServer.ListenAndServeTLS(config.certFile, config.keyFile)
 	if err != nil {
 		log.Fatalf("error serving webhook auth endpoint: %+v", err)
