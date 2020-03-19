@@ -49,7 +49,7 @@ spec:
           - name: WEBHOOK_AUTH_SERVICE
             value: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
           - name: WEBHOOK_AUTH_SERVICE_PORT
-            value: {{ .Values.authService.externalPort | quote }}
+            value: {{ .Values.authService.port.externalPort | quote }}
           - name: AAD_POD_BINDING_LABEL
             valueFrom:
               fieldRef:
@@ -109,10 +109,6 @@ spec:
             value: /var/serving-cert/servingKey
           - name: TLS_CA_FILE
             value: /var/serving-cert/caCert
-          - name: WEBHOOK_AUTH_SERVICE
-            value: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
-          - name: WEBHOOK_AUTH_SERVICE_PORT
-            value: {{ .Values.authService.port.externalPort | quote }}
           {{- if .Values.keyVault.customAuth.enabled }}
           - name: CUSTOM_AUTH
             value: {{ .Values.keyVault.customAuth.enabled | quote }}
