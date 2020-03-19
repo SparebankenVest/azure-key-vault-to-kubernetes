@@ -34,25 +34,13 @@ const (
 )
 
 type azureKeyVaultConfig struct {
-	customAuth               bool
-	customAuthAutoInject     bool
-	credentials              *AzureKeyVaultCredentials
-	credentialsSecretName    string
-	namespace                string
-	aadPodBindingLabel       string
-	cloudConfigHostPath      string
-	cloudConfigContainerPath string
-	dockerPullTimeout        int
-	serveMetrics             bool
-	metricsAddress           string
-	certFile                 string
-	keyFile                  string
-	caFile                   string
-	clientCertFile           string
-	clientKeyFile            string
-	clientCertSecretName     string
-	webhookAuthServiceName   string
-	webhookAuthServicePort   string
+	customAuth          bool
+	credentials         *AzureKeyVaultCredentials
+	aadPodBindingLabel  string
+	cloudConfigHostPath string
+	certFile            string
+	keyFile             string
+	caFile              string
 }
 
 var config azureKeyVaultConfig
@@ -100,22 +88,11 @@ func main() {
 	setLogLevel(logLevel)
 
 	config = azureKeyVaultConfig{
-		customAuth:               viper.GetBool("CUSTOM_AUTH"),
-		customAuthAutoInject:     viper.GetBool("CUSTOM_AUTH_INJECT"),
-		credentialsSecretName:    viper.GetString("CUSTOM_AUTH_INJECT_SECRET_NAME"),
-		dockerPullTimeout:        viper.GetInt("CUSTOM_DOCKER_PULL_TIMEOUT"),
-		cloudConfigHostPath:      "/etc/kubernetes/azure.json",
-		cloudConfigContainerPath: "/azure-keyvault/azure.json",
-		serveMetrics:             viper.GetBool("METRICS_ENABLED"),
-		metricsAddress:           viper.GetString("METRICS_ADDR"),
-		certFile:                 viper.GetString("tls_cert_file"),
-		keyFile:                  viper.GetString("tls_private_key_file"),
-		caFile:                   viper.GetString("tls_ca_file"),
-		clientCertFile:           viper.GetString("tls_client_file"),
-		clientKeyFile:            viper.GetString("tls_client_key_file"),
-		clientCertSecretName:     viper.GetString("client_cert_secret_name"),
-		webhookAuthServiceName:   viper.GetString("webhook_auth_service"),
-		webhookAuthServicePort:   viper.GetString("webhook_auth_service_port"),
+		customAuth:          viper.GetBool("CUSTOM_AUTH"),
+		cloudConfigHostPath: "/etc/kubernetes/azure.json",
+		certFile:            viper.GetString("tls_cert_file"),
+		keyFile:             viper.GetString("tls_private_key_file"),
+		caFile:              viper.GetString("tls_ca_file"),
 	}
 
 	if config.customAuth {
@@ -151,12 +128,12 @@ func main() {
 	authMux.HandleFunc("/auth", authHandler)
 
 	authServer := &http.Server{
-		Addr:      ":8443",
+		Addr:      ":443",
 		TLSConfig: tlsConfig,
 		Handler:   authMux,
 	}
 
-	log.Infof("auth listening on :8443")
+	log.Infof("auth listening on :443")
 	err = authServer.ListenAndServeTLS(config.certFile, config.keyFile)
 	if err != nil {
 		log.Fatalf("error serving webhook auth endpoint: %+v", err)
