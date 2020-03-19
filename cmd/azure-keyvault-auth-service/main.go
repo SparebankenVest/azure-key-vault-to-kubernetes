@@ -1,4 +1,4 @@
-// Copyright © 2019 Sparebanken Vest
+// Copyright © 2020 Sparebanken Vest
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
