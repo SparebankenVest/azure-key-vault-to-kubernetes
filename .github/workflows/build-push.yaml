@@ -25,17 +25,16 @@ jobs:
     - name: Test
       run: make test
 
-    - name: Create Docker Image
+    - name: Build docker images
       run: make build
 
-    - name: Docker Push
+    - name: Push images to public repo
       run: |
         docker login -u ${{secrets.PUBLIC_REGISTRY_USERNAME}} -p ${{secrets.PUBLIC_REGISTRY_PASSWORD}}
         make release DOCKER_RELEASE_TAG=${GITHUB_REF##*/}
 
-    - name: Docker Login
-      run: docker login -u ${{secrets.PRIVATE_REGISTRY_USERNAME}} -p ${{secrets.PRIVATE_REGISTRY_PASSWORD}} dokken.azurecr.io
-
-    - name: Push Docker Image
-      run: make push
+    - name: Push images to private repo
+      run: |
+        docker login -u ${{secrets.PRIVATE_REGISTRY_USERNAME}} -p ${{secrets.PRIVATE_REGISTRY_PASSWORD}} dokken.azurecr.io
+        make push
         
