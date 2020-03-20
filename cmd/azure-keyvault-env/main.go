@@ -150,7 +150,7 @@ func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCr
 			},
 		}
 
-		r, err := client.Get(fmt.Sprintf("https://%s/auth/?host=%s", addr, os.Getenv("HOST")))
+		r, err := client.Get(fmt.Sprintf("https://%s/auth/?host=%s", addr, os.Getenv("HOSTNAME")))
 		if err != nil {
 			log.Fatal(err)
 		}
