@@ -75,7 +75,15 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Infof("served token to '%s' at address '%s'", r.URL.Query()["host"], r.RemoteAddr)
+		host := ""
+		hosts, ok := r.URL.Query()["host"]
+		if !ok || len(hosts[0]) < 1 {
+			log.Warn("url param 'host' is missing")
+		} else {
+			host = hosts[0]
+		}
+
+		log.Infof("served oauth token to '%s' at address '%s'", host, r.RemoteAddr)
 		fmt.Fprint(w, token)
 	} else {
 		log.Error("invalid request method")
