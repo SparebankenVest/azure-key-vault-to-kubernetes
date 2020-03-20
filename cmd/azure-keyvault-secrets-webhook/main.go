@@ -151,6 +151,14 @@ func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, rec
 	return handler
 }
 
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	}
+}
+
 func serveMetrics() {
 	log.Infof("Metrics at http://%s", config.metricsAddress)
 
@@ -222,6 +230,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/pods", podHandler)
+	mux.HandleFunc("/healthz", healthHandler)
 
 	log.Infof("listening on :443")
 	err := http.ListenAndServeTLS(":443", config.certFile, config.keyFile, mux)

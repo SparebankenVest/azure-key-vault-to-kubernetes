@@ -16,10 +16,6 @@ limitations under the License.
 
 package main
 
-import (
-	"testing"
-)
-
 type AzureKeyVaultToken struct {
 	token string
 }
@@ -32,31 +28,4 @@ func NewAzureKeyVaultToken(token string) AzureKeyVaultToken {
 	return AzureKeyVaultToken{
 		token: token,
 	}
-}
-
-func TestGetAzureToken(t *testing.T) {
-	// azureCreds, err := NewCredentials()
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-
-	// token, err := azureCreds.GetAzureToken()
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	// newToken := NewAzureKeyVaultToken(token)
-
-	// authorizer := autorest.NewBearerAuthorizer(newToken)
-
-	// client := keyvault.New()
-	// client.Authorizer = authorizer
-
-	// baseURL := fmt.Sprintf("https://%s.vault.azure.net", "akv2k8s-test")
-	// secretBundle, err := client.GetSecret(context.Background(), baseURL, "my-secret", "")
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	// if secretBundle.Value == nil {
-	// 	t.Error(fmt.Errorf("Failed"))
-	// }
 }

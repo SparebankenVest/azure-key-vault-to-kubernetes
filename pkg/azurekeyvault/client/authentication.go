@@ -14,24 +14,42 @@ import (
 
 // AzureKeyVaultCredentials for service principal
 type AzureKeyVaultCredentials struct {
-	getAuthorizer func() (autorest.Authorizer, error)
+	getAuthorizer      func() (autorest.Authorizer, error)
+	getToken           func() (string, error)
+	getCredentialsType func() (CredentialsType, error)
 }
 
-// AzureKeyVaultToken is a oauth token to use with Azure Key Vault
-type AzureKeyVaultToken struct {
-	token string
-}
+// CredentialsType contains the credentials type for authentication
+type CredentialsType string
+
+const (
+	// CredentialsTypeClusterCredentials represent Azure AKS cluster credentials
+	CredentialsTypeClusterCredentials CredentialsType = "aksClusterCredentials"
+
+	// CredentialsTypeClientCredentials represent Azure Client Credentials
+	CredentialsTypeClientCredentials CredentialsType = "clientCredentials"
+
+	// CredentialsTypeClientCertificate represent Azure Certificate Credentials
+	CredentialsTypeClientCertificate CredentialsType = "clientCertficate"
+
+	// CredentialsTypeClientUsernamePassword represent Azure Username Password Credentials
+	CredentialsTypeClientUsernamePassword CredentialsType = "usernamePassword"
+
+	// CredentialsTypeManagedIdentitiesForAzureResources represent Azure Managed Identities for Azure resources Credentials (formerly known as MSI)
+	CredentialsTypeManagedIdentitiesForAzureResources CredentialsType = "managedIdentitiesForAzureResources"
+
+	// CredentialsTypeToken represent an existing oauth token
+	CredentialsTypeToken CredentialsType = "token"
+)
 
 // OAuthToken gets the oauth token as string
-func (t AzureKeyVaultToken) OAuthToken() string {
-	return t.token
+func (c AzureKeyVaultCredentials) OAuthToken() (string, error) {
+	return c.getToken()
 }
 
-// NewAzureKeyVaultToken creates a new oauth token to use with Azure Key Vault
-func NewAzureKeyVaultToken(token string) AzureKeyVaultToken {
-	return AzureKeyVaultToken{
-		token: token,
-	}
+// CredentialsType gets the type of credentials used
+func (c AzureKeyVaultCredentials) CredentialsType() (CredentialsType, error) {
+	return c.getCredentialsType()
 }
 
 // NewAzureKeyVaultCredentialsFromCloudConfig gets a credentials object from cloud config to use with Azure Key Vault
@@ -44,59 +62,28 @@ func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (*AzureK
 	return NewAzureKeyVaultCredentialsFromClient(config.AADClientID, config.AADClientSecret, config.TenantID)
 }
 
-// NewAzureKeyVaultOauthTokenFromCloudConfig gets a oauth token from cloud config to use with Azure Key Vault
-func NewAzureKeyVaultOauthTokenFromCloudConfig(cloudConfigPath string) (*AzureKeyVaultToken, error) {
-	config, err := readCloudConfig(cloudConfigPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewAzureKeyVaultOAuthTokenFromClient(config.AADClientID, config.AADClientSecret, config.TenantID)
+type azureKeyVaultToken struct {
+	token string
 }
 
-// NewAzureKeyVaultOAuthTokenFromClient gets a oauth token from client credentials to use with Azure Key Vault
-func NewAzureKeyVaultOAuthTokenFromClient(clientID, clientSecret, tenantID string) (*AzureKeyVaultToken, error) {
-	authSettings, err := azureAuth.GetSettingsFromEnvironment()
-	if err != nil {
-		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
-	}
-
-	azureEnvSettings, err := GetAzureEnvironmentSetting()
-	if err != nil {
-		return nil, fmt.Errorf("failed getting azure environment settings, err: %+v", err)
-	}
-
-	cred := azureAuth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
-	cred.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
-	cred.Resource = azureEnvSettings.AzureKeyVaultURI
-
-	conf, err := adal.NewOAuthConfig(cred.AADEndpoint, cred.TenantID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create oauth config: %+v", err)
-	}
-
-	token, err := adal.NewServicePrincipalToken(*conf, cred.ClientID, cred.ClientSecret, azureEnvSettings.AzureKeyVaultURI)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create token: %+v", err)
-	}
-	token.SetAutoRefresh(false)
-	if err := token.Refresh(); err != nil {
-		return nil, fmt.Errorf("failed to refresh token: %+v", err)
-	}
-
-	return &AzureKeyVaultToken{
-		token: token.OAuthToken(),
-	}, nil
+func (t azureKeyVaultToken) OAuthToken() string {
+	return t.token
 }
 
 // NewAzureKeyVaultCredentialsFromOauthToken gets a credentials object from a oauth token to use with Azure Key Vault
 func NewAzureKeyVaultCredentialsFromOauthToken(token string) (*AzureKeyVaultCredentials, error) {
-	tokenProvider := AzureKeyVaultToken{token: token}
+	tokenProvider := azureKeyVaultToken{token: token}
 	authorizer := autorest.NewBearerAuthorizer(tokenProvider)
 
 	return &AzureKeyVaultCredentials{
 		getAuthorizer: func() (autorest.Authorizer, error) {
 			return authorizer, nil
+		},
+		getToken: func() (string, error) {
+			return token, nil
+		},
+		getCredentialsType: func() (CredentialsType, error) {
+			return CredentialsTypeToken, nil
 		},
 	}, nil
 }
@@ -126,6 +113,13 @@ func NewAzureKeyVaultCredentialsFromClient(clientID, clientSecret, tenantID stri
 			}
 			return authorizer, nil
 		},
+		getToken: func() (string, error) {
+			return getToken(cred)
+		},
+		getCredentialsType: func() (CredentialsType, error) {
+			credType, _, err := getCredentialsType()
+			return credType, err
+		},
 	}, nil
 }
 
@@ -133,7 +127,6 @@ func NewAzureKeyVaultCredentialsFromClient(clientID, clientSecret, tenantID stri
 func NewAzureKeyVaultCredentialsFromEnvironment() (*AzureKeyVaultCredentials, error) {
 	return &AzureKeyVaultCredentials{
 		getAuthorizer: func() (autorest.Authorizer, error) {
-
 			azureEnvSettings, err := GetAzureEnvironmentSetting()
 			if err != nil {
 				return nil, fmt.Errorf("failed getting azure environment settings, err: %+v", err)
@@ -145,6 +138,13 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (*AzureKeyVaultCredentials, er
 			}
 			return authorizer, nil
 		},
+		getToken: func() (string, error) {
+			return getTokenFromEnvironment()
+		},
+		getCredentialsType: func() (CredentialsType, error) {
+			credType, _, err := getCredentialsType()
+			return credType, err
+		},
 	}, nil
 }
 
@@ -152,6 +152,85 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (*AzureKeyVaultCredentials, er
 func (c AzureKeyVaultCredentials) Authorizer() (autorest.Authorizer, error) {
 	azureAuth.GetSettingsFromEnvironment()
 	return c.getAuthorizer()
+}
+
+func getToken(creds azureAuth.ClientCredentialsConfig) (string, error) {
+	token, err := creds.ServicePrincipalToken()
+	if err != nil {
+		return "", fmt.Errorf("failed to get service principal token: %+v", err)
+	}
+
+	token.SetAutoRefresh(false)
+	if err := token.Refresh(); err != nil {
+		return "", fmt.Errorf("failed to refresh token: %+v", err)
+	}
+	return token.OAuthToken(), nil
+}
+
+func getTokenFromEnvironment() (string, error) {
+	credType, authSettings, err := getCredentialsType()
+	if err != nil {
+		return "", fmt.Errorf("failed to get credentials type: %+v", err)
+	}
+
+	azureEnvSettings, err := GetAzureEnvironmentSetting()
+	if err != nil {
+		return "", fmt.Errorf("failed getting azure environment settings, err: %+v", err)
+	}
+
+	var token *adal.ServicePrincipalToken
+
+	switch credType {
+	case CredentialsTypeClientCredentials:
+		creds, err := authSettings.GetClientCredentials()
+		if err != nil {
+			return "", fmt.Errorf("failed to get client credentials: %+v", err)
+		}
+		creds.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
+		creds.Resource = azureEnvSettings.AzureKeyVaultURI
+		token, err = creds.ServicePrincipalToken()
+		if err != nil {
+			return "", fmt.Errorf("failed to get service principal token: %+v", err)
+		}
+	case CredentialsTypeClientCertificate:
+		creds, err := authSettings.GetClientCertificate()
+		if err != nil {
+			return "", fmt.Errorf("failed to get client credentials: %+v", err)
+		}
+		creds.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
+		creds.Resource = azureEnvSettings.AzureKeyVaultURI
+		token, err = creds.ServicePrincipalToken()
+		if err != nil {
+			return "", fmt.Errorf("failed to get service principal token: %+v", err)
+		}
+	case CredentialsTypeClientUsernamePassword:
+		creds, err := authSettings.GetUsernamePassword()
+		if err != nil {
+			return "", fmt.Errorf("failed to get client credentials: %+v", err)
+		}
+		creds.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
+		creds.Resource = azureEnvSettings.AzureKeyVaultURI
+		token, err = creds.ServicePrincipalToken()
+		if err != nil {
+			return "", fmt.Errorf("failed to get service principal token: %+v", err)
+		}
+	case CredentialsTypeManagedIdentitiesForAzureResources:
+		msiEndpoint, err := adal.GetMSIEndpoint()
+		if err != nil {
+			return "", fmt.Errorf("failed to get MSI endpoint: %+v", err)
+		}
+
+		token, err = adal.NewServicePrincipalTokenFromMSI(msiEndpoint, azureEnvSettings.AzureKeyVaultURI)
+		if err != nil {
+			return "", fmt.Errorf("failed to get service principal token: %+v", err)
+		}
+	}
+
+	token.SetAutoRefresh(false)
+	if err := token.Refresh(); err != nil {
+		return "", fmt.Errorf("failed to refresh token: %+v", err)
+	}
+	return token.OAuthToken(), nil
 }
 
 func readCloudConfig(path string) (*cloudAuth.AzureAuthConfig, error) {
@@ -165,4 +244,33 @@ func readCloudConfig(path string) (*cloudAuth.AzureAuthConfig, error) {
 		return nil, fmt.Errorf("Unmarshall error: %v", err)
 	}
 	return &azureConfig, nil
+}
+
+func getCredentialsType() (CredentialsType, *azureAuth.EnvironmentSettings, error) {
+	envSettings, err := azureAuth.GetSettingsFromEnvironment()
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to automatically detect azure keyvault credentials, error: %+v", err)
+	}
+
+	//1.Client Credentials
+	if _, e := envSettings.GetClientCredentials(); e == nil {
+		return CredentialsTypeClientCredentials, &envSettings, nil
+	}
+
+	//2. Client Certificate
+	if _, e := envSettings.GetClientCertificate(); e == nil {
+		return CredentialsTypeClientCertificate, &envSettings, nil
+	}
+
+	//3. Username Password
+	if _, e := envSettings.GetUsernamePassword(); e == nil {
+		return CredentialsTypeClientUsernamePassword, &envSettings, nil
+	}
+
+	// 4. MSI
+	if envSettings.GetMSI().ClientID != "" {
+		return CredentialsTypeManagedIdentitiesForAzureResources, &envSettings, nil
+	}
+
+	return "", nil, fmt.Errorf("failed to automatically detect azure keyvault credentials")
 }

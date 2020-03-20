@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -138,30 +137,6 @@ func (c *AzureKeyVaultCredentials) GetEnvVarFromSecret(secretName string) *[]cor
 	default:
 		envVars := make([]corev1.EnvVar, 0)
 		return &envVars
-	}
-}
-
-// GetAzureToken uses current credentials to get a oauth token from Azure
-func (c *AzureKeyVaultCredentials) GetAzureToken() (string, error) {
-	switch c.CredentialsType {
-	case CredentialsTypeClusterCredentials:
-		token, err := vault.NewAzureKeyVaultOauthTokenFromCloudConfig(config.cloudConfigHostPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to get oauth token: %+v", err)
-		}
-		return token.OAuthToken(), nil
-
-	case CredentialsTypeClientCredentials:
-		creds, err := c.envSettings.GetClientCredentials()
-		if err != nil {
-			return "", fmt.Errorf("failed to get client credentials: %+v", err)
-		}
-
-		token, err := vault.NewAzureKeyVaultOAuthTokenFromClient(creds.ClientID, creds.ClientSecret, creds.TenantID)
-
-		return token.OAuthToken(), nil
-	default:
-		return "", fmt.Errorf("credential type %s not currently supported for token", c.CredentialsType)
 	}
 }
 

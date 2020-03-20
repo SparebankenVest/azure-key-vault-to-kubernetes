@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -35,7 +36,7 @@ const (
 
 type azureKeyVaultConfig struct {
 	customAuth          bool
-	credentials         *AzureKeyVaultCredentials
+	credentials         *vault.AzureKeyVaultCredentials
 	aadPodBindingLabel  string
 	cloudConfigHostPath string
 	certFile            string
@@ -67,15 +68,23 @@ func initConfig() {
 // accept a client certificate for authentication (which is be provided by init-container)
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		token, err := config.credentials.GetAzureToken()
+		token, err := config.credentials.OAuthToken()
 		if err != nil {
+			log.Errorf("failed to get azure token, err: %+v", err)
 			http.Error(w, "failed to get azure token", http.StatusNotFound)
-			// fmt.Fprintf(w, "failed to get azure token, err: %+v", err.Error())
-			// w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
 		fmt.Fprint(w, token)
+		w.WriteHeader(http.StatusOK)
+	} else {
+		log.Error("invalid request method")
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	}
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
 		w.WriteHeader(http.StatusOK)
 	} else {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -99,22 +108,25 @@ func main() {
 		port:                viper.GetString("port"),
 	}
 
+	var err error
 	if config.customAuth {
-		azureCreds, err := NewCredentials()
+		config.credentials, err = vault.NewAzureKeyVaultCredentialsFromEnvironment()
 		if err != nil {
-			log.Fatalf("error getting credentials: %+v", err)
-		}
-
-		config.credentials = azureCreds
-
-		if azureCreds.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
-			config.aadPodBindingLabel = viper.GetString("aad_pod_binding_label")
+			log.Fatal(err)
 		}
 	} else {
-		config.credentials = &AzureKeyVaultCredentials{
-			CredentialsType: CredentialsTypeClusterCredentials,
+		config.credentials, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig(config.cloudConfigHostPath)
+		if err != nil {
+			log.Fatal(err)
 		}
 	}
+
+	credType, err := config.credentials.CredentialsType()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Infof("serving credentials of type %s", credType)
 
 	caCert, err := ioutil.ReadFile(config.caFile)
 	if err != nil {
@@ -130,6 +142,7 @@ func main() {
 
 	authMux := http.NewServeMux()
 	authMux.HandleFunc("/auth", authHandler)
+	authMux.HandleFunc("/healthz", healthHandler)
 
 	authServer := &http.Server{
 		Addr:      fmt.Sprintf(":%s", config.port),
