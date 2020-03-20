@@ -1,4 +1,4 @@
-# Azure Key Vault To Kubernetes
+# Azure Key Vault To Kubernetes <img src="akv2k8s_small.png" width="48" align="right" /> 
 
 [![Build Status](https://img.shields.io/github/workflow/status/sparebankenvest/azure-key-vault-to-kubernetes/build?style=flat&label=build)](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes)
@@ -17,7 +17,7 @@ Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubern
 
 ## Overview
 
-<img src="akv2k8s_small.png" align="right" /> 
+<img src="akv2k8s_small.png" width="100" align="right" /> 
 
 Azure Key Vault to Kubernetes (akv2k8s) has two components for handling Azure Key Vault Secrets in Kubernetes:
 
