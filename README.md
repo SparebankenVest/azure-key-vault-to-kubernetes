@@ -1,14 +1,12 @@
 # Azure Key Vault To Kubernetes
 
-Status:
 [![Build Status](https://img.shields.io/github/workflow/status/sparebankenvest/azure-key-vault-to-kubernetes/build?style=flat&label=build)](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes)
 
-Versions: 
 [![Release](https://img.shields.io/github/v/release/sparebankenvest/azure-key-vault-to-kubernetes?sort=semver&style=flat&label=latest%20release)](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/releases/latest)
 [![Tag](https://img.shields.io/github/v/tag/sparebankenvest/azure-key-vault-to-kubernetes?style=flat&label=latest%20tag)](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/releases/latest)
 
-Downloads:![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-controller?label=controller%20downloads&style=flat)
+![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-controller?label=controller%20downloads&style=flat)
 ![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-webhook?label=env-injector%20downloads&style=flat)
 
 <img src="akv2k8s_small.png" align="right" /> 
