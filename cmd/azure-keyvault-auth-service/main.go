@@ -74,7 +74,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "failed to get azure token", http.StatusNotFound)
 			return
 		}
-
+		log.Infof("served token to host '%s' at address '%s'", r.Host, r.RemoteAddr)
 		fmt.Fprint(w, token)
 		w.WriteHeader(http.StatusOK)
 	} else {
