@@ -1,5 +1,7 @@
 # Azure Key Vault To Kubernetes
 
+<img src="akv2k8s_small.png" align="right" /> 
+
 Status:
 [![Build Status](https://img.shields.io/github/workflow/status/sparebankenvest/azure-key-vault-to-kubernetes/build?style=flat&label=build)](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes)
@@ -10,8 +12,6 @@ Versions:
 
 Downloads:![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-controller?label=controller%20downloads&style=flat)
 ![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-webhook?label=env-injector%20downloads&style=flat)
-
-<img src="akv2k8s_small.png" align="right" /> 
 
 Project status: Stable - multipal financial institutions are running this project on production Kubernetes clusters
 
