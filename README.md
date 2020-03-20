@@ -9,8 +9,6 @@
 ![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-controller?label=controller%20downloads&style=flat)
 ![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-webhook?label=env-injector%20downloads&style=flat)
 
-<img src="akv2k8s_small.png" align="right" /> 
-
 Project status: Stable - multipal financial institutions are running this project on production Kubernetes clusters
 
 Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubernetes-931f82364354
@@ -18,6 +16,8 @@ Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubern
 **Full documentation available at https://akv2k8s.io**
 
 ## Overview
+
+<img src="akv2k8s_small.png" align="right" /> 
 
 Azure Key Vault to Kubernetes (akv2k8s) has two components for handling Azure Key Vault Secrets in Kubernetes:
 
