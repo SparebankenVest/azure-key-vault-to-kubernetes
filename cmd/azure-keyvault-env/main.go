@@ -155,21 +155,22 @@ func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCr
 					Certificates: []tls.Certificate{cert},
 				},
 			},
+			Timeout: time.Second * 10,
 		}
 
 		url := fmt.Sprintf("https://%s/auth/?host=%s", addr, os.Getenv("HOSTNAME"))
 		log.Infof("requesting oauth token from %s", url)
-		r, err := client.Get(url)
+
+		res, err := client.Get(url)
 		if err != nil {
 			log.Fatalf("failed to request token from %s, error: %+v", url, err)
 		}
 
-		// Read the response body
-		defer r.Body.Close()
-		var token oauthToken
+		defer res.Body.Close()
+		body, err := ioutil.ReadAll(res.Body)
 
-		log.Infof("reading response from %s", url)
-		err = json.NewDecoder(r.Body).Decode(&token)
+		var token oauthToken
+		err = json.Unmarshal(body, &token)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode body, error %+v", err)
 		}
