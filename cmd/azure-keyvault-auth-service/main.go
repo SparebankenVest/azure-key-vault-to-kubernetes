@@ -75,7 +75,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Infof("served token to '%s' at address '%s'", r.FormValue("host"), r.RemoteAddr)
+		log.Infof("served token to '%s' at address '%s'", r.URL.Query()["host"], r.RemoteAddr)
 		fmt.Fprint(w, token)
 	} else {
 		log.Error("invalid request method")
