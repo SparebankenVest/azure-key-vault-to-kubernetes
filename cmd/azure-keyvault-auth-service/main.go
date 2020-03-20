@@ -69,8 +69,9 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		token, err := config.credentials.GetAzureToken()
 		if err != nil {
-			fmt.Fprintf(w, "failed to get azure token: %s", err.Error())
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "failed to get azure token", http.StatusNotFound)
+			// fmt.Fprintf(w, "failed to get azure token, err: %+v", err.Error())
+			// w.WriteHeader(http.StatusNotFound)
 			return
 		}
 

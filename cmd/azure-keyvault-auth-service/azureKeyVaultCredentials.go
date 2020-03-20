@@ -92,7 +92,7 @@ func getCredentialsType() (CredentialsType, *auth.EnvironmentSettings, error) {
 	}
 
 	// 4. MSI
-	if _, e := envSettings.GetMSI().Authorizer(); e == nil {
+	if envSettings.GetMSI().ClientID != "" {
 		return CredentialsTypeManagedIdentitiesForAzureResources, &envSettings, nil
 	}
 
