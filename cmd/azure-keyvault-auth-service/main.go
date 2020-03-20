@@ -20,6 +20,7 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -65,6 +66,10 @@ func initConfig() {
 	viper.AutomaticEnv()
 }
 
+type oauthToken struct {
+	Token string `json:"token"`
+}
+
 // accept a client certificate for authentication (which is be provided by init-container)
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
@@ -75,6 +80,8 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		tokenResp := oauthToken{Token: token}
+
 		host := ""
 		hosts, ok := r.URL.Query()["host"]
 		if !ok || len(hosts[0]) < 1 {
@@ -83,8 +90,14 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			host = hosts[0]
 		}
 
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+
 		log.Infof("served oauth token to '%s' at address '%s'", host, r.RemoteAddr)
-		fmt.Fprint(w, token)
+		if err := json.NewEncoder(w).Encode(tokenResp); err != nil {
+			log.Error("url param 'host' is missing")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	} else {
 		log.Error("invalid request method")
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)

@@ -24,6 +24,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -119,6 +120,10 @@ func getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret, query s
 	return secretHandler.Handle()
 }
 
+type oauthToken struct {
+	Token string `json:"token"`
+}
+
 func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCredentials, error) {
 	if hasClientCert {
 		addr, ok := os.LookupEnv("ENV_INJECTOR_AUTH_SERVICE")
@@ -126,12 +131,14 @@ func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCr
 			log.Fatal(fmt.Errorf("cannot call auth service: env var ENV_INJECTOR_AUTH_SERVICE does not exist"))
 		}
 
+		log.Debug("loading client key pair")
 		// Get token from Auth endpoint
 		cert, err := tls.LoadX509KeyPair("/client-cert/clientCert", "/client-cert/clientKey")
 		if err != nil {
 			log.Fatal(err)
 		}
 
+		log.Debug("loading ca cert")
 		// Create a CA certificate pool and add cert.pem to it
 		caCert, err := ioutil.ReadFile("/client-cert/caCert")
 		if err != nil {
@@ -150,19 +157,25 @@ func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCr
 			},
 		}
 
-		r, err := client.Get(fmt.Sprintf("https://%s/auth/?host=%s", addr, os.Getenv("HOSTNAME")))
+		url := fmt.Sprintf("https://%s/auth/?host=%s", addr, os.Getenv("HOSTNAME"))
+		log.Infof("requesting oauth token from %s", url)
+		r, err := client.Get(url)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("failed to request token from %s, error: %+v", url, err)
 		}
 
 		// Read the response body
 		defer r.Body.Close()
-		token, err := ioutil.ReadAll(r.Body)
+		var token oauthToken
+
+		log.Infof("reading response from %s", url)
+		err = json.NewDecoder(r.Body).Decode(&token)
 		if err != nil {
-			log.Fatal(err)
+			return nil, fmt.Errorf("failed to decode body, error %+v", err)
 		}
 
-		creds, err := vault.NewAzureKeyVaultCredentialsFromOauthToken(string(token))
+		log.Info("creating credentials from token")
+		creds, err := vault.NewAzureKeyVaultCredentialsFromOauthToken(token.Token)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get credentials for azure key vault, error %+v", err)
 		}
