@@ -169,6 +169,8 @@ func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCr
 		defer res.Body.Close()
 		body, err := ioutil.ReadAll(res.Body)
 
+		log.Debugf("body: %s", body)
+
 		var token oauthToken
 		err = json.Unmarshal(body, &token)
 		if err != nil {
