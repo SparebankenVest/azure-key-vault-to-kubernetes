@@ -12,8 +12,8 @@
     "gatsby-source-graphql": "^2.1.33",
     "gatsby-theme-apollo-docs": "4.0.11",
     "instantsearch.css": "^7.4.2",
-    "react": "16.12.0",
-    "react-dom": "16.12.0",
+    "react": "16.13.0",
+    "react-dom": "16.13.0",
     "react-instantsearch-dom": "^6.3.0"
   }
 }
