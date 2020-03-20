@@ -158,7 +158,7 @@ func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCr
 			Timeout: time.Second * 10,
 		}
 
-		url := fmt.Sprintf("https://%s/auth/?host=%s", addr, os.Getenv("HOSTNAME"))
+		url := fmt.Sprintf("https://%s/auth?host=%s", addr, os.Getenv("HOSTNAME"))
 		log.Infof("requesting oauth token from %s", url)
 
 		res, err := client.Get(url)
