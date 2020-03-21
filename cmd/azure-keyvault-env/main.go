@@ -31,7 +31,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -41,6 +40,7 @@ import (
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
@@ -56,9 +56,6 @@ type stop struct {
 }
 
 func formatLogger() {
-	var logLevel string
-	var ok bool
-
 	log.SetFormatter(&log.TextFormatter{
 		DisableColors: true,
 		FullTimestamp: true,
@@ -69,9 +66,7 @@ func formatLogger() {
 		"application": "env-injector",
 	})
 
-	if logLevel, ok = os.LookupEnv("ENV_INJECTOR_LOG_LEVEL"); !ok {
-		logLevel = log.InfoLevel.String()
-	}
+	logLevel := viper.GetString("env_injector_log_level")
 
 	logrusLevel, err := log.ParseLevel(logLevel)
 	if err != nil {
@@ -124,30 +119,27 @@ type oauthToken struct {
 	Token string `json:"token"`
 }
 
-func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCredentials, error) {
-	if hasClientCert {
-		addr, ok := os.LookupEnv("ENV_INJECTOR_AUTH_SERVICE")
-		if !ok {
+func getCredentials(useAuthService bool) (*vault.AzureKeyVaultCredentials, error) {
+	if useAuthService {
+		addr := viper.GetString("env_injector_auth_service")
+		if addr == "" {
 			log.Fatal(fmt.Errorf("cannot call auth service: env var ENV_INJECTOR_AUTH_SERVICE does not exist"))
 		}
 
 		log.Debug("loading client key pair")
-		// Get token from Auth endpoint
 		cert, err := tls.LoadX509KeyPair("/client-cert/clientCert", "/client-cert/clientKey")
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("failed to load client cert key pair, error: %+v", err)
 		}
 
 		log.Debug("loading ca cert")
-		// Create a CA certificate pool and add cert.pem to it
 		caCert, err := ioutil.ReadFile("/client-cert/caCert")
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("failed to load ca cert to use with client certs, error: %+v", err)
 		}
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
 
-		// Create a HTTPS client and supply the created CA pool and certificate
 		client := &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
@@ -158,12 +150,12 @@ func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCr
 			Timeout: time.Second * 10,
 		}
 
-		url := fmt.Sprintf("https://%s/auth?host=%s", addr, os.Getenv("HOSTNAME"))
-		log.Infof("requesting oauth token from %s", url)
+		url := fmt.Sprintf("https://%s/auth?host=%s", addr, viper.GetString("HOSTNAME"))
+		log.Infof("requesting azure key vault oauth token from %s", url)
 
 		res, err := client.Get(url)
 		if err != nil {
-			log.Fatalf("failed to request token from %s, error: %+v", url, err)
+			log.Fatalf("request token failed from %s, error: %+v", url, err)
 		}
 
 		defer res.Body.Close()
@@ -175,25 +167,18 @@ func getCredentials(hasClientCert bool, customAuth bool) (*vault.AzureKeyVaultCr
 			return nil, fmt.Errorf("failed to decode body, error %+v", err)
 		}
 
-		log.Info("creating credentials from token")
 		creds, err := vault.NewAzureKeyVaultCredentialsFromOauthToken(token.Token)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get credentials for azure key vault, error %+v", err)
+			return nil, fmt.Errorf("failed to get create credentials for azure key vault, error %+v", err)
 		}
 		return creds, nil
 	}
 
-	if customAuth {
-		logger.Debug("getting credentials for azure key vault using azure credentials supplied to pod")
-
-		creds, err := vault.NewAzureKeyVaultCredentialsFromEnvironment()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get credentials for azure key vault, error %+v", err)
-		}
-		return creds, nil
+	creds, err := vault.NewAzureKeyVaultCredentialsFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get credentials for azure key vault, error %+v", err)
 	}
-
-	return nil, fmt.Errorf("unable to authenticate: neither client cert or custom auth exists")
+	return creds, nil
 }
 
 func verifyPKCS(signature string, plaintext string, pubkey rsa.PublicKey) bool {
@@ -224,7 +209,7 @@ func parseRsaPublicKey(pubPem string) (*rsa.PublicKey, error) {
 }
 
 func validateArgsSignature(origArgs string) {
-	signatureB64 := os.Getenv("ENV_INJECTOR_ARGS_SIGNATURE")
+	signatureB64 := viper.GetString("env_injector_args_signature")
 	if signatureB64 == "" {
 		log.Fatalf("failed to get ENV_INJECTOR_ARGS_SIGNATURE")
 	}
@@ -236,10 +221,17 @@ func validateArgsSignature(origArgs string) {
 
 	signature := string(signatureArray)
 
-	pubKey := os.Getenv("ENV_INJECTOR_ARGS_KEY")
-	if pubKey == "" {
+	pubKeyBase64 := viper.GetString("env_injector_args_key")
+	if pubKeyBase64 == "" {
 		log.Fatalf("failed to get ENV_INJECTOR_ARGS_KEY, error: %+v", err)
 	}
+
+	bPubKey, err := base64.StdEncoding.DecodeString(pubKeyBase64)
+	if err != nil {
+		logger.Fatalf("failed to decode base64 public key string, error: %+v", err)
+	}
+
+	pubKey := string(bPubKey)
 
 	pubRsaKey, err := parseRsaPublicKey(pubKey)
 	if err != nil {
@@ -251,6 +243,16 @@ func validateArgsSignature(origArgs string) {
 	}
 }
 
+func initConfig() {
+	viper.SetDefault("env_injector_log_level", log.InfoLevel.String())
+	viper.SetDefault("env_injector_retries", 3)
+	viper.SetDefault("env_injector_wait_before_retry", 3)
+	viper.SetDefault("env_injector_custom_auth", false)
+	viper.SetDefault("env_injector_use_auth_service", true)
+	viper.SetDefault("env_injector_skip_args_validation", false)
+	viper.AutomaticEnv()
+}
+
 func main() {
 	var origCommand string
 	var origArgs []string
@@ -258,7 +260,13 @@ func main() {
 	formatLogger()
 
 	logger.Debugf("azure key vault env injector initializing")
-	namespace := os.Getenv("ENV_INJECTOR_POD_NAMESPACE")
+
+	namespace := viper.GetString("env_injector_pod_namespace")
+	retryTimes := viper.GetInt("env_injector_retries")
+	waitTimeBetweenRetries := viper.GetInt("env_injector_wait_before_retry")
+	useAuthService := viper.GetBool("env_injector_use_auth_service")
+	skipArgsValidation := viper.GetBool("env_injector_skip_args_validation")
+
 	if namespace == "" {
 		logger.Fatalf("current namespace not provided in environment variable env_injector_pod_namespace")
 	}
@@ -267,51 +275,18 @@ func main() {
 		"namespace": namespace,
 	})
 
-	var err error
-	retryTimes := 3
-	waitTimeBetweenRetries := 3
-
-	retryTimesEnv, ok := os.LookupEnv("ENV_INJECTOR_RETRIES")
-	if ok {
-		if retryTimes, err = strconv.Atoi(retryTimesEnv); err != nil {
-			logger.Errorf("failed to convert ENV_INJECTOR_RETRIES env var into int, value was '%s', using default value of %d", retryTimesEnv, retryTimes)
-		}
+	if useAuthService {
+		logger.Info("using sentralized akv2k8s auth service for authentiction with azure key vault")
+	} else {
+		logger.Debug("akv2k8s auth service not enabled - will look for azure key vault credentials locally")
 	}
-
-	waitTimeBetweenRetriesEnv, ok := os.LookupEnv("ENV_INJECTOR_WAIT_BEFORE_RETRY")
-	if ok {
-		if waitTimeBetweenRetries, err := strconv.Atoi(retryTimesEnv); err != nil {
-			logger.Errorf("failed to convert ENV_INJECTOR_WAIT_BEFORE_RETRY env var into int, value was '%s', using default value of %d", waitTimeBetweenRetriesEnv, waitTimeBetweenRetries)
-		}
-	}
-
-	customAuth, err := strconv.ParseBool(os.Getenv("ENV_INJECTOR_CUSTOM_AUTH"))
-	if err != nil {
-		log.Fatalf("failed to parse env var ENV_INJECTOR_CUSTOM_AUTH as bool, error: %+v", err)
-	}
-	logger.Debugf("use custom auth: %t", customAuth)
-
-	logger = logger.WithFields(log.Fields{
-		"custom_auth": customAuth,
-	})
-
-	hasClientCert, err := strconv.ParseBool(os.Getenv("ENV_INJECTOR_HAS_CLIENT_CERT"))
 
 	if len(os.Args) == 1 {
 		logger.Fatal("no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly")
 	} else {
-		origCommand, err = exec.LookPath(os.Args[1])
+		origCommand, err := exec.LookPath(os.Args[1])
 		if err != nil {
 			logger.Fatalf("binary not found: %+v", err)
-		}
-
-		skipArgsValidation := false
-
-		if skipArgsValidationValue, exists := os.LookupEnv("ENV_INJECTOR_SKIP_ARGS_VALIDATION"); exists {
-			skipArgsValidation, err = strconv.ParseBool(skipArgsValidationValue)
-			if err != nil {
-				log.Fatalf("failed to parse env var ENV_INJECTOR_SKIP_ARGS_VALIDATION as bool, error: %+v", err)
-			}
 		}
 
 		origArgs = os.Args[1:]
@@ -323,7 +298,7 @@ func main() {
 		logger.Infof("found original container command to be %s %s", origCommand, origArgs)
 	}
 
-	creds, err := getCredentials(hasClientCert, customAuth)
+	creds, err := getCredentials(useAuthService)
 	if err != nil {
 		log.Fatalf("failed to get credentials, error: %+v", err)
 	}

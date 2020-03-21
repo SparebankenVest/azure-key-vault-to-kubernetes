@@ -59,7 +59,7 @@ func getInitContainers() []corev1.Container {
 	return []corev1.Container{container}
 }
 
-func getVolumes() []corev1.Volume {
+func getVolumes(useAuthService bool) []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
 			Name: "azure-keyvault-env",
@@ -71,7 +71,7 @@ func getVolumes() []corev1.Volume {
 		},
 	}
 
-	if useClientCert() {
+	if useAuthService {
 		volumes = append(volumes, []corev1.Volume{
 			{
 				Name: "client-cert",
@@ -87,9 +87,15 @@ func getVolumes() []corev1.Volume {
 	return volumes
 }
 
-func mutateContainers(containers []corev1.Container, creds map[string]string) (bool, error) {
+func mutateContainers(containers []corev1.Container, creds map[string]string) (bool, bool, error) {
+	var err error
 	mutated := false
+	anyUseAuthService := config.useAuthService
+
 	for i, container := range containers {
+		containerOverrideAuthService := false
+		containerUseAuthService := config.useAuthService
+
 		log.Infof("found container '%s' to mutate", container.Name)
 
 		var envVars []corev1.EnvVar
@@ -99,7 +105,19 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 				log.Infof("found env var: %s", env.Value)
 				envVars = append(envVars, env)
 			}
+
+			if strings.ToUpper(env.Name) == "ENV_INJECTOR_USE_AUTH_SERVICE" {
+				containerOverrideAuthService = true
+				containerUseAuthService, err = strconv.ParseBool(env.Value)
+				if err != nil {
+					return false, false, fmt.Errorf("failed to parse container env var override for auth service (%s), error: %+v", config.nameLocallyOverrideAuthService, err)
+				}
+				if containerUseAuthService {
+					anyUseAuthService = true
+				}
+			}
 		}
+
 		if len(envVars) == 0 {
 			log.Info("found no env vars in container")
 			continue
@@ -117,12 +135,13 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 			log.Infof("found credentials to use with registry '%s'", registryName)
 		} else {
 			log.Infof("did not find credentials to use with registry '%s' - getting default credentials", registryName)
+			// todo: acr is azure specific
 			regCred, ok = getAcrCreds(registryName)
 		}
 
 		autoArgs, err := getContainerCmd(container, regCred)
 		if err != nil {
-			return false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
+			return false, false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
 		}
 
 		autoArgsStr := strings.Join(autoArgs, " ")
@@ -130,17 +149,17 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 
 		privKey, pubKey, err := newKeyPair()
 		if err != nil {
-			return false, fmt.Errorf("failed to create signing key pair, error: %+v", err)
+			return false, false, fmt.Errorf("failed to create signing key pair, error: %+v", err)
 		}
 
 		signature, err := signPKCS(autoArgsStr, *privKey)
 		if err != nil {
-			return false, fmt.Errorf("failed to sign command args, error: %+v", err)
+			return false, false, fmt.Errorf("failed to sign command args, error: %+v", err)
 		}
 
 		publicSigningKey, err := exportRsaPublicKey(pubKey)
 		if err != nil {
-			return false, fmt.Errorf("failed to export public rsa key to pem, error: %+v", err)
+			return false, false, fmt.Errorf("failed to export public rsa key to pem, error: %+v", err)
 		}
 
 		mutated = true
@@ -153,17 +172,9 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 			{
 				Name:      "azure-keyvault-env",
 				MountPath: injectorDir,
+				ReadOnly:  true,
 			},
 		}...)
-
-		if useClientCert() {
-			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
-				{
-					Name:      "client-cert",
-					MountPath: clientCertDir,
-				},
-			}...)
-		}
 
 		container.Env = append(container.Env, []corev1.EnvVar{
 			{
@@ -175,35 +186,47 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 				},
 			},
 			{
-				Name:  "ENV_INJECTOR_CUSTOM_AUTH",
-				Value: strconv.FormatBool(config.customAuth),
-			},
-			{
 				Name:  "ENV_INJECTOR_ARGS_SIGNATURE",
 				Value: base64.StdEncoding.EncodeToString([]byte(signature)),
 			},
 			{
 				Name:  "ENV_INJECTOR_ARGS_KEY",
-				Value: publicSigningKey,
-			},
-			{
-				Name:  "ENV_INJECTOR_HAS_CLIENT_CERT",
-				Value: strconv.FormatBool(useClientCert()),
-			},
-			{
-				Name:  "ENV_INJECTOR_AUTH_SERVICE",
-				Value: fmt.Sprintf("%s.%s.svc:%s", config.webhookAuthServiceName, namespace(), config.webhookAuthServicePort),
+				Value: base64.StdEncoding.EncodeToString([]byte(publicSigningKey)),
 			},
 		}...)
 
-		if config.customAuth && config.customAuthAutoInject && config.credentials.CredentialsType != CredentialsTypeManagedIdentitiesForAzureResources {
-			container.Env = append(container.Env, *config.credentials.GetEnvVarFromSecret(config.credentialsSecretName)...)
+		// Do not add env var for using auth service if already exists
+		if config.useAuthService && !containerOverrideAuthService {
+			container.Env = append(container.Env, []corev1.EnvVar{
+				{
+					Name:  "ENV_INJECTOR_USE_AUTH_SERVICE",
+					Value: "true",
+				},
+			}...)
+		}
+
+		if containerUseAuthService {
+			container.Env = append(container.Env, []corev1.EnvVar{
+				{
+					Name:  "ENV_INJECTOR_AUTH_SERVICE",
+					Value: fmt.Sprintf("%s.%s.svc:%s", config.authServiceName, namespace(), config.authServicePort),
+				},
+			}...)
+
+			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
+				{
+					Name:      "client-cert",
+					MountPath: clientCertDir,
+					ReadOnly:  true,
+				},
+			}...)
+
 		}
 
 		containers[i] = container
 	}
 
-	return mutated, nil
+	return mutated, anyUseAuthService, nil
 }
 
 func mutatePodSpec(pod *corev1.Pod) error {
@@ -224,68 +247,31 @@ func mutatePodSpec(pod *corev1.Pod) error {
 		return err
 	}
 
-	initContainersMutated, err := mutateContainers(podSpec.InitContainers, regCred)
+	var initContainersUseAuthService bool
+	var containersUseAuthService bool
+
+	initContainersMutated, initContainersUseAuthService, err := mutateContainers(podSpec.InitContainers, regCred)
 	if err != nil {
 		return err
 	}
 
-	containersMutated, err := mutateContainers(podSpec.Containers, regCred)
+	containersMutated, containersUseAuthService, err := mutateContainers(podSpec.Containers, regCred)
 	if err != nil {
 		return err
 	}
 
 	if initContainersMutated || containersMutated {
-		if config.namespace != "" && config.customAuth && config.customAuthAutoInject {
-			if config.credentials.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
-				if pod.Labels == nil {
-					pod.Labels = make(map[string]string)
-					pod.Labels["aadpodidbinding"] = config.aadPodBindingLabel
-				}
-			} else {
-				log.Infof("creating secret in new namespace '%s'...", config.namespace)
-
-				keyVaultSecret, err := config.credentials.GetKubernetesSecret(config.credentialsSecretName)
-				if err != nil {
-					return err
-				}
-
-				_, err = clientset.CoreV1().Secrets(config.namespace).Create(keyVaultSecret)
-				if err != nil {
-					if errors.IsAlreadyExists(err) {
-						_, err = clientset.CoreV1().Secrets(config.namespace).Update(keyVaultSecret)
-						if err != nil {
-							return err
-						}
-					} else {
-						return err
-					}
-				}
-			}
-		}
-
-		if config.namespace != "" && useClientCert() {
+		if config.namespace != "" && config.useAuthService {
 			log.Infof("creating client cert secret in new namespace '%s'...", config.namespace)
 
-			clientCertSecret, err := createClientCertSecret(config.clientCertSecretName)
+			err := createClientCertSecret(config.clientCertSecretName, clientset)
 			if err != nil {
 				return err
-			}
-
-			_, err = clientset.CoreV1().Secrets(config.namespace).Create(clientCertSecret)
-			if err != nil {
-				if errors.IsAlreadyExists(err) {
-					_, err = clientset.CoreV1().Secrets(config.namespace).Update(clientCertSecret)
-					if err != nil {
-						return err
-					}
-				} else {
-					return err
-				}
 			}
 		}
 
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
-		podSpec.Volumes = append(podSpec.Volumes, getVolumes()...)
+		podSpec.Volumes = append(podSpec.Volumes, getVolumes(initContainersUseAuthService || containersUseAuthService)...)
 		log.Info("containers mutated and pod updated with init-container and volumes")
 		podsMutatedCounter.Inc()
 	} else {
@@ -295,23 +281,23 @@ func mutatePodSpec(pod *corev1.Pod) error {
 	return nil
 }
 
-func createClientCertSecret(secretName string) (*corev1.Secret, error) {
+func createClientCertSecret(secretName string, clientset *kubernetes.Clientset) error {
 	clientCert, err := ioutil.ReadFile(config.clientCertFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read client cert file from %s, error: %+v", config.clientCertFile, err)
+		return fmt.Errorf("failed to read client cert file from %s, error: %+v", config.clientCertFile, err)
 	}
 
 	clientKey, err := ioutil.ReadFile(config.clientKeyFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read client key file from %s, error: %+v", config.clientKeyFile, err)
+		return fmt.Errorf("failed to read client key file from %s, error: %+v", config.clientKeyFile, err)
 	}
 
 	caCert, err := ioutil.ReadFile(config.caFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read ca cert file from %s, error: %+v", config.caFile, err)
+		return fmt.Errorf("failed to read ca cert file from %s, error: %+v", config.caFile, err)
 	}
 
-	return &corev1.Secret{
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: secretName,
 		},
@@ -320,11 +306,20 @@ func createClientCertSecret(secretName string) (*corev1.Secret, error) {
 			"clientKey":  string(clientKey),
 			"caCert":     string(caCert),
 		},
-	}, nil
-}
+	}
 
-func useClientCert() bool {
-	return !config.customAuth || (config.customAuth && !config.customAuthAutoInject)
+	_, err = clientset.CoreV1().Secrets(config.namespace).Create(secret)
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			_, err = clientset.CoreV1().Secrets(config.namespace).Update(secret)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+	return nil
 }
 
 func namespace() string {

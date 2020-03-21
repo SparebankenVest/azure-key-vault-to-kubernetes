@@ -17,6 +17,8 @@ type AzureKeyVaultCredentials struct {
 	getAuthorizer      func() (autorest.Authorizer, error)
 	getToken           func() (string, error)
 	getCredentialsType func() (CredentialsType, error)
+
+	envSettings azureAuth.EnvironmentSettings
 }
 
 // CredentialsType contains the credentials type for authentication
@@ -42,6 +44,12 @@ const (
 	CredentialsTypeToken CredentialsType = "token"
 )
 
+// Authorizer gets an Authorizer from credentials
+func (c AzureKeyVaultCredentials) Authorizer() (autorest.Authorizer, error) {
+	azureAuth.GetSettingsFromEnvironment()
+	return c.getAuthorizer()
+}
+
 // OAuthToken gets the oauth token as string
 func (c AzureKeyVaultCredentials) OAuthToken() (string, error) {
 	return c.getToken()
@@ -52,6 +60,11 @@ func (c AzureKeyVaultCredentials) CredentialsType() (CredentialsType, error) {
 	return c.getCredentialsType()
 }
 
+// EnvironmentSetting return the azure envionrment settings
+func (c AzureKeyVaultCredentials) EnvironmentSettings() azureAuth.EnvironmentSettings {
+	return c.envSettings
+}
+
 // NewAzureKeyVaultCredentialsFromCloudConfig gets a credentials object from cloud config to use with Azure Key Vault
 func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (*AzureKeyVaultCredentials, error) {
 	config, err := readCloudConfig(cloudConfigPath)
@@ -59,7 +72,20 @@ func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (*AzureK
 		return nil, err
 	}
 
-	return NewAzureKeyVaultCredentialsFromClient(config.AADClientID, config.AADClientSecret, config.TenantID)
+	creds, err := NewAzureKeyVaultCredentialsFromClient(config.AADClientID, config.AADClientSecret, config.TenantID)
+	return &AzureKeyVaultCredentials{
+		getAuthorizer: func() (autorest.Authorizer, error) {
+			return creds.getAuthorizer()
+		},
+		getToken: func() (string, error) {
+			return creds.getToken()
+		},
+		getCredentialsType: func() (CredentialsType, error) {
+			return CredentialsTypeClusterCredentials, nil
+		},
+		envSettings: creds.envSettings,
+	}, nil
+
 }
 
 type azureKeyVaultToken struct {
@@ -120,11 +146,17 @@ func NewAzureKeyVaultCredentialsFromClient(clientID, clientSecret, tenantID stri
 			credType, _, err := getCredentialsType()
 			return credType, err
 		},
+		envSettings: authSettings,
 	}, nil
 }
 
 // NewAzureKeyVaultCredentialsFromEnvironment creates a credentials object based on available environment settings to use with Azure Key Vault
 func NewAzureKeyVaultCredentialsFromEnvironment() (*AzureKeyVaultCredentials, error) {
+	authSettings, err := azureAuth.GetSettingsFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
+	}
+
 	return &AzureKeyVaultCredentials{
 		getAuthorizer: func() (autorest.Authorizer, error) {
 			azureEnvSettings, err := GetAzureEnvironmentSetting()
@@ -145,13 +177,8 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (*AzureKeyVaultCredentials, er
 			credType, _, err := getCredentialsType()
 			return credType, err
 		},
+		envSettings: authSettings,
 	}, nil
-}
-
-// Authorizer gets an Authorizer from credentials
-func (c AzureKeyVaultCredentials) Authorizer() (autorest.Authorizer, error) {
-	azureAuth.GetSettingsFromEnvironment()
-	return c.getAuthorizer()
 }
 
 func getToken(creds azureAuth.ClientCredentialsConfig) (string, error) {
@@ -222,7 +249,7 @@ func getTokenFromEnvironment() (string, error) {
 
 		token, err = adal.NewServicePrincipalTokenFromMSI(msiEndpoint, azureEnvSettings.AzureKeyVaultURI)
 		if err != nil {
-			return "", fmt.Errorf("failed to get service principal token: %+v", err)
+			return "", fmt.Errorf("failed to get service principal token from managed identity: %+v", err)
 		}
 	}
 
@@ -268,7 +295,7 @@ func getCredentialsType() (CredentialsType, *azureAuth.EnvironmentSettings, erro
 	}
 
 	// 4. MSI
-	if envSettings.GetMSI().ClientID != "" {
+	if _, e := envSettings.GetMSI().Authorizer(); e == nil {
 		return CredentialsTypeManagedIdentitiesForAzureResources, &envSettings, nil
 	}
 

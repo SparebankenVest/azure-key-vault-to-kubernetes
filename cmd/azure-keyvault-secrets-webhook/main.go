@@ -46,25 +46,23 @@ const (
 )
 
 type azureKeyVaultConfig struct {
-	customAuth               bool
-	customAuthAutoInject     bool
-	credentials              *AzureKeyVaultCredentials
-	credentialsSecretName    string
-	namespace                string
-	aadPodBindingLabel       string
-	cloudConfigHostPath      string
-	cloudConfigContainerPath string
-	dockerPullTimeout        int
-	serveMetrics             bool
-	metricsAddress           string
-	certFile                 string
-	keyFile                  string
-	caFile                   string
-	clientCertFile           string
-	clientKeyFile            string
-	clientCertSecretName     string
-	webhookAuthServiceName   string
-	webhookAuthServicePort   string
+	customAuth                     bool
+	namespace                      string
+	aadPodBindingLabel             string
+	dockerPullTimeout              int
+	cloudConfigHostPath            string
+	serveMetrics                   bool
+	metricsAddress                 string
+	certFile                       string
+	keyFile                        string
+	caFile                         string
+	clientCertFile                 string
+	clientKeyFile                  string
+	clientCertSecretName           string
+	useAuthService                 bool
+	nameLocallyOverrideAuthService string
+	authServiceName                string
+	authServicePort                string
 }
 
 var config azureKeyVaultConfig
@@ -130,8 +128,9 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 func initConfig() {
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
 	viper.SetDefault("custom_docker_pull_timeout", 120)
-	viper.SetDefault("custom_auth_inject_secret_name", "akv2k8s-akv-credentials")
 	viper.SetDefault("client_cert_secret_name", "akv2k8s-client-cert")
+	viper.SetDefault("use_auth_service", true)
+	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
 	viper.AutomaticEnv()
 }
 
@@ -179,39 +178,20 @@ func main() {
 	setLogLevel(logLevel)
 
 	config = azureKeyVaultConfig{
-		customAuth:               viper.GetBool("CUSTOM_AUTH"),
-		customAuthAutoInject:     viper.GetBool("CUSTOM_AUTH_INJECT"),
-		credentialsSecretName:    viper.GetString("CUSTOM_AUTH_INJECT_SECRET_NAME"),
-		dockerPullTimeout:        viper.GetInt("CUSTOM_DOCKER_PULL_TIMEOUT"),
-		cloudConfigHostPath:      "/etc/kubernetes/azure.json",
-		cloudConfigContainerPath: "/azure-keyvault/azure.json",
-		serveMetrics:             viper.GetBool("METRICS_ENABLED"),
-		metricsAddress:           viper.GetString("METRICS_ADDR"),
-		certFile:                 viper.GetString("tls_cert_file"),
-		keyFile:                  viper.GetString("tls_private_key_file"),
-		caFile:                   viper.GetString("tls_ca_file"),
-		clientCertFile:           viper.GetString("tls_client_file"),
-		clientKeyFile:            viper.GetString("tls_client_key_file"),
-		clientCertSecretName:     viper.GetString("client_cert_secret_name"),
-		webhookAuthServiceName:   viper.GetString("webhook_auth_service"),
-		webhookAuthServicePort:   viper.GetString("webhook_auth_service_port"),
-	}
-
-	if config.customAuth {
-		azureCreds, err := NewCredentials()
-		if err != nil {
-			log.Fatalf("error getting credentials: %+v", err)
-		}
-
-		config.credentials = azureCreds
-
-		if azureCreds.CredentialsType == CredentialsTypeManagedIdentitiesForAzureResources {
-			config.aadPodBindingLabel = viper.GetString("aad_pod_binding_label")
-		}
-	} else {
-		config.credentials = &AzureKeyVaultCredentials{
-			CredentialsType: CredentialsTypeClusterCredentials,
-		}
+		customAuth:           viper.GetBool("custom_auth"),
+		dockerPullTimeout:    viper.GetInt("custom_docker_pull_timeout"),
+		serveMetrics:         viper.GetBool("metrics_enabled"),
+		metricsAddress:       viper.GetString("metrics_addr"),
+		certFile:             viper.GetString("tls_cert_file"),
+		keyFile:              viper.GetString("tls_private_key_file"),
+		caFile:               viper.GetString("tls_ca_file"),
+		clientCertFile:       viper.GetString("tls_client_file"),
+		clientKeyFile:        viper.GetString("tls_client_key_file"),
+		clientCertSecretName: viper.GetString("client_cert_secret_name"),
+		useAuthService:       viper.GetBool("use_auth_service"),
+		authServiceName:      viper.GetString("webhook_auth_service"),
+		authServicePort:      viper.GetString("webhook_auth_service_port"),
+		cloudConfigHostPath:  viper.GetString("cloud_config_host_path"),
 	}
 
 	if config.metricsAddress == "" {
