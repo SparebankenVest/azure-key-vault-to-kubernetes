@@ -41,7 +41,7 @@ spec:
           - name: TLS_CA_FILE
             value: /var/serving-cert/caCert
           - name: USE_AUTH_SERVICE
-            value: {{ .Values.authService.enabled }}
+            value: {{ .Values.authService.enabled | quote }}
           {{- if .Values.authService.enabled }}
           - name: TLS_CLIENT_FILE
             value: /var/client-cert/clientCert
