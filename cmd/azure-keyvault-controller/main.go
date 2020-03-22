@@ -117,7 +117,7 @@ func main() {
 	eventBroadcaster.StartLogging(log.Tracef)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
-	var vaultAuth *vault.AzureKeyVaultCredentials
+	var vaultAuth vault.AzureKeyVaultCredentials
 	if customAuth {
 		if vaultAuth, err = vault.NewAzureKeyVaultCredentialsFromEnvironment(); err != nil {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())

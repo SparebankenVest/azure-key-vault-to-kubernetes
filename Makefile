@@ -20,6 +20,14 @@ VCS_URL := https://$(PACKAGE)
 run-docs-dev:
 	cd ./docs && npm install && GATSBY_ALGOLIA_ENABLED=false npm run start
 
+fmt:
+	@echo "==> Fixing source code with gofmt..."
+	# This logic should match the search logic in scripts/gofmtcheck.sh
+	find . -name '*.go' | grep -v /pkg/k8s/ | xargs gofmt -s -w
+
+fmtcheck:
+	$(CURDIR)/scripts/gofmtcheck.sh
+
 build: build-controller build-webhook build-auth-service build-vaultenv
 
 build-controller:
@@ -37,7 +45,7 @@ build-vaultenv:
 build-akv2k8s-env-test:
 	docker build . -t $(DOCKER_RELEASE_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE) -f images/akv2k8s-test/Dockerfile
 
-test:
+test: fmtcheck
 	CGO_ENABLED=0 go test -v $(shell go list ./... | grep -v /pkg/k8s/)
 
 push: push-controller push-webhook push-auth-service push-vaultenv

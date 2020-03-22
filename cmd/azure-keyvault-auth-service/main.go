@@ -37,7 +37,7 @@ const (
 
 type azureKeyVaultConfig struct {
 	customAuth          bool
-	credentials         *vault.AzureKeyVaultCredentials
+	credentials         vault.AzureKeyVaultCredentials
 	aadPodBindingLabel  string
 	cloudConfigHostPath string
 	certFile            string
@@ -61,26 +61,28 @@ func setLogLevel(logLevel string) {
 }
 
 func initConfig() {
+	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
 	viper.SetDefault("client_cert_secret_name", "akv2k8s-client-cert")
 	viper.SetDefault("port", "8443")
 	viper.AutomaticEnv()
 }
 
 type oauthToken struct {
-	Token string `json:"token"`
+	Token           string `json:"token"`
+	EndpointPartial string `json:"endpointPartial"`
 }
 
 // accept a client certificate for authentication (which is be provided by init-container)
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		token, err := config.credentials.OAuthToken()
-		if err != nil {
-			log.Errorf("failed to get azure token, err: %+v", err)
-			http.Error(w, "failed to get azure token", http.StatusNotFound)
-			return
-		}
+		creds := config.credentials
+		// if err != nil {
+		// 	log.Errorf("failed to get azure token, err: %+v", err)
+		// 	http.Error(w, "failed to get azure token", http.StatusNotFound)
+		// 	return
+		// }
 
-		tokenResp := oauthToken{Token: token}
+		// tokenResp := oauthToken{Token: token}
 
 		host := ""
 		hosts, ok := r.URL.Query()["host"]
@@ -94,8 +96,9 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		log.Infof("served oauth token to '%s' at address '%s'", host, r.RemoteAddr)
-		if err := json.NewEncoder(w).Encode(tokenResp); err != nil {
-			log.Error("url param 'host' is missing")
+
+		if err := json.NewEncoder(w).Encode(creds); err != nil {
+			log.Errorf("failed to json encode token, error: %+v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	} else {
@@ -121,8 +124,8 @@ func main() {
 	setLogLevel(logLevel)
 
 	config = azureKeyVaultConfig{
-		customAuth:          viper.GetBool("CUSTOM_AUTH"),
-		cloudConfigHostPath: "/etc/kubernetes/azure.json",
+		customAuth:          viper.GetBool("custom_auth"),
+		cloudConfigHostPath: viper.GetString("cloud_config_host_path"),
 		certFile:            viper.GetString("tls_cert_file"),
 		keyFile:             viper.GetString("tls_private_key_file"),
 		caFile:              viper.GetString("tls_ca_file"),
@@ -142,12 +145,7 @@ func main() {
 		}
 	}
 
-	credType, err := config.credentials.CredentialsType()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Infof("serving credentials of type %s", credType)
+	// log.Infof("serving credentials of type %s", credType)
 
 	caCert, err := ioutil.ReadFile(config.caFile)
 	if err != nil {

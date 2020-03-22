@@ -119,7 +119,7 @@ type oauthToken struct {
 	Token string `json:"token"`
 }
 
-func getCredentials(useAuthService bool) (*vault.AzureKeyVaultCredentials, error) {
+func getCredentials(useAuthService bool) (vault.AzureKeyVaultCredentials, error) {
 	if useAuthService {
 		addr := viper.GetString("env_injector_auth_service")
 		if addr == "" {
@@ -159,18 +159,13 @@ func getCredentials(useAuthService bool) (*vault.AzureKeyVaultCredentials, error
 		}
 
 		defer res.Body.Close()
-		body, err := ioutil.ReadAll(res.Body)
+		var creds vault.AzureKeyVaultOAuthCredentials
+		err = json.NewDecoder(res.Body).Decode(&creds)
 
-		var token oauthToken
-		err = json.Unmarshal(body, &token)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode body, error %+v", err)
 		}
 
-		creds, err := vault.NewAzureKeyVaultCredentialsFromOauthToken(token.Token)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get create credentials for azure key vault, error %+v", err)
-		}
 		return creds, nil
 	}
 

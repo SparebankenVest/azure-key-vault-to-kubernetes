@@ -39,11 +39,11 @@ type Service interface {
 }
 
 type azureKeyVaultService struct {
-	credentials *AzureKeyVaultCredentials
+	credentials AzureKeyVaultCredentials
 }
 
-// NewService creates a new AzureKeyVaultService using crednetials found in cloud config
-func NewService(credentials *AzureKeyVaultCredentials) Service {
+// NewService creates a new AzureKeyVaultService
+func NewService(credentials AzureKeyVaultCredentials) Service {
 	return &azureKeyVaultService{
 		credentials: credentials,
 	}
@@ -55,13 +55,8 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvs.AzureKeyVault) (string,
 		return "", fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
 	}
 
-	azureEnvSettings, err := GetAzureEnvironmentSetting()
-	if err != nil {
-		return "", fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
-	}
-
 	//Get secret value from Azure Key Vault
-	vaultClient, err := a.getClient(azureEnvSettings.AzureKeyVaultURI)
+	vaultClient, err := a.getClient()
 	if err != nil {
 		return "", err
 	}
@@ -69,7 +64,7 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvs.AzureKeyVault) (string,
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	baseURL := fmt.Sprintf(azureEnvSettings.AzureKeyVaultResourceURI, vaultSpec.Name)
+	baseURL := a.credentials.Endpoint(vaultSpec.Name)
 	secretBundle, err := vaultClient.GetSecret(ctx, baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 
 	if err != nil {
@@ -84,12 +79,7 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvs.AzureKeyVault) (string, er
 		return "", fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
 	}
 
-	azureEnvSettings, err := GetAzureEnvironmentSetting()
-	if err != nil {
-		return "", fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
-	}
-
-	vaultClient, err := a.getClient(azureEnvSettings.AzureKeyVaultURI)
+	vaultClient, err := a.getClient()
 	if err != nil {
 		return "", err
 	}
@@ -97,7 +87,7 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvs.AzureKeyVault) (string, er
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	baseURL := fmt.Sprintf(azureEnvSettings.AzureKeyVaultResourceURI, vaultSpec.Name)
+	baseURL := a.credentials.Endpoint(vaultSpec.Name)
 	keyBundle, err := vaultClient.GetKey(ctx, baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 
 	if err != nil {
@@ -109,13 +99,7 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvs.AzureKeyVault) (string, er
 
 // GetCertificate download public/private certificates from Azure Key Vault
 func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, exportPrivateKey bool) (*Certificate, error) {
-
-	azureEnvSettings, err := GetAzureEnvironmentSetting()
-	if err != nil {
-		return nil, fmt.Errorf("GetSettingsFromEnvironment err: %+v", err)
-	}
-
-	vaultClient, err := a.getClient(azureEnvSettings.AzureKeyVaultURI)
+	vaultClient, err := a.getClient()
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +107,7 @@ func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, exp
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	baseURL := fmt.Sprintf(azureEnvSettings.AzureKeyVaultResourceURI, vaultSpec.Name)
+	baseURL := a.credentials.Endpoint(vaultSpec.Name)
 
 	certBundle, err := vaultClient.GetCertificate(ctx, baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
 	if err != nil {
@@ -156,7 +140,7 @@ func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, exp
 	return NewCertificateFromDer(*certBundle.Cer)
 }
 
-func (a *azureKeyVaultService) getClient(resource string) (*keyvault.BaseClient, error) {
+func (a *azureKeyVaultService) getClient() (*keyvault.BaseClient, error) {
 	authorizer, err := a.credentials.Authorizer()
 	if err != nil {
 		return nil, err

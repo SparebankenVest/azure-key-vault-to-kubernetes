@@ -202,14 +202,14 @@ func getAcrCreds(host string) (string, bool) {
 
 	bytes, err := ioutil.ReadFile(config.cloudConfigHostPath)
 	if err != nil {
-		log.Infof("failed to read azure.json to get default credentials, error: %v", err)
-		return "", false //creds, fmt.Errorf("failed to read cloud config file in an effort to get credentials for azure key vault, error: %+v", err)
+		log.Infof("failed to read azure.json to get default acr credentials, error: %v", err)
+		return "", false
 	}
 
 	azureConfig := auth.AzureAuthConfig{}
 	if err = yaml.Unmarshal(bytes, &azureConfig); err != nil {
 		log.Infof("failed to unmarshall azure config, error: %v", err)
-		return "", false // creds, fmt.Errorf("Unmarshall error: %v", err)
+		return "", false
 	}
 
 	var credsValue dockertypes.AuthConfig
