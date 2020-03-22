@@ -59,7 +59,7 @@ spec:
           - name: AZUREKEYVAULT_ENV_IMAGE
             value: {{ .Values.envImage.repository }}:{{ .Values.envImage.tag }}
           - name: CUSTOM_DOCKER_PULL_TIMEOUT
-            value: {{ .Values.webhook.dockerPullTimeout }}
+            value: {{ .Values.webhook.dockerPullTimeout | quote }}
           {{- if .Values.keyVault.customAuth.enabled }}
             {{- if .Values.keyVault.customAuth.podIdentitySelector }}
           - name: AAD_POD_BINDING_LABEL
