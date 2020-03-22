@@ -49,6 +49,15 @@ const (
 	envLookupKey = "@azurekeyvault"
 )
 
+type injectorConfig struct {
+	namespace              string
+	retryTimes             int
+	waitTimeBetweenRetries int
+	useAuthService         bool
+	skipArgsValidation     bool
+}
+
+var config injectorConfig
 var logger *log.Entry
 
 type stop struct {
@@ -65,14 +74,6 @@ func formatLogger() {
 		"component":   "akv2k8s",
 		"application": "env-injector",
 	})
-
-	logLevel := viper.GetString("env_injector_log_level")
-
-	logrusLevel, err := log.ParseLevel(logLevel)
-	if err != nil {
-		log.Fatalf("error setting log level: %s", err.Error())
-	}
-	log.SetLevel(logrusLevel)
 }
 
 // Retry will wait for a duration, retry n times, return if succeed or fails
@@ -123,19 +124,19 @@ func getCredentials(useAuthService bool) (vault.AzureKeyVaultCredentials, error)
 	if useAuthService {
 		addr := viper.GetString("env_injector_auth_service")
 		if addr == "" {
-			log.Fatal(fmt.Errorf("cannot call auth service: env var ENV_INJECTOR_AUTH_SERVICE does not exist"))
+			logger.Fatal(fmt.Errorf("cannot call auth service: env var ENV_INJECTOR_AUTH_SERVICE does not exist"))
 		}
 
-		log.Debug("loading client key pair")
+		logger.Debug("loading client key pair")
 		cert, err := tls.LoadX509KeyPair("/client-cert/clientCert", "/client-cert/clientKey")
 		if err != nil {
-			log.Fatalf("failed to load client cert key pair, error: %+v", err)
+			logger.Fatalf("failed to load client cert key pair, error: %+v", err)
 		}
 
-		log.Debug("loading ca cert")
+		logger.Debug("loading ca cert")
 		caCert, err := ioutil.ReadFile("/client-cert/caCert")
 		if err != nil {
-			log.Fatalf("failed to load ca cert to use with client certs, error: %+v", err)
+			logger.Fatalf("failed to load ca cert to use with client certs, error: %+v", err)
 		}
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
@@ -151,11 +152,11 @@ func getCredentials(useAuthService bool) (vault.AzureKeyVaultCredentials, error)
 		}
 
 		url := fmt.Sprintf("https://%s/auth?host=%s", addr, viper.GetString("HOSTNAME"))
-		log.Infof("requesting azure key vault oauth token from %s", url)
+		logger.Infof("requesting azure key vault oauth token from %s", url)
 
 		res, err := client.Get(url)
 		if err != nil {
-			log.Fatalf("request token failed from %s, error: %+v", url, err)
+			logger.Fatalf("request token failed from %s, error: %+v", url, err)
 		}
 
 		defer res.Body.Close()
@@ -206,7 +207,7 @@ func parseRsaPublicKey(pubPem string) (*rsa.PublicKey, error) {
 func validateArgsSignature(origArgs string) {
 	signatureB64 := viper.GetString("env_injector_args_signature")
 	if signatureB64 == "" {
-		log.Fatalf("failed to get ENV_INJECTOR_ARGS_SIGNATURE")
+		logger.Fatalf("failed to get ENV_INJECTOR_ARGS_SIGNATURE")
 	}
 
 	signatureArray, err := base64.StdEncoding.DecodeString(signatureB64)
@@ -218,7 +219,7 @@ func validateArgsSignature(origArgs string) {
 
 	pubKeyBase64 := viper.GetString("env_injector_args_key")
 	if pubKeyBase64 == "" {
-		log.Fatalf("failed to get ENV_INJECTOR_ARGS_KEY, error: %+v", err)
+		logger.Fatalf("failed to get ENV_INJECTOR_ARGS_KEY, error: %+v", err)
 	}
 
 	bPubKey, err := base64.StdEncoding.DecodeString(pubKeyBase64)
@@ -239,7 +240,6 @@ func validateArgsSignature(origArgs string) {
 }
 
 func initConfig() {
-	viper.SetDefault("env_injector_log_level", log.InfoLevel.String())
 	viper.SetDefault("env_injector_retries", 3)
 	viper.SetDefault("env_injector_wait_before_retry", 3)
 	viper.SetDefault("env_injector_custom_auth", false)
@@ -248,29 +248,47 @@ func initConfig() {
 	viper.AutomaticEnv()
 }
 
+func setLogLevel(logLevel string) {
+	if logLevel == "" {
+		logLevel = log.InfoLevel.String()
+	}
+
+	logrusLevel, err := log.ParseLevel(logLevel)
+	if err != nil {
+		log.Errorf("error setting log level: %s", err.Error())
+	}
+	log.SetLevel(logrusLevel)
+}
+
 func main() {
+	initConfig()
+
 	var origCommand string
 	var origArgs []string
 
+	logLevel := viper.GetString("LOG_LEVEL")
+	setLogLevel(logLevel)
 	formatLogger()
 
 	logger.Debugf("azure key vault env injector initializing")
 
-	namespace := viper.GetString("env_injector_pod_namespace")
-	retryTimes := viper.GetInt("env_injector_retries")
-	waitTimeBetweenRetries := viper.GetInt("env_injector_wait_before_retry")
-	useAuthService := viper.GetBool("env_injector_use_auth_service")
-	skipArgsValidation := viper.GetBool("env_injector_skip_args_validation")
+	config = injectorConfig{
+		namespace:              viper.GetString("env_injector_pod_namespace"),
+		retryTimes:             viper.GetInt("env_injector_retries"),
+		waitTimeBetweenRetries: viper.GetInt("env_injector_wait_before_retry"),
+		useAuthService:         viper.GetBool("env_injector_use_auth_service"),
+		skipArgsValidation:     viper.GetBool("env_injector_skip_args_validation"),
+	}
 
-	if namespace == "" {
+	if config.namespace == "" {
 		logger.Fatalf("current namespace not provided in environment variable env_injector_pod_namespace")
 	}
 
 	logger = logger.WithFields(log.Fields{
-		"namespace": namespace,
+		"namespace": config.namespace,
 	})
 
-	if useAuthService {
+	if config.useAuthService {
 		logger.Info("using sentralized akv2k8s auth service for authentiction with azure key vault")
 	} else {
 		logger.Debug("akv2k8s auth service not enabled - will look for azure key vault credentials locally")
@@ -286,14 +304,14 @@ func main() {
 
 		origArgs = os.Args[1:]
 
-		if !skipArgsValidation {
+		if !config.skipArgsValidation {
 			validateArgsSignature(strings.Join(origArgs, " "))
 		}
 
 		logger.Infof("found original container command to be %s %s", origCommand, origArgs)
 	}
 
-	creds, err := getCredentials(useAuthService)
+	creds, err := getCredentials(config.useAuthService)
 	if err != nil {
 		log.Fatalf("failed to get credentials, error: %+v", err)
 	}
@@ -339,13 +357,13 @@ func main() {
 			}
 
 			logger.Debugf("getting azurekeyvaultsecret resource '%s' from kubernetes", secretName)
-			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
+			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
 				logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %s", secretName, err.Error())
-				logger.Infof("will retry getting azurekeyvaultsecret resource up to %d times, waiting %d seconds between retries", retryTimes, waitTimeBetweenRetries)
+				logger.Infof("will retry getting azurekeyvaultsecret resource up to %d times, waiting %d seconds between retries", config.retryTimes, config.waitTimeBetweenRetries)
 
-				err = retry(retryTimes, time.Second*time.Duration(waitTimeBetweenRetries), func() error {
-					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(namespace).Get(secretName, v1.GetOptions{})
+				err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
+					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
 					if err != nil {
 						logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %+v", secretName, err)
 						return err
