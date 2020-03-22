@@ -87,6 +87,11 @@ spec:
           ports:
           - name: webhook
             containerPort: {{ .Values.service.internalPort }}
+          readinessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: {{ .Values.service.internalPort }}
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
@@ -134,6 +139,11 @@ spec:
           ports:
           - name: auth
             containerPort: {{ .Values.authService.port.internalPort }}
+          readinessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: {{ .Values.authService.port.internalPort }}
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
