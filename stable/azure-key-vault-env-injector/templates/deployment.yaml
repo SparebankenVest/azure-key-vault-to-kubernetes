@@ -22,8 +22,8 @@ spec:
         app: {{ template "azure-key-vault-to-kubernetes.name" . }}
         release: {{ .Release.Name }}
         {{- if .Values.keyVault.customAuth.enabled }}
-          {{- if and .Values.keyVault.customAuth.autoInject.enabled .Values.keyVault.customAuth.autoInject.podIdentitySelector }}
-        aadpodidbinding: {{ .Values.keyVault.customAuth.autoInject.podIdentitySelector }}
+          {{- if .Values.keyVault.customAuth.podIdentitySelector }}
+        aadpodidbinding: {{ .Values.keyVault.customAuth.podIdentitySelector }}
           {{- end}}
         {{- end}}
       annotations:
@@ -31,7 +31,7 @@ spec:
     spec:
       serviceAccountName: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: webhook
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           env:
           - name: TLS_CERT_FILE
@@ -40,38 +40,42 @@ spec:
             value: /var/serving-cert/servingKey
           - name: TLS_CA_FILE
             value: /var/serving-cert/caCert
+          - name: USE_AUTH_SERVICE
+            value: {{ .Values.authService.enabled }}
+          {{- if .Values.authService.enabled }}
           - name: TLS_CLIENT_FILE
             value: /var/client-cert/clientCert
           - name: TLS_CLIENT_KEY_FILE
             value: /var/client-cert/clientKey
-          - name: AZUREKEYVAULT_ENV_IMAGE
-            value: {{ .Values.envImage.repository }}:{{ .Values.envImage.tag }}
+            {{- if .Values.authService.clientCertSecretName }}
+          - name: CLIENT_CERT_SECRET_NAME
+            value: {{ .Values.authService.clientCertSecretName }}
+            {{- end }}
           - name: WEBHOOK_AUTH_SERVICE
             value: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
           - name: WEBHOOK_AUTH_SERVICE_PORT
             value: {{ .Values.authService.port.externalPort | quote }}
+          {{- end }}
+          - name: AZUREKEYVAULT_ENV_IMAGE
+            value: {{ .Values.envImage.repository }}:{{ .Values.envImage.tag }}
+          - name: CUSTOM_DOCKER_PULL_TIMEOUT
+            value: {{ .Values.webhook.dockerPullTimeout }}
+          {{- if .Values.keyVault.customAuth.enabled }}
+            {{- if .Values.keyVault.customAuth.podIdentitySelector }}
           - name: AAD_POD_BINDING_LABEL
             valueFrom:
               fieldRef:
                 fieldPath:  metadata.labels['aadpodidbinding']
-          {{- if .Values.keyVault.customAuth.enabled }}
-          - name: CUSTOM_AUTH
-            value: {{ .Values.keyVault.customAuth.enabled | quote }}
-            {{- if .Values.keyVault.customAuth.autoInject.enabled }}
-          - name: CUSTOM_AUTH_INJECT
-            value: {{ .Values.keyVault.customAuth.autoInject.enabled | quote }}
-            {{- end}}
-            {{- if .Values.keyVault.customAuth.autoInject.secretName }}
-          - name: CUSTOM_AUTH_INJECT_SECRET_NAME
-            value: {{ .Values.keyVault.customAuth.autoInject.secretName | quote }}
-            {{- end}}
-          {{- end}}
+            {{- end }}
+          {{- end }}
           - name: LOG_LEVEL
-            value: {{ .Values.log_level | quote }}
+            value: {{ .Values.webhook.logLevel | quote }}
           - name: METRICS_ENABLED
             value: {{ .Values.metrics.enabled | quote }}
+          {{- if .Values.metrics.enabled }}
           - name: METRICS_ADDR
             value: {{ .Values.metrics.address | quote }}
+          {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: {{ $key }}
             valueFrom:
@@ -86,11 +90,13 @@ spec:
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
-          - mountPath: /var/client-cert
-            name: client-cert
           - mountPath: /var/run/docker.sock
             name: dockersock
             readOnly: true
+          {{- if .Values.authService.enabled }}
+          - mountPath: /var/client-cert
+            name: client-cert
+          {{- end }}
           {{- if not .Values.keyVault.customAuth.enabled }}
           - mountPath: /etc/kubernetes/azure.json
             name: azureconf
@@ -98,7 +104,8 @@ spec:
           {{- end }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
-        - name: {{ .Values.authService.containerName }}
+        {{- if .Values.authService.enabled }}
+        - name: auth-service
           image: "{{ .Values.authService.image.repository }}:{{ .Values.authService.image.tag }}"
           env:
           - name: PORT
@@ -109,12 +116,14 @@ spec:
             value: /var/serving-cert/servingKey
           - name: TLS_CA_FILE
             value: /var/serving-cert/caCert
-          {{- if .Values.keyVault.customAuth.enabled }}
           - name: CUSTOM_AUTH
             value: {{ .Values.keyVault.customAuth.enabled | quote }}
-          {{- end}}
+          {{- if not .Values.keyVault.customAuth.enabled }}
+          - name: CLOUD_CONFIG_HOST_PATH
+            value: {{ .Values.authService.cloudConfigHostPath }}
+          {{- end }}
           - name: LOG_LEVEL
-            value: {{ .Values.log_level | quote }}
+            value: {{ .Values.authService.logLevel | quote }}
           {{- range $key, $value := .Values.env }}
           - name: {{ $key }}
             valueFrom:
@@ -133,6 +142,7 @@ spec:
             name: azureconf
             readOnly: true
           {{- end }}
+        {{- end}}
       volumes:
       - name: serving-cert
         secret:

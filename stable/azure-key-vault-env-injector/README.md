@@ -23,9 +23,9 @@ helm install spv-charts/azure-key-vault-env-injector \
   --namespace akv2k8s
 ```
 
-**Note: It is recommended to install akv2k8s in its own dedicated namespace** 
+**Note: Install akv2k8s in its own dedicated namespace** 
 
-**Note: The Env Injector needs to be anabled for each namespace**
+**Note: The Env Injector needs to be enabled for each namespace**
 
 The Env Injector is developed using a Mutating Admission Webhook that triggers just before every Pod gets created. To allow cluster administrators some control over which Pods this Webhook gets triggered for, it must be enabled per namespace using the `azure-key-vault-env-injection` label, like in the example below:
 
@@ -55,8 +55,7 @@ Requires Pod Identity: https://github.com/Azure/aad-pod-identity
 helm install spv-charts/azure-key-vault-env-injector \
   --namespace akv2k8s \
   --set keyVault.customAuth.enabled=true \
-  --set keyVault.customAuth.autoInject.enabled=true \
-  --set keyVault.customAuth.autoInject.podIdentitySelector=myPidIdentitySelector \
+  --set keyVault.customAuth.podIdentitySelector=myPidIdentitySelector \
 ```
 
 ### Using custom authentication with credential injection enabled
@@ -65,11 +64,16 @@ helm install spv-charts/azure-key-vault-env-injector \
 helm install spv-charts/azure-key-vault-env-injector \
   --namespace akv2k8s \
   --set keyVault.customAuth.enabled=true \
-  --set keyVault.customAuth.autoInject.enabled=true \
-  --set keyVault.customAuth.autoInject.secretName=azure-key-vault-secret \
   --set env.AZURE_TENANT_ID=... \
   --set env.AZURE_CLIENT_ID=... \
   --set env.AZURE_CLIENT_SECRET=...
+```
+
+### Disable central authentication, leaving all AKV authentication to individual Pod
+```bash
+helm install spv-charts/azure-key-vault-env-injector \
+  --namespace akv2k8s \
+  --set authService.enabled=false
 ```
 
 ## Configuration

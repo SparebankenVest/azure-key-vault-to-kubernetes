@@ -2,26 +2,37 @@
 
 installCrd: true # if installing both controller and env injector, only one can install CRD
 replicaCount: 2
-logLevel: Info
 
 image:
   repository: spvest/azure-keyvault-webhook
-  tag: 1.1.0-beta.10
+  tag: 1.1.0-beta.24
   pullPolicy: IfNotPresent
 
 envImage:
   repository: spvest/azure-keyvault-env
-  tag: 1.1.0-beta.10
+  tag: 1.1.0-beta.24
+
+keyVault:
+  # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication
+  customAuth:
+    enabled: false
+
+    # uncomment to use aad-pod-identity (MSI) and point to a selector
+    # if used, secretName must not be set
+    # podIdentitySelector: <selector name>
 
 authService:
-  containerName: azure-keyvault-auth-service
+  enabled: true
+  logLevel: Info
   image:
     repository: spvest/azure-keyvault-auth-service
-    tag: 1.1.0-beta.10
+    tag: 1.1.0-beta.24
   port:
     name: azure-keyvault-secrets-auth
     externalPort: 8443
     internalPort: 8443
+  clientCertSecretName: akv2k8s-client-cert
+  cloudConfigHostPath: /etc/kubernetes/azure.json
 
 service:
   name: azure-keyvault-secrets-webhook
@@ -33,14 +44,10 @@ metrics:
   enabled: false
   metricsAddress: ":80"
 
-## See `kubectl explain poddisruptionbudget.spec` for more
-## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
-#  maxUnavailable: 1
-
 webhook:
+  logLevel: Info
+  dockerPullTimeout: 120 # will timeout after 120 seconds 
+
   # What will happen if the webhook fails? Ignore (continue) or Fail (prevent Pod from starting)?
   failurePolicy: Ignore
 
@@ -56,22 +63,12 @@ webhook:
       values:
       - kube-system
 
-keyVault:
-  # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication
-  customAuth:
-    enabled: false
-
-    # set to true to enable auto injection of credentials
-    autoInject:
-      enabled: false
-
-      # the name of the secret the env injector 
-      # should create for storing the credentials
-      secretName: akv2k8s-akv-credentials
-
-      # uncomment to use aad-pod-identity (MSI) and point to a selector
-      # if used, secretName must not be set
-      # podIdentitySelector: <selector name>
+## See `kubectl explain poddisruptionbudget.spec` for more
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+#  maxUnavailable: 1
 
 resources: {}
 
