@@ -92,7 +92,7 @@ func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (AzureKe
 	}
 
 	token, err := cloudAuth.GetServicePrincipalToken(config, &authSettings.Environment)
-	resourceSplit := strings.SplitAfterN(authSettings.Environment.KeyVaultEndpoint, "https://", 2)
+	resourceSplit := strings.SplitAfterN(authSettings.Environment.ResourceIdentifiers.KeyVault, "https://", 2)
 	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
 
 	return &azureKeyVaultCredentials{
@@ -137,7 +137,7 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (AzureKeyVaultCredentials, err
 		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
 	}
 
-	resourceSplit := strings.SplitAfterN(authSettings.Environment.KeyVaultEndpoint, "https://", 2)
+	resourceSplit := strings.SplitAfterN(authSettings.Environment.ResourceIdentifiers.KeyVault, "https://", 2)
 	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
 
 	akvCreds := &azureKeyVaultCredentials{
@@ -145,6 +145,9 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (AzureKeyVaultCredentials, err
 	}
 
 	if creds, err := authSettings.GetClientCredentials(); err == nil {
+		creds.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
+		creds.Resource = authSettings.Environment.ResourceIdentifiers.KeyVault
+
 		token, err := creds.ServicePrincipalToken()
 		if err != nil {
 			return nil, err
@@ -154,6 +157,9 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (AzureKeyVaultCredentials, err
 	}
 
 	if creds, err := authSettings.GetClientCertificate(); err == nil {
+		creds.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
+		creds.Resource = authSettings.Environment.ResourceIdentifiers.KeyVault
+
 		token, err := creds.ServicePrincipalToken()
 		if err != nil {
 			return nil, err
@@ -163,6 +169,9 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (AzureKeyVaultCredentials, err
 	}
 
 	if creds, err := authSettings.GetUsernamePassword(); err == nil {
+		creds.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
+		creds.Resource = authSettings.Environment.ResourceIdentifiers.KeyVault
+
 		token, err := creds.ServicePrincipalToken()
 		if err != nil {
 			return nil, err
@@ -184,14 +193,14 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (AzureKeyVaultCredentials, err
 		}
 		akvCreds.Token = token
 		return akvCreds, nil
-	} else {
-		token, err := adal.NewServicePrincipalTokenFromMSI(msiEndpoint, msi.Resource)
-		if err != nil {
-			return nil, err
-		}
-		akvCreds.Token = token
-		return akvCreds, nil
 	}
+
+	token, err := adal.NewServicePrincipalTokenFromMSI(msiEndpoint, msi.Resource)
+	if err != nil {
+		return nil, err
+	}
+	akvCreds.Token = token
+	return akvCreds, nil
 }
 
 func readCloudConfig(path string) (*cloudAuth.AzureAuthConfig, error) {
