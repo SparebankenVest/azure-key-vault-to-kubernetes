@@ -266,7 +266,7 @@ func main() {
 	var origCommand string
 	var origArgs []string
 
-	logLevel := viper.GetString("LOG_LEVEL")
+	logLevel := viper.GetString("env_injector_log_level")
 	setLogLevel(logLevel)
 	formatLogger()
 
@@ -281,7 +281,7 @@ func main() {
 	}
 
 	if config.namespace == "" {
-		logger.Fatalf("current namespace not provided in environment variable env_injector_pod_namespace")
+		logger.Fatalf("current namespace not provided in environment variable ENV_INJECTOR_POD_NAMESPACE")
 	}
 
 	logger = logger.WithFields(log.Fields{
