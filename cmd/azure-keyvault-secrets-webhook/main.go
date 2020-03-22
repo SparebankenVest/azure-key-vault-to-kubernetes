@@ -46,7 +46,6 @@ const (
 )
 
 type azureKeyVaultConfig struct {
-	customAuth                     bool
 	namespace                      string
 	aadPodBindingLabel             string
 	dockerPullTimeout              int
@@ -130,7 +129,6 @@ func initConfig() {
 	viper.SetDefault("custom_docker_pull_timeout", 120)
 	viper.SetDefault("client_cert_secret_name", "akv2k8s-client-cert")
 	viper.SetDefault("use_auth_service", true)
-	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
 	viper.AutomaticEnv()
 }
 
@@ -178,7 +176,6 @@ func main() {
 	setLogLevel(logLevel)
 
 	config = azureKeyVaultConfig{
-		customAuth:           viper.GetBool("custom_auth"),
 		dockerPullTimeout:    viper.GetInt("custom_docker_pull_timeout"),
 		serveMetrics:         viper.GetBool("metrics_enabled"),
 		metricsAddress:       viper.GetString("metrics_addr"),

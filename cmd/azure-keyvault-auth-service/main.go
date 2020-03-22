@@ -67,23 +67,9 @@ func initConfig() {
 	viper.AutomaticEnv()
 }
 
-type oauthToken struct {
-	Token           string `json:"token"`
-	EndpointPartial string `json:"endpointPartial"`
-}
-
 // accept a client certificate for authentication (which is be provided by init-container)
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		creds := config.credentials
-		// if err != nil {
-		// 	log.Errorf("failed to get azure token, err: %+v", err)
-		// 	http.Error(w, "failed to get azure token", http.StatusNotFound)
-		// 	return
-		// }
-
-		// tokenResp := oauthToken{Token: token}
-
 		host := ""
 		hosts, ok := r.URL.Query()["host"]
 		if !ok || len(hosts[0]) < 1 {
@@ -97,7 +83,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 		log.Infof("served oauth token to '%s' at address '%s'", host, r.RemoteAddr)
 
-		if err := json.NewEncoder(w).Encode(creds); err != nil {
+		if err := json.NewEncoder(w).Encode(config.credentials); err != nil {
 			log.Errorf("failed to json encode token, error: %+v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
