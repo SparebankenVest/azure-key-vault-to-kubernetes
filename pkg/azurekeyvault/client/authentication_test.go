@@ -46,6 +46,8 @@ func ensureIntegrationEnvironment(t *testing.T) {
 }
 
 func TestChinaCloud(t *testing.T) {
+	ensureIntegrationEnvironment(t)
+
 	os.Setenv("AZURE_ENVIRONMENT", "AzureChinaCloud")
 
 	creds, err := NewAzureKeyVaultCredentialsFromEnvironment()
@@ -53,8 +55,13 @@ func TestChinaCloud(t *testing.T) {
 		t.Error(err)
 	}
 
-	if creds.Endpoint("test") != "https://test.vault.azure.cn/" {
-		t.Errorf("Endpoint incorrect. Exprected '%s', but got '%s'", "https://test.vault.azure.cn/", creds.Endpoint("test"))
+	token := creds.(*azureKeyVaultCredentials).Token
+	token.Refresh()
+
+	t.Log(token)
+
+	if token.Token().Resource != azure.ChinaCloud.ResourceIdentifiers.KeyVault {
+		t.Errorf("Endpoint incorrect. Expected '%s', but got '%s'", azure.ChinaCloud.ResourceIdentifiers.KeyVault, token.Token().Resource)
 	}
 }
 
@@ -70,7 +77,7 @@ func TestAudience(t *testing.T) {
 	token.Refresh()
 	t.Log(token.Token().Resource)
 
-	if creds.(*azureKeyVaultCredentials).Token.Token().Resource != azure.PublicCloud.ResourceIdentifiers.KeyVault {
+	if token.Token().Resource != azure.PublicCloud.ResourceIdentifiers.KeyVault {
 		t.Error()
 	}
 }
