@@ -139,11 +139,13 @@ spec:
           ports:
           - name: auth
             containerPort: {{ .Values.authService.port.internalPort }}
-          readinessProbe:
-            httpGet:
-              scheme: HTTPS
-              path: /healthz
-              port: {{ .Values.authService.port.internalPort }}
+          # Todo
+          # readinessProbe:
+          #   httpGet:
+          #     scheme: HTTPS
+          #     port: 8443
+          #     path: /healthz
+          #     port: {{ .Values.authService.port.internalPort }}
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
