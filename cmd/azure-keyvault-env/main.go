@@ -265,6 +265,7 @@ func main() {
 
 	var origCommand string
 	var origArgs []string
+	var err error
 
 	logLevel := viper.GetString("env_injector_log_level")
 	setLogLevel(logLevel)
@@ -297,7 +298,7 @@ func main() {
 	if len(os.Args) == 1 {
 		logger.Fatal("no command is given, currently vault-env can't determine the entrypoint (command), please specify it explicitly")
 	} else {
-		origCommand, err := exec.LookPath(os.Args[1])
+		origCommand, err = exec.LookPath(os.Args[1])
 		if err != nil {
 			logger.Fatalf("binary not found: %+v", err)
 		}
