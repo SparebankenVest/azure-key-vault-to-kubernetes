@@ -30,13 +30,11 @@
 
 ---
 
-## Azure Key Vault To Kubernetes  
+*Project status: Stable - multipal financial institutions are running this project on production Kubernetes clusters*
 
-Project status: Stable - multipal financial institutions are running this project on production Kubernetes clusters
+*Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubernetes-931f82364354*
 
-Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubernetes-931f82364354
-
-**Full documentation available at https://akv2k8s.io**
+*Full documentation available at https://akv2k8s.io*
 
 ## Overview
 
