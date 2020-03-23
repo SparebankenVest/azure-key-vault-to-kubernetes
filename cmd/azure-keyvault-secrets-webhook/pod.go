@@ -137,11 +137,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 		} else {
 			log.Infof("did not find credentials to use with registry '%s' - getting default credentials", registryName)
 			// todo: acr is azure specific
-			tmp, err := getAcrCredentials(registryName)
-			if err != nil {
-				return false, false, err
-			}
-			regCred = *tmp
+			regCred, ok = getAcrCredentials(registryName)
 		}
 
 		autoArgs, err := getContainerCmd(container, regCred)

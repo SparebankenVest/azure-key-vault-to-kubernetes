@@ -21,7 +21,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -173,11 +172,11 @@ func getRegistryCreds(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (
 	return creds, nil
 }
 
-func getAcrCredentials(host string) (*types.DockerAuthConfig, error) {
+func getAcrCredentials(host string) (types.DockerAuthConfig, bool) {
 	isAcr, wildcardHost := hostIsAzureContainerRegistry(host)
 
 	if !isAcr {
-		return nil, errors.New("registry host '%s' is not a acr registry")
+		return types.DockerAuthConfig{}, false
 	}
 
 	conf := azure.NewACRProvider(&config.cloudConfigHostPath)
@@ -185,14 +184,14 @@ func getAcrCredentials(host string) (*types.DockerAuthConfig, error) {
 		dockerConfList := conf.Provide()
 		if len(dockerConfList) > 0 {
 			dockerConf := dockerConfList[wildcardHost]
-			return &types.DockerAuthConfig{
+			return types.DockerAuthConfig{
 				Username: dockerConf.Username,
 				Password: dockerConf.Password,
-			}, nil
+			}, true
 		}
 	}
 
-	return nil, fmt.Errorf("unable to find acr credentials for %s", host)
+	return types.DockerAuthConfig{}, false
 }
 
 func hostIsAzureContainerRegistry(host string) (bool, string) {
