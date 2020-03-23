@@ -127,7 +127,6 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 func initConfig() {
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
 	viper.SetDefault("custom_docker_pull_timeout", 120)
-	viper.SetDefault("client_cert_secret_name", "akv2k8s-client-cert")
 	viper.SetDefault("use_auth_service", true)
 	viper.AutomaticEnv()
 }
