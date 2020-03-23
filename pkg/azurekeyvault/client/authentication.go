@@ -1,15 +1,19 @@
 package client
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"strings"
 
-	"github.com/Azure/go-autorest/autorest"
+	"golang.org/x/crypto/pkcs12"
 	"gopkg.in/yaml.v2"
 
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
+	"github.com/Azure/go-autorest/autorest/azure"
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
 	cloudAuth "k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth"
 )
@@ -81,17 +85,16 @@ func createAuthorizerFromOAuthToken(token string) (autorest.Authorizer, error) {
 
 // NewAzureKeyVaultCredentialsFromCloudConfig gets a credentials object from cloud config to use with Azure Key Vault
 func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (AzureKeyVaultCredentials, error) {
-	config, err := readCloudConfig(cloudConfigPath)
-	if err != nil {
-		return nil, err
-	}
-
 	authSettings, err := azureAuth.GetSettingsFromEnvironment()
 	if err != nil {
 		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
 	}
 
-	token, err := cloudAuth.GetServicePrincipalToken(config, &authSettings.Environment)
+	token, err := getServicePrincipalTokenFromCloudConfig(cloudConfigPath, authSettings.Environment)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting service principal token, err: %+v", err)
+	}
+
 	resourceSplit := strings.SplitAfterN(authSettings.Environment.ResourceIdentifiers.KeyVault, "https://", 2)
 	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
 
@@ -196,6 +199,66 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (AzureKeyVaultCredentials, err
 	return akvCreds, nil
 }
 
+func getServicePrincipalTokenFromCloudConfig(cloudConfigPath string, env azure.Environment) (*adal.ServicePrincipalToken, error) {
+	config, err := readCloudConfig(cloudConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed reading cloud config, error: %+v", err)
+	}
+
+	if config.UseManagedIdentityExtension {
+		// klog.V(2).Infoln("azure: using managed identity extension to retrieve access token")
+		msiEndpoint, err := adal.GetMSIVMEndpoint()
+		if err != nil {
+			return nil, fmt.Errorf("failed getting the managed service identity endpoint: %+v", err)
+		}
+
+		if len(config.UserAssignedIdentityID) > 0 {
+			// klog.V(4).Info("azure: using User Assigned MSI ID to retrieve access token")
+			return adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(msiEndpoint,
+				env.ResourceIdentifiers.KeyVault,
+				config.UserAssignedIdentityID)
+		}
+		// klog.V(4).Info("azure: using System Assigned MSI to retrieve access token")
+		return adal.NewServicePrincipalTokenFromMSI(
+			msiEndpoint,
+			env.ResourceIdentifiers.KeyVault)
+	}
+
+	oauthConfig, err := adal.NewOAuthConfig(env.ActiveDirectoryEndpoint, config.TenantID)
+	if err != nil {
+		return nil, fmt.Errorf("creating the OAuth config: %v", err)
+	}
+
+	if len(config.AADClientSecret) > 0 {
+		// klog.V(2).Infoln("azure: using client_id+client_secret to retrieve access token")
+		return adal.NewServicePrincipalToken(
+			*oauthConfig,
+			config.AADClientID,
+			config.AADClientSecret,
+			env.ResourceIdentifiers.KeyVault)
+	}
+
+	if len(config.AADClientCertPath) > 0 && len(config.AADClientCertPassword) > 0 {
+		// klog.V(2).Infoln("azure: using jwt client_assertion (client_cert+client_private_key) to retrieve access token")
+		certData, err := ioutil.ReadFile(config.AADClientCertPath)
+		if err != nil {
+			return nil, fmt.Errorf("reading the client certificate from file %s: %v", config.AADClientCertPath, err)
+		}
+		certificate, privateKey, err := decodePkcs12(certData, config.AADClientCertPassword)
+		if err != nil {
+			return nil, fmt.Errorf("decoding the client certificate: %v", err)
+		}
+		return adal.NewServicePrincipalTokenFromCertificate(
+			*oauthConfig,
+			config.AADClientID,
+			certificate,
+			privateKey,
+			env.ResourceIdentifiers.KeyVault)
+	}
+
+	return nil, fmt.Errorf("No credentials provided for AAD application %s", config.AADClientID)
+}
+
 func readCloudConfig(path string) (*cloudAuth.AzureAuthConfig, error) {
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -207,4 +270,17 @@ func readCloudConfig(path string) (*cloudAuth.AzureAuthConfig, error) {
 		return nil, fmt.Errorf("Unmarshall error: %v", err)
 	}
 	return &azureConfig, nil
+}
+
+func decodePkcs12(pkcs []byte, password string) (*x509.Certificate, *rsa.PrivateKey, error) {
+	privateKey, certificate, err := pkcs12.Decode(pkcs, password)
+	if err != nil {
+		return nil, nil, fmt.Errorf("decoding the PKCS#12 client certificate: %v", err)
+	}
+	rsaPrivateKey, isRsaKey := privateKey.(*rsa.PrivateKey)
+	if !isRsaKey {
+		return nil, nil, fmt.Errorf("PKCS#12 certificate must contain a RSA private key")
+	}
+
+	return certificate, rsaPrivateKey, nil
 }
