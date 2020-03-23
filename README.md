@@ -1,13 +1,35 @@
-# Azure Key Vault To Kubernetes <img src="akv2k8s_small.png" width="48" align="right" /> 
+<p align="center"><img src="akv2k8s_small.png" width="120" align="right" /></p>
+<p align="center">
 
-[![Build Status](https://img.shields.io/github/workflow/status/sparebankenvest/azure-key-vault-to-kubernetes/build?style=flat&label=build)](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat)](https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes)
+  <a href="https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/actions">
+    <img src="https://img.shields.io/github/workflow/status/sparebankenvest/azure-key-vault-to-kubernetes/build?style=flat&label=build" alt="Build Status">
+  </a>
 
-[![Release](https://img.shields.io/github/v/release/sparebankenvest/azure-key-vault-to-kubernetes?sort=semver&style=flat&label=latest%20release)](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/releases/latest)
-[![Tag](https://img.shields.io/github/v/tag/sparebankenvest/azure-key-vault-to-kubernetes?style=flat&label=latest%20tag)](https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/releases/latest)
+  <a href="https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes">
+    <img src="https://goreportcard.com/badge/github.com/SparebankenVest/azure-key-vault-to-kubernetes?style=flat" alt="Go Report Card">
+  </a>
+ 
+  <a href="https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/releases/latest">
+    <img src="https://img.shields.io/github/v/release/sparebankenvest/azure-key-vault-to-kubernetes?sort=semver&style=flat&label=latest%20release" alt="Release">
+  </a>
 
-![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-controller?label=controller%20downloads&style=flat)
-![Docker Pulls](https://img.shields.io/docker/pulls/spvest/azure-keyvault-webhook?label=env-injector%20downloads&style=flat)
+  <a href="https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/releases/latest">
+    <img src="https://img.shields.io/github/v/tag/sparebankenvest/azure-key-vault-to-kubernetes?style=flat&label=latest%20tag" alt="Tag">
+  </a>
+
+  <a href="https://hub.docker.com/r/spvest/azure-keyvault-controller">
+    <img src="https://img.shields.io/docker/pulls/spvest/azure-keyvault-controller?label=controller%20downloads&style=flat" alt="Docker Pulls">
+  </a>
+
+  <a href="https://hub.docker.com/r/spvest/azure-keyvault-webhook">
+    <img src="https://img.shields.io/docker/pulls/spvest/azure-keyvault-webhook?label=env-injector%20downloads&style=flat" alt="Docker Pulls">
+  </a>
+
+<p>
+
+---
+
+## Azure Key Vault To Kubernetes  
 
 Project status: Stable - multipal financial institutions are running this project on production Kubernetes clusters
 
