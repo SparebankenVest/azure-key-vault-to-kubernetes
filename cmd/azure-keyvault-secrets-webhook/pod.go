@@ -20,6 +20,7 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/containers/image/v5/types"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -87,8 +88,8 @@ func getVolumes(useAuthService bool) []corev1.Volume {
 	return volumes
 }
 
-func mutateContainers(containers []corev1.Container, creds map[string]string) (bool, bool, error) {
-	var err error
+func mutateContainers(containers []corev1.Container, creds map[string]types.DockerAuthConfig) (bool, bool, error)  {
+
 	mutated := false
 	anyUseAuthService := config.useAuthService
 
@@ -108,7 +109,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 
 			if strings.ToUpper(env.Name) == "ENV_INJECTOR_USE_AUTH_SERVICE" {
 				containerOverrideAuthService = true
-				containerUseAuthService, err = strconv.ParseBool(env.Value)
+				containerUseAuthService, err := strconv.ParseBool(env.Value)
 				if err != nil {
 					return false, false, fmt.Errorf("failed to parse container env var override for auth service (%s), error: %+v", config.nameLocallyOverrideAuthService, err)
 				}
@@ -136,7 +137,11 @@ func mutateContainers(containers []corev1.Container, creds map[string]string) (b
 		} else {
 			log.Infof("did not find credentials to use with registry '%s' - getting default credentials", registryName)
 			// todo: acr is azure specific
-			regCred, ok = getAcrCreds(registryName)
+			tmp, err := getAcrCredentials(registryName)
+			if err != nil{
+				return false, false, err
+			}
+			regCred = *tmp
 		}
 
 		autoArgs, err := getContainerCmd(container, regCred)

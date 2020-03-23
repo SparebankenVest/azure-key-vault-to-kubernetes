@@ -128,6 +128,9 @@ func initConfig() {
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
 	viper.SetDefault("custom_docker_pull_timeout", 120)
 	viper.SetDefault("use_auth_service", true)
+	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
+	viper.SetDefault("metrics_addr", ":80")
+
 	viper.AutomaticEnv()
 }
 
@@ -188,10 +191,6 @@ func main() {
 		authServiceName:      viper.GetString("webhook_auth_service"),
 		authServicePort:      viper.GetString("webhook_auth_service_port"),
 		cloudConfigHostPath:  viper.GetString("cloud_config_host_path"),
-	}
-
-	if config.metricsAddress == "" {
-		config.metricsAddress = ":80"
 	}
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
