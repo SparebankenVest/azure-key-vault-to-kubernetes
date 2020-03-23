@@ -1,4 +1,5 @@
-<p align="center"><img src="akv2k8s_small.png" width="120" align="right" /></p>
+<p align="center"><img src="akv2k8s.png" width="300" /></p>
+<h2 align="center">Azure Key Vault to Kubernetes</h2>
 <p align="center">
 
   <a href="https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/actions">
