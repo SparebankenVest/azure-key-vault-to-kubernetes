@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"time"
 
@@ -31,11 +30,10 @@ import (
 	"github.com/containers/image/v5/types"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth"
+	"k8s.io/kubernetes/pkg/credentialprovider/azure"
 )
 
 func getContainerCmd(container corev1.Container, creds types.DockerAuthConfig) ([]string, error) {
@@ -176,35 +174,32 @@ func getRegistryCreds(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (
 }
 
 func getAcrCredentials(host string) (*types.DockerAuthConfig, error) {
-	if !hostIsAzureContainerRegistry(host) {
+	isAcr, wildcardHost := hostIsAzureContainerRegistry(host)
+
+	if !isAcr {
 		return nil, errors.New("registry host '%s' is not a acr registry")
 	}
 
-	bytes, err := ioutil.ReadFile(config.cloudConfigHostPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read azure.json to get default credentials, error: %v", err)
-	}
-
-	azureConfig := auth.AzureAuthConfig{}
-	if err = yaml.Unmarshal(bytes, &azureConfig); err != nil {
-		return nil, fmt.Errorf("failed to unmarshall azure config, error: %v", err)
-	}
-
-	// in case there was no cred than we try unauthenticated.
-	// I hope a this is the same as &types.DockerAuthConfig{}
-	// when both values are ""
-	return &types.DockerAuthConfig{
-		Username: azureConfig.AADClientID,
-		Password: azureConfig.AADClientSecret,
-	}, nil
-
-}
-
-func hostIsAzureContainerRegistry(host string) bool {
-	for _, v := range []string{".azurecr.io", ".azurecr.cn", ".azurecr.de", ".azurecr.us"} {
-		if strings.HasSuffix(host, v) {
-			return true
+	conf := azure.NewACRProvider(&config.cloudConfigHostPath)
+	if conf.Enabled() {
+		dockerConfList := conf.Provide()
+		if len(dockerConfList) > 0 {
+			dockerConf := dockerConfList[wildcardHost]
+			return &types.DockerAuthConfig{
+				Username: dockerConf.Username,
+				Password: dockerConf.Password,
+			}, nil
 		}
 	}
-	return false
+
+	return nil, fmt.Errorf("unable to find acr credentials for %s", host)
+}
+
+func hostIsAzureContainerRegistry(host string) (bool, string) {
+	for _, v := range []string{".azurecr.io", ".azurecr.cn", ".azurecr.de", ".azurecr.us"} {
+		if strings.HasSuffix(host, v) {
+			return true, fmt.Sprintf("*%s", v)
+		}
+	}
+	return false, ""
 }

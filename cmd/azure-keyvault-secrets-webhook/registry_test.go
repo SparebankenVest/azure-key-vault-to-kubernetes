@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/containers/image/v5/types"
 	"github.com/ghodss/yaml"
 	log "github.com/sirupsen/logrus"
-	"testing"
 )
 
 func TestDockerPull(t *testing.T) {
