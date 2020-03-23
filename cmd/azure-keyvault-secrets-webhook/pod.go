@@ -20,13 +20,13 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/containers/image/v5/types"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/containers/image/v5/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
@@ -88,7 +88,7 @@ func getVolumes(useAuthService bool) []corev1.Volume {
 	return volumes
 }
 
-func mutateContainers(containers []corev1.Container, creds map[string]types.DockerAuthConfig) (bool, bool, error)  {
+func mutateContainers(containers []corev1.Container, creds map[string]types.DockerAuthConfig) (bool, bool, error) {
 
 	mutated := false
 	anyUseAuthService := config.useAuthService
@@ -138,7 +138,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 			log.Infof("did not find credentials to use with registry '%s' - getting default credentials", registryName)
 			// todo: acr is azure specific
 			tmp, err := getAcrCredentials(registryName)
-			if err != nil{
+			if err != nil {
 				return false, false, err
 			}
 			regCred = *tmp

@@ -15,7 +15,6 @@ require (
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/gogo/protobuf v1.3.1 // indirect
-
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/opencontainers/image-spec v1.0.2-0.20190823105129-775207bd45b6
 	github.com/prometheus/client_golang v1.1.0
@@ -23,8 +22,6 @@ require (
 	github.com/slok/kubewebhook v0.4.0
 	github.com/spf13/viper v1.4.0
 	golang.org/x/crypto v0.0.0-20200214034016-1d94cc7ab1c6
-	golang.org/x/net v0.0.0-20200320220750-118fecf932d8 // indirect
-	golang.org/x/sys v0.0.0-20200321134203-328b4cd54aae // indirect
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0-20191004102255-dacd7df5a50b
 	k8s.io/apimachinery v0.0.0-20191004074956-01f8b7d1121a

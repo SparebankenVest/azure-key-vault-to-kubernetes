@@ -2,3 +2,4 @@ bin
 debug.test
 .vscode
 /vendor/
+*.tmp

@@ -23,13 +23,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/opencontainers/image-spec/specs-go/v1"
 	"io/ioutil"
 	"strings"
 	"time"
 
 	"github.com/containers/image/v5/transports/alltransports"
 	"github.com/containers/image/v5/types"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -45,8 +45,8 @@ func getContainerCmd(container corev1.Container, creds types.DockerAuthConfig) (
 	// https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
 	if len(cmd) == 0 {
 		opts := imageOptions{
-			image:        container.Image,
-			credentials:  creds,
+			image:       container.Image,
+			credentials: creds,
 		}
 
 		config, err := opts.getConfigFromManifest()
@@ -73,7 +73,7 @@ type imageOptions struct {
 	osChoice     string
 }
 
-func(opts *imageOptions) getConfigFromManifest () (*v1.Image, error) {
+func (opts *imageOptions) getConfigFromManifest() (*v1.Image, error) {
 	log.Infof("timeout: %v", config.dockerPullTimeout)
 	timeout := time.Duration(config.dockerPullTimeout) * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
