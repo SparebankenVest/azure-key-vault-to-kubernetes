@@ -44,6 +44,7 @@ type azureKeyVaultConfig struct {
 	keyFile             string
 	caFile              string
 	port                string
+	healthzPort         string
 }
 
 var config azureKeyVaultConfig
@@ -64,6 +65,7 @@ func initConfig() {
 	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
 	viper.SetDefault("client_cert_secret_name", "akv2k8s-client-cert")
 	viper.SetDefault("port", "8443")
+	viper.SetDefault("healthz_port", "3000")
 	viper.AutomaticEnv()
 }
 
@@ -101,6 +103,15 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func serveHealthz() {
+	healthzMux := http.NewServeMux()
+	healthzMux.HandleFunc("/healthz", healthHandler)
+	err := http.ListenAndServeTLS(fmt.Sprintf(":%s", config.healthzPort), config.certFile, config.keyFile, healthzMux)
+	if err != nil {
+		log.Fatalf("error serving metrics: %s", err)
+	}
+}
+
 func main() {
 	fmt.Fprintln(os.Stdout, "initializing config...")
 	initConfig()
@@ -116,6 +127,7 @@ func main() {
 		keyFile:             viper.GetString("tls_private_key_file"),
 		caFile:              viper.GetString("tls_ca_file"),
 		port:                viper.GetString("port"),
+		healthzPort:         viper.GetString("healthz_port"),
 	}
 
 	var err error
@@ -147,7 +159,10 @@ func main() {
 
 	authMux := http.NewServeMux()
 	authMux.HandleFunc("/auth", authHandler)
-	authMux.HandleFunc("/healthz", healthHandler)
+
+	// need to serve health endpoint on a different port
+	// to avoid client cert requirement
+	go serveHealthz()
 
 	authServer := &http.Server{
 		Addr:      fmt.Sprintf(":%s", config.port),
