@@ -122,14 +122,6 @@ func (c AzureKeyVaultOAuthCredentials) Endpoint(keyVaultName string) string {
 	return fmt.Sprintf(c.EndpointPartial, keyVaultName)
 }
 
-// // NewAzureKeyVaultCredentialsFromOauthToken gets a credentials object from a oauth token to use with Azure Key Vault
-// func NewAzureKeyVaultCredentialsFromOauthToken(data []byte) (AzureKeyVaultCredentials, error) {
-// 	var creds AzureKeyVaultOAuthCredentials
-// 	json.Unmarshal(data, &creds)
-
-// 	return creds, nil
-// }
-
 // NewAzureKeyVaultCredentialsFromEnvironment creates a credentials object based on available environment settings to use with Azure Key Vault
 func NewAzureKeyVaultCredentialsFromEnvironment() (AzureKeyVaultCredentials, error) {
 	authSettings, err := azureAuth.GetSettingsFromEnvironment()
@@ -152,6 +144,7 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (AzureKeyVaultCredentials, err
 		if err != nil {
 			return nil, err
 		}
+
 		akvCreds.Token = token
 		return akvCreds, nil
 	}
