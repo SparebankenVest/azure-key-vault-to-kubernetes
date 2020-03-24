@@ -32,8 +32,6 @@
 
 <p align="center"><i>Documentation available at <a href="https://akv2k8s.io">https://akv2k8s.io</a></i></p> 
 
----
-
 ## Overview
 
 Azure Key Vault to Kubernetes (akv2k8s) has two components for handling Azure Key Vault Secrets in Kubernetes:
