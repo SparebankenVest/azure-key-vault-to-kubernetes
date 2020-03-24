@@ -1,5 +1,5 @@
 <p align="center"><img src="akv2k8s.png" width="300" /></p>
-<h2 align="center">Azure Key Vault to Kubernetes</h2>
+<h1 align="center">Azure Key Vault to Kubernetes</h1>
 <p align="center">
 
   <a href="https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/actions">
@@ -27,14 +27,12 @@
   </a>
 
 <p>
+  
+<p align="center"><i>Azure Key Vault to Kubernetes (akv2k8s) makes Azure Key Vault secrets, certificates and keys available to your applications in Kubernetes, in a simple and secure way.</i></p> 
+
+<p align="center"><i>Documentation available at <a href="https://akv2k8s.io">https://akv2k8s.io</a></i></p> 
 
 ---
-
-*Project status: Stable - multipal financial institutions are running this project on production Kubernetes clusters*
-
-*Read the announcement: https://mrdevops.io/introducing-azure-key-vault-to-kubernetes-931f82364354*
-
-*Full documentation available at https://akv2k8s.io*
 
 ## Overview
 
