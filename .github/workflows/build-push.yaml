@@ -45,7 +45,7 @@ jobs:
         kubectl create ns akv2k8s
         HELM_V3=3.0.2
         echo "downloading helm ${HELM_V3}"
-        curl -sSL https://get.helm.sh/helm-v${HELM_V3}-linux-amd64.tar.gz
+        curl -sSL https://get.helm.sh/helm-v${HELM_V3}-linux-amd64.tar.gz | tar xz 
         ./linux-amd64/helm version
         ./linux-amd64/helm repo add spv-charts http://charts.spvapi.no
         ./linux-amd64/helm repo update
