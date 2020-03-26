@@ -6,6 +6,7 @@ on:
     - master
     paths:
     - '.github/workflows/**'
+    - 'Makefile'
     - 'go.mod'
     - 'go.sum'
     - 'cmd/**'
