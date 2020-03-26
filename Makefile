@@ -28,7 +28,7 @@ fmt:
 fmtcheck:
 	$(CURDIR)/scripts/gofmtcheck.sh
 
-build: build-controller build-webhook build-auth-service build-vaultenv
+build: build-controller build-webhook build-vaultenv
 
 build-controller:
 	docker build . -t $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) -f images/controller/Dockerfile --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
