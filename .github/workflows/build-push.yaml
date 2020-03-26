@@ -33,6 +33,37 @@ jobs:
         docker login -u ${{secrets.PUBLIC_REGISTRY_USERNAME}} -p ${{secrets.PUBLIC_REGISTRY_PASSWORD}}
         make release DOCKER_RELEASE_TAG=${GITHUB_REF##*/}
 
+    - name: Setup Kind
+      uses: engineerd/setup-kind@v0.3.0
+      with:
+          image: "kindest/node:v1.13.7"
+
+    - name: 'Deploy'
+      uses: 'deliverybot/helm@v3.0.0'
+      with:
+        helm: helm3
+        repository: http://charts.spvapi.no
+        chart: azure-key-vault-env-injector
+        chart_version: 1.1.0-beta.12
+        release: azure-key-vault-env-injector
+        namespace: akv2k8s
+        values: |
+          installCrd: true
+          keyVault:
+            customAuth:
+              enabled: true
+          image:
+            tag: ${GITHUB_REF##*/}
+          envImage:
+            tag: ${GITHUB_REF##*/}
+          authService:
+            image:
+              tag: ${GITHUB_REF##*/}
+          env:
+            AZURE_TENANT_ID: ${{secrets.AKV_TEST_TENANT_ID}}
+            AZURE_CLIENT_ID: ${{secrets.AKV_TEST_CLIENT_ID}}
+            AZURE_CLIENT_SECRET: ${{secrets.AKV_TEST_CLIENT_SECRET}}
+
     - name: Push images to private repo
       run: |
         docker login -u ${{secrets.PRIVATE_REGISTRY_USERNAME}} -p ${{secrets.PRIVATE_REGISTRY_PASSWORD}} dokken.azurecr.io
