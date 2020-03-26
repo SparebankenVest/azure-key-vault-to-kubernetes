@@ -48,7 +48,7 @@ build-akv2k8s-env-test:
 test: fmtcheck
 	CGO_ENABLED=0 go test -v $(shell go list ./... | grep -v /pkg/k8s/)
 
-push: push-controller push-webhook push-auth-service push-vaultenv
+push: push-controller push-webhook push-vaultenv
 
 push-controller:
 	docker push $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG)
@@ -73,10 +73,10 @@ push-akv2k8s-env-test:
 pull-release:
 	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) 
 	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG) 
-	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_AUTH_SERVICE_IMAGE):$(DOCKER_INTERNAL_TAG) 
+	# docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_AUTH_SERVICE_IMAGE):$(DOCKER_INTERNAL_TAG) 
 	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) 
 
-release: release-controller release-webhook release-auth-service release-vaultenv
+release: release-controller release-webhook release-vaultenv
 
 release-controller:
 	docker tag $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_RELEASE_TAG)
