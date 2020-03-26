@@ -19,10 +19,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -33,8 +36,11 @@ import (
 	whcontext "github.com/slok/kubewebhook/pkg/webhook/context"
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -46,12 +52,14 @@ const (
 )
 
 type azureKeyVaultConfig struct {
+	port                           string
+	customAuth                     bool
 	namespace                      string
 	aadPodBindingLabel             string
 	dockerPullTimeout              int
 	cloudConfigHostPath            string
 	serveMetrics                   bool
-	metricsAddress                 string
+	metricsPort                    string
 	certFile                       string
 	keyFile                        string
 	caFile                         string
@@ -62,6 +70,8 @@ type azureKeyVaultConfig struct {
 	nameLocallyOverrideAuthService string
 	authServiceName                string
 	authServicePort                string
+	kubeClient                     *kubernetes.Clientset
+	credentials                    vault.AzureKeyVaultCredentials
 }
 
 var config azureKeyVaultConfig
@@ -126,10 +136,11 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 
 func initConfig() {
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
-	viper.SetDefault("custom_docker_pull_timeout", 120)
+	viper.SetDefault("custom_docker_pull_timeout", 20)
 	viper.SetDefault("use_auth_service", true)
 	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
-	viper.SetDefault("metrics_addr", ":80")
+	viper.SetDefault("metrics_port", "80")
+	viper.SetDefault("port", "443")
 
 	viper.AutomaticEnv()
 }
@@ -150,6 +161,42 @@ func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, rec
 	return handler
 }
 
+func authHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		vars := mux.Vars(r)
+		pod := podData{
+			name:          vars["namespace"],
+			namespace:     vars["pod"],
+			remoteAddress: r.RemoteAddr,
+		}
+
+		if pod.name == "" || pod.namespace == "" {
+			log.Errorf("failed to parse url parameters, pod='%s', namespace='%s'", pod.name, pod.namespace)
+			http.Error(w, "", http.StatusBadRequest)
+		}
+
+		err := authorize(config.kubeClient, pod)
+
+		if err != nil {
+			log.Errorf("failed to authorize request: %+v", err)
+			http.Error(w, "", http.StatusForbidden)
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+
+		log.Infof("served oauth token to '%s/%s' at address '%s'", pod.namespace, pod.name, r.RemoteAddr)
+
+		if err := json.NewEncoder(w).Encode(config.credentials); err != nil {
+			log.Errorf("failed to json encode token, error: %+v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	} else {
+		log.Error("invalid request method")
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	}
+}
+
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		w.WriteHeader(http.StatusOK)
@@ -159,11 +206,11 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveMetrics() {
-	log.Infof("Metrics at http://%s", config.metricsAddress)
+	log.Infof("Metrics at http://%s:", config.metricsPort)
 
 	metricMux := http.NewServeMux()
 	metricMux.Handle("/metrics", promhttp.Handler())
-	err := http.ListenAndServe(config.metricsAddress, metricMux)
+	err := http.ListenAndServe(fmt.Sprintf(":%s", config.metricsPort), metricMux)
 	if err != nil {
 		log.Fatalf("error serving metrics: %s", err)
 	}
@@ -178,9 +225,11 @@ func main() {
 	setLogLevel(logLevel)
 
 	config = azureKeyVaultConfig{
+		port:                 viper.GetString("port"),
+		customAuth:           viper.GetBool("custom_auth"),
 		dockerPullTimeout:    viper.GetInt("custom_docker_pull_timeout"),
 		serveMetrics:         viper.GetBool("metrics_enabled"),
-		metricsAddress:       viper.GetString("metrics_addr"),
+		metricsPort:          viper.GetString("metrics_port"),
 		certFile:             viper.GetString("tls_cert_file"),
 		keyFile:              viper.GetString("tls_private_key_file"),
 		caFile:               viper.GetString("tls_ca_file"),
@@ -199,16 +248,40 @@ func main() {
 	internalLogger := &internalLog.Std{Debug: logLevel == "debug" || logLevel == "trace"}
 	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, metricsRecorder, internalLogger)
 
+	var err error
+	if config.customAuth {
+		config.credentials, err = vault.NewAzureKeyVaultCredentialsFromEnvironment()
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		config.credentials, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig(config.cloudConfigHostPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		log.Fatalf("failed to get kubernetes in cluster config, error: %+v", err)
+	}
+
+	config.kubeClient, err = kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Fatalf("Error building kubernetes clientset: %s", err.Error())
+	}
+
 	if config.serveMetrics {
 		go serveMetrics()
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle("/pods", podHandler)
-	mux.HandleFunc("/healthz", healthHandler)
+	router := mux.NewRouter()
+	router.Handle("/pods", podHandler)
+	router.HandleFunc("/auth/{namespace}/{pod}", authHandler)
+	router.HandleFunc("/healthz", healthHandler)
 
 	log.Infof("listening on :443")
-	err := http.ListenAndServeTLS(":443", config.certFile, config.keyFile, mux)
+	err = http.ListenAndServeTLS(fmt.Sprintf(":%s", config.port), config.certFile, config.keyFile, router)
 	if err != nil {
 		log.Fatalf("error serving webhook: %+v", err)
 	}

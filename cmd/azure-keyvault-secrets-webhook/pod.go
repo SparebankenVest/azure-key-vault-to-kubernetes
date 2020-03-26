@@ -140,6 +140,10 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 			regCred, ok = getAcrCredentials(registryName)
 		}
 
+		if !ok {
+			log.Infof("did not find credentials to use with registry '%s' - skipping credentials", registryName)
+		}
+
 		autoArgs, err := getContainerCmd(container, regCred)
 		if err != nil {
 			return false, false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
