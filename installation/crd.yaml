@@ -77,3 +77,8 @@ spec:
                     dataKey:
                       type: string
                       description: The key to use in Kubernetes secret when setting the value from Azure Keyv Vault object data
+                    chainOrder:
+                      type: string
+                      description: Changes order of certificates
+                      enum:
+                      - ensureserverfirst

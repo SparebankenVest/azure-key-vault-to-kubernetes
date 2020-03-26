@@ -35,7 +35,7 @@ const (
 type Service interface {
 	GetSecret(secret *akvs.AzureKeyVault) (string, error)
 	GetKey(secret *akvs.AzureKeyVault) (string, error)
-	GetCertificate(secret *akvs.AzureKeyVault, exportPrivateKey bool) (*Certificate, error)
+	GetCertificate(secret *akvs.AzureKeyVault, options *CertificateOptions) (*Certificate, error)
 }
 
 type azureKeyVaultService struct {
@@ -47,6 +47,11 @@ func NewService(credentials AzureKeyVaultCredentials) Service {
 	return &azureKeyVaultService{
 		credentials: credentials,
 	}
+}
+
+type CertificateOptions struct {
+	ExportPrivateKey  bool
+	EnsureServerFirst bool
 }
 
 // GetSecret download secrets from Azure Key Vault
@@ -98,7 +103,7 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvs.AzureKeyVault) (string, er
 }
 
 // GetCertificate download public/private certificates from Azure Key Vault
-func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, exportPrivateKey bool) (*Certificate, error) {
+func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, options *CertificateOptions) (*Certificate, error) {
 	vaultClient, err := a.getClient()
 	if err != nil {
 		return nil, err
@@ -114,7 +119,7 @@ func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, exp
 		return nil, fmt.Errorf("failed to get certificate from azure key vault, error: %+v", err)
 	}
 
-	if exportPrivateKey {
+	if options.ExportPrivateKey {
 		if !*certBundle.Policy.KeyProperties.Exportable {
 			return nil, fmt.Errorf("cannot export private key because key is not exportable in azure key vault")
 		}
@@ -131,7 +136,10 @@ func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, exp
 			if err != nil {
 				return nil, fmt.Errorf("failed to decode base64 encoded pfx, error: %+v", err)
 			}
-			return NewCertificateFromPfx(pfxRaw)
+			if options.EnsureServerFirst {
+				return NewCertificateFromPfx(pfxRaw, true)
+			}
+			return NewCertificateFromPfx(pfxRaw, false)
 		default:
 			return nil, fmt.Errorf("failed to get certificate from azure key vault - unknown content type '%s'", *secretBundle.ContentType)
 		}
