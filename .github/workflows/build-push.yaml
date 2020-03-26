@@ -39,7 +39,7 @@ jobs:
           image: "kindest/node:v1.13.7"
 
     - name: 'Deploy'
-      uses: 'deliverybot/helm@v3.0.0'
+      uses: 'deliverybot/helm@v1'
       with:
         helm: helm3
         repository: http://charts.spvapi.no
