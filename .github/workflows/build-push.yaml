@@ -46,11 +46,10 @@ jobs:
         HELM_V3=3.0.2
         echo "downloading helm ${HELM_V3}"
         curl -sSL https://get.helm.sh/helm-v${HELM_V3}-linux-amd64.tar.gz | \
-        tar xz && mv linux-amd64/helm /usr/local/bin/helmv3 && rm -rf linux-amd64
-        helmv3 version
-        helmv3 repo add spv-charts http://charts.spvapi.no
-        helmv3 repo update
-        helmv3 upgrade --install azure-key-vault-env-injector spv-charts/azure-key-vault-env-injector \
+        ./linux-amd64/helm version
+        ./linux-amd64/helm repo add spv-charts http://charts.spvapi.no
+        ./linux-amd64/helm repo update
+        ./linux-amd64/helm upgrade --install azure-key-vault-env-injector spv-charts/azure-key-vault-env-injector \
           --namespace akv2k8s \
           --set keyVault.customAuth.enabled=true \
           --set env.AZURE_TENANT_ID=${{secrets.AKV_TEST_TENANT_ID}} \
