@@ -140,14 +140,6 @@ func createHTTPClientWithTrustedCA(host string) (*http.Client, error) {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	log.Debug("serving ca cert")
-	log.Debugf("%s", string(caCert))
-
-	log.Debugf("Number of subjects: %d", len(caCertPool.Subjects()))
-	for _, subj := range caCertPool.Subjects() {
-		log.Debugf("Subject: %s", subj)
-	}
-
 	tlsConf := &tls.Config{
 		RootCAs: caCertPool,
 	}
@@ -186,8 +178,12 @@ func getCredentials(useAuthService bool) (vault.AzureKeyVaultCredentials, error)
 		if err != nil {
 			logger.Fatalf("request token failed from %s, error: %+v", url, err)
 		}
-
 		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("failed to get credentials, %s", res.Status)
+		}
+
 		var creds vault.AzureKeyVaultOAuthCredentials
 		err = json.NewDecoder(res.Body).Decode(&creds)
 
