@@ -23,6 +23,9 @@ keyVault:
     # if used, secretName must not be set
     # podIdentitySelector: <selector name>
 
+authService:
+  enabled: true
+
 service:
   name: azure-keyvault-secrets-webhook
   type: ClusterIP
