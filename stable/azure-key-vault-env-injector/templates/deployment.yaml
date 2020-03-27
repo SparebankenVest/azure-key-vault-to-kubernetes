@@ -34,6 +34,8 @@ spec:
         - name: webhook
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           env:
+          - name: PORT
+            value: {{ .Values.service.internalPort | quote }}
           - name: TLS_CERT_FILE
             value: /var/serving-cert/servingCert
           - name: TLS_PRIVATE_KEY_FILE
@@ -42,22 +44,10 @@ spec:
             value: /var/serving-cert/caCert
           - name: USE_AUTH_SERVICE
             value: {{ .Values.authService.enabled | quote }}
-          {{- if .Values.authService.enabled }}
-          - name: TLS_CLIENT_FILE
-            value: /var/client-cert/clientCert
-          - name: TLS_CLIENT_KEY_FILE
-            value: /var/client-cert/clientKey
-            {{- if .Values.authService.clientCertSecretName }}
-          - name: CLIENT_CERT_SECRET_NAME
-            value: {{ .Values.authService.clientCertSecretName }}
-            {{- end }}
-          - name: WEBHOOK_AUTH_SERVICE
-            value: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
-          - name: WEBHOOK_AUTH_SERVICE_PORT
-            value: {{ .Values.authService.port.externalPort | quote }}
-          {{- end }}
           - name: AZUREKEYVAULT_ENV_IMAGE
             value: {{ .Values.envImage.repository }}:{{ .Values.envImage.tag }}
+          - name: CLOUD_CONFIG_HOST_PATH
+            value: {{ .Values.cloudConfigHostPath }}
           - name: CUSTOM_DOCKER_PULL_TIMEOUT
             value: {{ .Values.webhook.dockerPullTimeout | quote }}
           {{- if .Values.keyVault.customAuth.enabled }}
@@ -73,8 +63,8 @@ spec:
           - name: METRICS_ENABLED
             value: {{ .Values.metrics.enabled | quote }}
           {{- if .Values.metrics.enabled }}
-          - name: METRICS_ADDR
-            value: {{ .Values.metrics.address | quote }}
+          - name: METRICS_PORT
+            value: {{ .Values.metrics.port | quote }}
           {{- end }}
           {{- range $key, $value := .Values.env }}
           - name: {{ $key }}
@@ -87,6 +77,8 @@ spec:
           ports:
           - name: webhook
             containerPort: {{ .Values.service.internalPort }}
+          - name: metrics
+            containerPort: {{ .Values.metrics.port }}
           readinessProbe:
             httpGet:
               scheme: HTTPS
@@ -109,52 +101,6 @@ spec:
           {{- end }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
-        {{- if .Values.authService.enabled }}
-        - name: auth-service
-          image: "{{ .Values.authService.image.repository }}:{{ .Values.authService.image.tag }}"
-          env:
-          - name: PORT
-            value: {{ .Values.authService.port.internalPort | quote }}
-          - name: TLS_CERT_FILE
-            value: /var/serving-cert/servingCert
-          - name: TLS_PRIVATE_KEY_FILE
-            value: /var/serving-cert/servingKey
-          - name: TLS_CA_FILE
-            value: /var/serving-cert/caCert
-          - name: CUSTOM_AUTH
-            value: {{ .Values.keyVault.customAuth.enabled | quote }}
-          {{- if not .Values.keyVault.customAuth.enabled }}
-          - name: CLOUD_CONFIG_HOST_PATH
-            value: {{ .Values.authService.cloudConfigHostPath }}
-          {{- end }}
-          - name: LOG_LEVEL
-            value: {{ .Values.authService.logLevel | quote }}
-          {{- range $key, $value := .Values.env }}
-          - name: {{ $key }}
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "azure-key-vault-to-kubernetes.fullname" $dot }}-env
-                key: {{ $key }}
-          {{- end }}
-          ports:
-          - name: auth
-            containerPort: {{ .Values.authService.port.internalPort }}
-          # Todo
-          # readinessProbe:
-          #   httpGet:
-          #     scheme: HTTPS
-          #     port: 8443
-          #     path: /healthz
-          #     port: {{ .Values.authService.port.internalPort }}
-          volumeMounts:
-          - mountPath: /var/serving-cert
-            name: serving-cert
-          {{- if not .Values.keyVault.customAuth.enabled }}
-          - mountPath: /etc/kubernetes/azure.json
-            name: azureconf
-            readOnly: true
-          {{- end }}
-        {{- end}}
       volumes:
       - name: serving-cert
         secret:
@@ -164,10 +110,6 @@ spec:
         secret:
           defaultMode: 420
           secretName: {{ template "azure-key-vault-to-kubernetes.fullname" . }}-client
-      - name: dockersock
-        hostPath:
-          path: /var/run/docker.sock
-          type: File
       {{- if not .Values.keyVault.customAuth.enabled }}
       - name: azureconf
         hostPath:

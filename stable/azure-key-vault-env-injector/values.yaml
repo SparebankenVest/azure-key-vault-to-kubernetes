@@ -12,6 +12,8 @@ envImage:
   repository: spvest/azure-keyvault-env
   tag: 1.1.0-beta.24
 
+cloudConfigHostPath: /etc/kubernetes/azure.json
+
 keyVault:
   # Set to true to use custom auth - see https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/blob/master/README.md#authentication
   customAuth:
@@ -21,19 +23,6 @@ keyVault:
     # if used, secretName must not be set
     # podIdentitySelector: <selector name>
 
-authService:
-  enabled: true
-  logLevel: Info
-  image:
-    repository: spvest/azure-keyvault-auth-service
-    tag: 1.1.0-beta.24
-  port:
-    name: azure-keyvault-secrets-auth
-    externalPort: 8443
-    internalPort: 8443
-  clientCertSecretName: akv2k8s-client-cert
-  cloudConfigHostPath: /etc/kubernetes/azure.json
-
 service:
   name: azure-keyvault-secrets-webhook
   type: ClusterIP
@@ -42,7 +31,7 @@ service:
 
 metrics:
   enabled: false
-  metricsAddress: ":80"
+  port: "80"
 
 webhook:
   logLevel: Info
