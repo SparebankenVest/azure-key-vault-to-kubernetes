@@ -35,7 +35,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           env:
           - name: PORT
-            value: {{ .Values.service.internalPort | quote }}
+            value: {{ .Values.service.internalTlsPort | quote }}
           - name: TLS_CERT_FILE
             value: /var/serving-cert/servingCert
           - name: TLS_PRIVATE_KEY_FILE
@@ -48,7 +48,7 @@ spec:
           - name: WEBHOOK_AUTH_SERVICE
             value: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
           - name: WEBHOOK_AUTH_SERVICE_PORT
-            value: {{ .Values.service.externalPort | quote }}
+            value: {{ .Values.service.externalTlsPort | quote }}
           {{- end }}
           - name: CUSTOM_AUTH
             value: {{ .Values.keyVault.customAuth.enabled | quote }}
@@ -84,14 +84,14 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
           - name: webhook
-            containerPort: {{ .Values.service.internalPort }}
-          - name: metrics
-            containerPort: {{ .Values.metrics.port }}
+            containerPort: {{ .Values.service.internalTlsPort }}
+          - name: http
+            containerPort: {{ .Values.service.internalHttpPort }}
           readinessProbe:
             httpGet:
               scheme: HTTPS
               path: /healthz
-              port: {{ .Values.service.internalPort }}
+              port: {{ .Values.service.internalTlsPort }}
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
