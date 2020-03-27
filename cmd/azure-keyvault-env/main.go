@@ -140,6 +140,14 @@ func createHTTPClientWithTrustedCA(host string) (*http.Client, error) {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
+	log.Debug("serving ca cert")
+	log.Debugf("%s", caCert)
+
+	log.Debugf("Number of subjects: %d", len(caCertPool.Subjects()))
+	for _, subj := range caCertPool.Subjects() {
+		log.Debugf("Subject: %s", subj)
+	}
+
 	tlsConf := &tls.Config{
 		RootCAs: caCertPool,
 	}
