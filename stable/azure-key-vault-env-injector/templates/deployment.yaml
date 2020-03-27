@@ -44,6 +44,12 @@ spec:
             value: /var/serving-cert/caCert
           - name: USE_AUTH_SERVICE
             value: {{ .Values.authService.enabled | quote }}
+          {{- if .Values.authService.enabled }}
+          - name: WEBHOOK_AUTH_SERVICE
+            value: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
+          - name: WEBHOOK_AUTH_SERVICE_PORT
+            value: {{ .Values.service.externalPort | quote }}
+          {{- end }}
           - name: CUSTOM_AUTH
             value: {{ .Values.keyVault.customAuth.enabled | quote }}
           - name: AZUREKEYVAULT_ENV_IMAGE
