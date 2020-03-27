@@ -30,8 +30,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -72,19 +70,6 @@ func getVolumes(useAuthService bool) []corev1.Volume {
 		},
 	}
 
-	if useAuthService {
-		volumes = append(volumes, []corev1.Volume{
-			{
-				Name: "client-cert",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: config.clientCertSecretName,
-					},
-				},
-			},
-		}...)
-	}
-
 	return volumes
 }
 
@@ -111,7 +96,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 				containerOverrideAuthService = true
 				containerUseAuthService, err := strconv.ParseBool(env.Value)
 				if err != nil {
-					return false, false, fmt.Errorf("failed to parse container env var override for auth service (%s), error: %+v", config.nameLocallyOverrideAuthService, err)
+					return false, false, fmt.Errorf("failed to parse container env var override for auth service, error: %+v", err)
 				}
 				if containerUseAuthService {
 					anyUseAuthService = true
@@ -217,15 +202,6 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 					Value: fmt.Sprintf("%s.%s.svc:%s", config.authServiceName, namespace(), config.authServicePort),
 				},
 			}...)
-
-			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
-				{
-					Name:      "client-cert",
-					MountPath: clientCertDir,
-					ReadOnly:  true,
-				},
-			}...)
-
 		}
 
 		containers[i] = container
@@ -266,15 +242,6 @@ func mutatePodSpec(pod *corev1.Pod) error {
 	}
 
 	if initContainersMutated || containersMutated {
-		if config.namespace != "" && config.useAuthService {
-			log.Infof("creating client cert secret in new namespace '%s'...", config.namespace)
-
-			err := createClientCertSecret(config.clientCertSecretName, clientset)
-			if err != nil {
-				return err
-			}
-		}
-
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
 		podSpec.Volumes = append(podSpec.Volumes, getVolumes(initContainersUseAuthService || containersUseAuthService)...)
 		log.Info("containers mutated and pod updated with init-container and volumes")
@@ -283,47 +250,6 @@ func mutatePodSpec(pod *corev1.Pod) error {
 		log.Info("no containers mutated")
 	}
 
-	return nil
-}
-
-func createClientCertSecret(secretName string, clientset *kubernetes.Clientset) error {
-	clientCert, err := ioutil.ReadFile(config.clientCertFile)
-	if err != nil {
-		return fmt.Errorf("failed to read client cert file from %s, error: %+v", config.clientCertFile, err)
-	}
-
-	clientKey, err := ioutil.ReadFile(config.clientKeyFile)
-	if err != nil {
-		return fmt.Errorf("failed to read client key file from %s, error: %+v", config.clientKeyFile, err)
-	}
-
-	caCert, err := ioutil.ReadFile(config.caFile)
-	if err != nil {
-		return fmt.Errorf("failed to read ca cert file from %s, error: %+v", config.caFile, err)
-	}
-
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: secretName,
-		},
-		StringData: map[string]string{
-			"clientCert": string(clientCert),
-			"clientKey":  string(clientKey),
-			"caCert":     string(caCert),
-		},
-	}
-
-	_, err = clientset.CoreV1().Secrets(config.namespace).Create(secret)
-	if err != nil {
-		if errors.IsAlreadyExists(err) {
-			_, err = clientset.CoreV1().Secrets(config.namespace).Update(secret)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
 	return nil
 }
 

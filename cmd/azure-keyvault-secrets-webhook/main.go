@@ -52,26 +52,26 @@ const (
 )
 
 type azureKeyVaultConfig struct {
-	port                           string
-	customAuth                     bool
-	namespace                      string
-	aadPodBindingLabel             string
-	dockerPullTimeout              int
-	cloudConfigHostPath            string
-	serveMetrics                   bool
-	metricsPort                    string
-	certFile                       string
-	keyFile                        string
-	caFile                         string
-	clientCertFile                 string
-	clientKeyFile                  string
-	clientCertSecretName           string
-	useAuthService                 bool
-	nameLocallyOverrideAuthService string
-	authServiceName                string
-	authServicePort                string
-	kubeClient                     *kubernetes.Clientset
-	credentials                    vault.AzureKeyVaultCredentials
+	port                 string
+	customAuth           bool
+	namespace            string
+	aadPodBindingLabel   string
+	dockerPullTimeout    int
+	cloudConfigHostPath  string
+	serveMetrics         bool
+	metricsPort          string
+	certFile             string
+	keyFile              string
+	caFile               string
+	clientCertFile       string
+	clientKeyFile        string
+	clientCertSecretName string
+	useAuthService       bool
+	// nameLocallyOverrideAuthService string
+	authServiceName string
+	authServicePort string
+	kubeClient      *kubernetes.Clientset
+	credentials     vault.AzureKeyVaultCredentials
 }
 
 var config azureKeyVaultConfig
@@ -162,7 +162,7 @@ func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, rec
 }
 
 func authHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
+	if r.Method == "GET" {
 		vars := mux.Vars(r)
 		pod := podData{
 			name:          vars["namespace"],

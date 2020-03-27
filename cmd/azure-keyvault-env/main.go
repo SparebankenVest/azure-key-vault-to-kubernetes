@@ -21,13 +21,11 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -51,6 +49,7 @@ const (
 
 type injectorConfig struct {
 	namespace              string
+	podName                string
 	retryTimes             int
 	waitTimeBetweenRetries int
 	useAuthService         bool
@@ -127,31 +126,11 @@ func getCredentials(useAuthService bool) (vault.AzureKeyVaultCredentials, error)
 			logger.Fatal(fmt.Errorf("cannot call auth service: env var ENV_INJECTOR_AUTH_SERVICE does not exist"))
 		}
 
-		logger.Debug("loading client key pair")
-		cert, err := tls.LoadX509KeyPair("/client-cert/clientCert", "/client-cert/clientKey")
-		if err != nil {
-			logger.Fatalf("failed to load client cert key pair, error: %+v", err)
-		}
-
-		logger.Debug("loading ca cert")
-		caCert, err := ioutil.ReadFile("/client-cert/caCert")
-		if err != nil {
-			logger.Fatalf("failed to load ca cert to use with client certs, error: %+v", err)
-		}
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-
 		client := &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					RootCAs:      caCertPool,
-					Certificates: []tls.Certificate{cert},
-				},
-			},
 			Timeout: time.Second * 10,
 		}
 
-		url := fmt.Sprintf("https://%s/auth?host=%s", addr, viper.GetString("HOSTNAME"))
+		url := fmt.Sprintf("https://%s/auth/%s/%s", addr, config.namespace, config.podName)
 		logger.Infof("requesting azure key vault oauth token from %s", url)
 
 		res, err := client.Get(url)
@@ -275,6 +254,7 @@ func main() {
 
 	config = injectorConfig{
 		namespace:              viper.GetString("env_injector_pod_namespace"),
+		podName:                viper.GetString("HOSTNAME"),
 		retryTimes:             viper.GetInt("env_injector_retries"),
 		waitTimeBetweenRetries: viper.GetInt("env_injector_wait_before_retry"),
 		useAuthService:         viper.GetBool("env_injector_use_auth_service"),
