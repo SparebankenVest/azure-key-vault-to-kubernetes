@@ -29,8 +29,10 @@ authService:
 service:
   name: azure-keyvault-secrets-webhook
   type: ClusterIP
-  externalPort: 443
-  internalPort: 443
+  externalTlsPort: 443
+  internalTlsPort: 443
+  externalHttpPort: 80
+  internalHttpPort: 80
 
 metrics:
   enabled: false
