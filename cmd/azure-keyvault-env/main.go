@@ -140,12 +140,15 @@ func createHTTPClientWithTrustedCA(host string) (*http.Client, error) {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
+	tlsConf := &tls.Config{
+		RootCAs: caCertPool,
+	}
+	tlsConf.BuildNameToCertificate()
+
 	tlsClient := &http.Client{
 		Timeout: time.Second * 10,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: caCertPool,
-			},
+			TLSClientConfig: tlsConf,
 		},
 	}
 	return tlsClient, nil
