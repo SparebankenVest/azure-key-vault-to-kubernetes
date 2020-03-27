@@ -21,11 +21,13 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -119,6 +121,36 @@ type oauthToken struct {
 	Token string `json:"token"`
 }
 
+func createHTTPClientWithTrustedCA(host string) (*http.Client, error) {
+	caURL := fmt.Sprintf("http://%s/ca", host)
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+
+	caRes, err := client.Get(caURL)
+	if err != nil {
+		return nil, err
+	}
+
+	defer caRes.Body.Close()
+	caCert, err := ioutil.ReadAll(caRes.Body)
+	if err != nil {
+		return nil, err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	client = &http.Client{
+		Timeout: time.Second * 10,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: caCertPool,
+			},
+		},
+	}
+	return client, nil
+}
+
 func getCredentials(useAuthService bool) (vault.AzureKeyVaultCredentials, error) {
 	if useAuthService {
 		addr := viper.GetString("env_injector_auth_service")
@@ -126,8 +158,9 @@ func getCredentials(useAuthService bool) (vault.AzureKeyVaultCredentials, error)
 			logger.Fatal(fmt.Errorf("cannot call auth service: env var ENV_INJECTOR_AUTH_SERVICE does not exist"))
 		}
 
-		client := &http.Client{
-			Timeout: time.Second * 10,
+		client, err := createHTTPClientWithTrustedCA(addr)
+		if err != nil {
+			logger.Fatalf("failed to download ca cert, error: %+v", err)
 		}
 
 		url := fmt.Sprintf("https://%s/auth/%s/%s", addr, config.namespace, config.podName)

@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -52,21 +53,19 @@ const (
 )
 
 type azureKeyVaultConfig struct {
-	port                 string
-	customAuth           bool
-	namespace            string
-	aadPodBindingLabel   string
-	dockerPullTimeout    int
-	cloudConfigHostPath  string
-	serveMetrics         bool
-	metricsPort          string
-	certFile             string
-	keyFile              string
-	caFile               string
-	clientCertFile       string
-	clientKeyFile        string
-	clientCertSecretName string
-	useAuthService       bool
+	port                string
+	caPort              string
+	customAuth          bool
+	namespace           string
+	aadPodBindingLabel  string
+	dockerPullTimeout   int
+	cloudConfigHostPath string
+	serveMetrics        bool
+	metricsPort         string
+	certFile            string
+	keyFile             string
+	caFile              string
+	useAuthService      bool
 	// nameLocallyOverrideAuthService string
 	authServiceName string
 	authServicePort string
@@ -173,6 +172,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		if pod.name == "" || pod.namespace == "" {
 			log.Errorf("failed to parse url parameters, pod='%s', namespace='%s'", pod.name, pod.namespace)
 			http.Error(w, "", http.StatusBadRequest)
+			return
 		}
 
 		err := authorize(config.kubeClient, pod)
@@ -180,6 +180,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Errorf("failed to authorize request: %+v", err)
 			http.Error(w, "", http.StatusForbidden)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -205,14 +206,26 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func serveMetrics() {
-	log.Infof("Metrics at http://%s:", config.metricsPort)
+func handleCACert(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		caCert, err := ioutil.ReadFile(config.caFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		w.Write(caCert)
+	} else {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	}
+}
 
-	metricMux := http.NewServeMux()
-	metricMux.Handle("/metrics", promhttp.Handler())
-	err := http.ListenAndServe(fmt.Sprintf(":%s", config.metricsPort), metricMux)
+func serveCA() {
+	log.Infof("CA cert at http://%s:", config.metricsPort)
+
+	caMux := http.NewServeMux()
+	caMux.HandleFunc("/ca", handleCACert)
+	err := http.ListenAndServe(fmt.Sprintf(":%s", config.caPort), caMux)
 	if err != nil {
-		log.Fatalf("error serving metrics: %s", err)
+		log.Fatalf("error serving ca cert: %s", err)
 	}
 }
 
@@ -225,21 +238,18 @@ func main() {
 	setLogLevel(logLevel)
 
 	config = azureKeyVaultConfig{
-		port:                 viper.GetString("port"),
-		customAuth:           viper.GetBool("custom_auth"),
-		dockerPullTimeout:    viper.GetInt("custom_docker_pull_timeout"),
-		serveMetrics:         viper.GetBool("metrics_enabled"),
-		metricsPort:          viper.GetString("metrics_port"),
-		certFile:             viper.GetString("tls_cert_file"),
-		keyFile:              viper.GetString("tls_private_key_file"),
-		caFile:               viper.GetString("tls_ca_file"),
-		clientCertFile:       viper.GetString("tls_client_file"),
-		clientKeyFile:        viper.GetString("tls_client_key_file"),
-		clientCertSecretName: viper.GetString("client_cert_secret_name"),
-		useAuthService:       viper.GetBool("use_auth_service"),
-		authServiceName:      viper.GetString("webhook_auth_service"),
-		authServicePort:      viper.GetString("webhook_auth_service_port"),
-		cloudConfigHostPath:  viper.GetString("cloud_config_host_path"),
+		port:                viper.GetString("port"),
+		customAuth:          viper.GetBool("custom_auth"),
+		dockerPullTimeout:   viper.GetInt("custom_docker_pull_timeout"),
+		serveMetrics:        viper.GetBool("metrics_enabled"),
+		metricsPort:         viper.GetString("metrics_port"),
+		certFile:            viper.GetString("tls_cert_file"),
+		keyFile:             viper.GetString("tls_private_key_file"),
+		caFile:              viper.GetString("tls_ca_file"),
+		useAuthService:      viper.GetBool("use_auth_service"),
+		authServiceName:     viper.GetString("webhook_auth_service"),
+		authServicePort:     viper.GetString("webhook_auth_service_port"),
+		cloudConfigHostPath: viper.GetString("cloud_config_host_path"),
 	}
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
@@ -271,16 +281,28 @@ func main() {
 		log.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
+	log.Infof("Serving unencrypted traffic at http://:%s", config.metricsPort)
+
+	httpMux := http.NewServeMux()
 	if config.serveMetrics {
-		go serveMetrics()
+		httpMux.Handle("/metrics", promhttp.Handler())
 	}
+	httpMux.HandleFunc("/ca", handleCACert)
+	httpMux.HandleFunc("/healthz", healthHandler)
+
+	go func() {
+		err := http.ListenAndServe(fmt.Sprintf(":%s", config.metricsPort), httpMux)
+		if err != nil {
+			log.Fatalf("error serving on port %s: %s", config.metricsPort, err)
+		}
+	}()
 
 	router := mux.NewRouter()
 	router.Handle("/pods", podHandler)
 	router.HandleFunc("/auth/{namespace}/{pod}", authHandler)
 	router.HandleFunc("/healthz", healthHandler)
 
-	log.Infof("listening on :443")
+	log.Infof("Serving TLS encrypted traffic at https://:%s", config.port)
 	err = http.ListenAndServeTLS(fmt.Sprintf(":%s", config.port), config.certFile, config.keyFile, router)
 	if err != nil {
 		log.Fatalf("error serving webhook: %+v", err)
