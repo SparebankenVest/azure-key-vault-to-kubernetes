@@ -17,7 +17,7 @@ type podData struct {
 func authorize(clientset *kubernetes.Clientset, podData podData) error {
 	ns, err := clientset.CoreV1().Namespaces().Get(podData.namespace, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to get namespace, error: %+v", err)
+		return fmt.Errorf("failed to get namespace '%s', error: %+v", podData.namespace, err)
 	}
 
 	if ns.Labels["azure-key-vault-env-injection"] != "enabled" {

@@ -164,8 +164,8 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		vars := mux.Vars(r)
 		pod := podData{
-			name:          vars["namespace"],
-			namespace:     vars["pod"],
+			name:          vars["pod"],
+			namespace:     vars["namespace"],
 			remoteAddress: r.RemoteAddr,
 		}
 
