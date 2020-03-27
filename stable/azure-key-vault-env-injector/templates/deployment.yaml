@@ -87,13 +87,6 @@ spec:
           volumeMounts:
           - mountPath: /var/serving-cert
             name: serving-cert
-          - mountPath: /var/run/docker.sock
-            name: dockersock
-            readOnly: true
-          {{- if .Values.authService.enabled }}
-          - mountPath: /var/client-cert
-            name: client-cert
-          {{- end }}
           {{- if not .Values.keyVault.customAuth.enabled }}
           - mountPath: /etc/kubernetes/azure.json
             name: azureconf
