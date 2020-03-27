@@ -44,6 +44,8 @@ spec:
             value: /var/serving-cert/caCert
           - name: USE_AUTH_SERVICE
             value: {{ .Values.authService.enabled | quote }}
+          - name: CUSTOM_AUTH
+            value: {{ .Values.keyVault.customAuth.enabled | quote }}
           - name: AZUREKEYVAULT_ENV_IMAGE
             value: {{ .Values.envImage.repository }}:{{ .Values.envImage.tag }}
           - name: CLOUD_CONFIG_HOST_PATH
