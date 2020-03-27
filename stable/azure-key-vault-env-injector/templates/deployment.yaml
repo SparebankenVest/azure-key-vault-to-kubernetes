@@ -99,10 +99,6 @@ spec:
         secret:
           defaultMode: 420
           secretName: {{ template "azure-key-vault-to-kubernetes.fullname" . }}
-      - name: client-cert
-        secret:
-          defaultMode: 420
-          secretName: {{ template "azure-key-vault-to-kubernetes.fullname" . }}-client
       {{- if not .Values.keyVault.customAuth.enabled }}
       - name: azureconf
         hostPath:
