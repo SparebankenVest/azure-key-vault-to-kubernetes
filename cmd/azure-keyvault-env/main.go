@@ -127,13 +127,13 @@ func createHTTPClientWithTrustedCA(host string) (*http.Client, error) {
 		Timeout: time.Second * 10,
 	}
 
-	caRes, err := client.Get(caURL)
+	res, err := client.Get(caURL)
 	if err != nil {
 		return nil, err
 	}
 
-	defer caRes.Body.Close()
-	caCert, err := ioutil.ReadAll(caRes.Body)
+	defer res.Body.Close()
+	caCert, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func createHTTPClientWithTrustedCA(host string) (*http.Client, error) {
 	caCertPool.AppendCertsFromPEM(caCert)
 
 	log.Debug("serving ca cert")
-	log.Debugf("%s", caCert)
+	log.Debugf("%s", string(caCert))
 
 	log.Debugf("Number of subjects: %d", len(caCertPool.Subjects()))
 	for _, subj := range caCertPool.Subjects() {
@@ -164,17 +164,22 @@ func createHTTPClientWithTrustedCA(host string) (*http.Client, error) {
 
 func getCredentials(useAuthService bool) (vault.AzureKeyVaultCredentials, error) {
 	if useAuthService {
-		addr := viper.GetString("env_injector_auth_service")
-		if addr == "" {
+		authServiceAddress := viper.GetString("env_injector_auth_service")
+		if authServiceAddress == "" {
 			logger.Fatal(fmt.Errorf("cannot call auth service: env var ENV_INJECTOR_AUTH_SERVICE does not exist"))
 		}
 
-		client, err := createHTTPClientWithTrustedCA(addr)
+		caCertAddress := viper.GetString("env_injector_ca_cert")
+		if caCertAddress == "" {
+			logger.Fatal(fmt.Errorf("cannot get ca cert: env var ENV_INJECTOR_CA_CERT does not exist"))
+		}
+
+		client, err := createHTTPClientWithTrustedCA(caCertAddress)
 		if err != nil {
 			logger.Fatalf("failed to download ca cert, error: %+v", err)
 		}
 
-		url := fmt.Sprintf("https://%s/auth/%s/%s", addr, config.namespace, config.podName)
+		url := fmt.Sprintf("https://%s/auth/%s/%s", authServiceAddress, config.namespace, config.podName)
 		logger.Infof("requesting azure key vault oauth token from %s", url)
 
 		res, err := client.Get(url)

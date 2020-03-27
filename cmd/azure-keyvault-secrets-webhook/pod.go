@@ -201,6 +201,10 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 					Name:  "ENV_INJECTOR_AUTH_SERVICE",
 					Value: fmt.Sprintf("%s.%s.svc:%s", config.authServiceName, namespace(), config.authServicePort),
 				},
+				{
+					Name:  "ENV_INJECTOR_CA_CERT",
+					Value: fmt.Sprintf("%s.%s.svc:%s", config.authServiceName, namespace(), config.caPort),
+				},
 			}...)
 		}
 
