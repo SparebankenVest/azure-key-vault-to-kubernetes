@@ -140,7 +140,7 @@ func createHTTPClientWithTrustedCA(host string) (*http.Client, error) {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	client = &http.Client{
+	tlsClient := &http.Client{
 		Timeout: time.Second * 10,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -148,7 +148,7 @@ func createHTTPClientWithTrustedCA(host string) (*http.Client, error) {
 			},
 		},
 	}
-	return client, nil
+	return tlsClient, nil
 }
 
 func getCredentials(useAuthService bool) (vault.AzureKeyVaultCredentials, error) {
