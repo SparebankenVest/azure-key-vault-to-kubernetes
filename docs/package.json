@@ -6,7 +6,7 @@
     "serve": "gatsby serve"
   },
   "dependencies": {
-    "algoliasearch": "^4.0.3",
+    "algoliasearch": "^4.1.0",
     "gatsby": "2.19.28",
     "gatsby-plugin-gtag": "^1.0.13",
     "gatsby-source-graphql": "^2.1.33",
