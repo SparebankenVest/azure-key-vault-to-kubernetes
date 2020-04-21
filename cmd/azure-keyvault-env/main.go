@@ -411,7 +411,7 @@ func main() {
 			if secret == "" {
 				logger.Fatalf("secret not found in azure key vault: %s", keyVaultSecretSpec.Spec.Vault.Object.Name)
 			} else {
-				logger.Infof("secret %s injected into evn var %s for executable %s", keyVaultSecretSpec.Spec.Vault.Object.Name, name, origCommand)
+				logger.Infof("secret %s injected into env var %s for executable %s", keyVaultSecretSpec.Spec.Vault.Object.Name, name, origCommand)
 				environ[i] = fmt.Sprintf("%s=%s", name, secret)
 			}
 		}
