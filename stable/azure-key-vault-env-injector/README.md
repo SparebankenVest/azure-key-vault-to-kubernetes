@@ -108,3 +108,7 @@ The following tables lists configurable parameters of the azure-key-vault-env-in
 |service.name                             |webhook service name                         |azure-keyvault-secrets-webhook            |
 |service.type                             |webhook service type                         |ClusterIP                                 |
 |tolerations                              |tolerations to add                           |[]                                        |
+|webhook.logLevel                         |loglevel used for webhook                    |Info                                      |
+|webhook.dockerPulltimeout                |how long the image inspection can take max   |25                                        |
+|webhook.failurePolicy                    |`Ignore` Failures or `Fail` pod creation. In case of `Ignore` and a failure in the webhook, there will be no secret injected into the container runtime. | Ignore                        |
+

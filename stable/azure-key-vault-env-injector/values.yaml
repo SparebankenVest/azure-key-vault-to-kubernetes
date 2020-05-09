@@ -40,7 +40,7 @@ metrics:
 
 webhook:
   logLevel: Info
-  dockerPullTimeout: 120 # will timeout after 120 seconds 
+  dockerPullTimeout: 20 # will timeout after 20 seconds
 
   # What will happen if the webhook fails? Ignore (continue) or Fail (prevent Pod from starting)?
   failurePolicy: Ignore
@@ -48,7 +48,7 @@ webhook:
   # https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-namespaceselector
   namespaceSelector:
     matchLabels:
-      azure-key-vault-env-injection: enabled # The webhook will only trigger i namespaces with this label
+      azure-key-vault-env-injection: enabled # The webhook will only trigger if namespace is labeled with this
 
     # Prevent env injection for pods in kube-system as recomended: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#avoiding-operating-on-the-kube-system-namespace
     matchExpressions:
