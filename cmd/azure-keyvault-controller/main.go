@@ -52,6 +52,7 @@ var (
 	azureVaultSlowRate        time.Duration
 	azureVaultMaxFastAttempts int
 	customAuth                bool
+	namespace                 string
 )
 
 const controllerAgentName = "azurekeyvaultcontroller"
@@ -89,6 +90,11 @@ func main() {
 		log.Fatalf("Error parsing env var AZURE_VAULT_MAX_FAILURE_ATTEMPTS: %s", err.Error())
 	}
 
+	namespace, err = getEnvStr("NAMESPACE", "")
+	if err != nil {
+		log.Fatalf("Error getting env var NAMESPACE: %s", err.Error())
+	}
+
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
 		log.Fatalf("Error building kubeconfig: %s", err.Error())
@@ -104,8 +110,14 @@ func main() {
 		log.Fatalf("Error building azureKeyVaultSecret clientset: %s", err.Error())
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-	azureKeyVaultSecretInformerFactory := informers.NewSharedInformerFactory(azureKeyVaultSecretClient, time.Second*30)
+	var kubeInformerOptions []kubeinformers.SharedInformerOption
+	var options []informers.SharedInformerOption
+	if namespace != "" {
+		kubeInformerOptions = append(kubeInformerOptions, kubeinformers.WithNamespace(namespace))
+		options = append(options, informers.WithNamespace(namespace))
+	}
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, kubeInformerOptions...)
+	azureKeyVaultSecretInformerFactory := informers.NewSharedInformerFactoryWithOptions(azureKeyVaultSecretClient, time.Second*30, options...)
 	azurePollFrequency := controller.AzurePollFrequency{
 		Normal:                       azureVaultFastRate,
 		Slow:                         azureVaultSlowRate,
