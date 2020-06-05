@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"golang.org/x/crypto/pkcs12"
@@ -85,17 +86,29 @@ func createAuthorizerFromOAuthToken(token string) (autorest.Authorizer, error) {
 
 // NewAzureKeyVaultCredentialsFromCloudConfig gets a credentials object from cloud config to use with Azure Key Vault
 func NewAzureKeyVaultCredentialsFromCloudConfig(cloudConfigPath string) (AzureKeyVaultCredentials, error) {
-	authSettings, err := azureAuth.GetSettingsFromEnvironment()
+	config, err := readCloudConfig(cloudConfigPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
+		return nil, fmt.Errorf("failed reading cloud config, error: %+v", err)
 	}
 
-	token, err := getServicePrincipalTokenFromCloudConfig(cloudConfigPath, authSettings.Environment)
+	var envName string
+	if v := os.Getenv(azureAuth.EnvironmentName); v != "" {
+		envName = v
+	} else {
+		envName = config.Cloud
+	}
+
+	environment, err := azure.EnvironmentFromName(envName)
+	if err != nil {
+		return nil, fmt.Errorf("invalid env name %s, error: %+v", envName, err)
+	}
+
+	token, err := getServicePrincipalTokenFromCloudConfig(config, environment)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting service principal token, err: %+v", err)
 	}
 
-	resourceSplit := strings.SplitAfterN(authSettings.Environment.ResourceIdentifiers.KeyVault, "https://", 2)
+	resourceSplit := strings.SplitAfterN(environment.ResourceIdentifiers.KeyVault, "https://", 2)
 	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
 
 	return &azureKeyVaultCredentials{
@@ -199,12 +212,7 @@ func NewAzureKeyVaultCredentialsFromEnvironment() (AzureKeyVaultCredentials, err
 	return akvCreds, nil
 }
 
-func getServicePrincipalTokenFromCloudConfig(cloudConfigPath string, env azure.Environment) (*adal.ServicePrincipalToken, error) {
-	config, err := readCloudConfig(cloudConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed reading cloud config, error: %+v", err)
-	}
-
+func getServicePrincipalTokenFromCloudConfig(config *cloudAuth.AzureAuthConfig, env azure.Environment) (*adal.ServicePrincipalToken, error) {
 	if config.UseManagedIdentityExtension {
 		// klog.V(2).Infoln("azure: using managed identity extension to retrieve access token")
 		msiEndpoint, err := adal.GetMSIVMEndpoint()
