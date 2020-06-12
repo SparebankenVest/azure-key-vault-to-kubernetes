@@ -76,3 +76,14 @@ helm install azure-key-vault-env-injector \
   --set env.AZURE_CLIENT_ID=<client-id> \
   --set env.AZURE_CLIENT_SECRET=<client-secret>
 ```
+
+## Monitoring changes in specific namespace only
+
+akv2k8s Controller can be installed into separate namespace and monitor changes only in this namespace.
+
+```bash
+helm install azure-key-vault-controller \
+  spv-charts/azure-key-vault-controller \
+  --namespace akv2k8s
+  --set env.NAMESPACE=akv2k8s
+```
