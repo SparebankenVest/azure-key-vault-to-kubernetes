@@ -85,7 +85,7 @@ env:
     value: some-secret@azurekeyvault
 ```
 
-As mentioned, the the Pod container gets mutated to use a different executable. It does this by changing either the CMD or the ENTRYPOINT, depending on which was used by the original container, to use the `azure-keyvault-env` executable instead. The "old" command gets passed in as parameter to this new executable.
+As mentioned, the Pod container gets mutated to use a different executable. It does this by changing either the CMD or the ENTRYPOINT, depending on which was used by the original container, to use the `azure-keyvault-env` executable instead. The "old" command gets passed in as parameter to this new executable.
 
 </ExpansionPanelListItem>
 <ExpansionPanelListItem number="2">
