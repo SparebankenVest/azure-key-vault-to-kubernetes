@@ -1,0 +1,28 @@
+name: pull request
+
+on:
+  pull_request:
+    paths:
+    - '.github/workflows/**'
+    - 'Makefile'
+    - 'go.mod'
+    - 'go.sum'
+    - 'cmd/**'
+    - 'pkg/**'
+    - '!docs/**'
+jobs:
+  build-deploy:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Setup Golang
+      uses: actions/setup-go@v1
+      with:
+        go-version: '1.13.4'
+
+    - name: Test
+      run: make test
+
+    - name: Build docker images
+      run: make build
