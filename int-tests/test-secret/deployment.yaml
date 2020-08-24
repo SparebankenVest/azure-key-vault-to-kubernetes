@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secret-inject
+  namespace: akv2k8s-test
+  labels:
+    app: secret-inject
+spec:
+  selector:
+    matchLabels:
+      app: secret-inject
+  template:
+    metadata:
+      labels:
+        app: secret-inject
+    spec:
+      containers:
+      - name: my-image
+        image: spvest/akv2k8s-env-test:2.0.1
+        command: ['/bin/sh', '-c']
+        args: ['printenv TEST_SECRET TEST_SECRET2 && sleep 60 && echo "Fail container to check recovery" && exit 1']
+        env:
+        - name: ENV_INJECTOR_LOG_LEVEL
+          value: Debug
+        - name: TEST_SECRET
+          value: test-secret@azurekeyvault
+        - name: TEST_SECRET2
+          value: Just plain env var
+        # livenessProbe:
+        #   exec:
+        #     command:
+        #     - cat
+        #     - /tmp/secret.txt
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 5

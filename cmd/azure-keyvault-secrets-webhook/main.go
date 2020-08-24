@@ -21,11 +21,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -54,7 +53,6 @@ const (
 
 type azureKeyVaultConfig struct {
 	port                string
-	caPort              string
 	customAuth          bool
 	namespace           string
 	aadPodBindingLabel  string
@@ -67,10 +65,11 @@ type azureKeyVaultConfig struct {
 	caFile              string
 	useAuthService      bool
 	// nameLocallyOverrideAuthService string
-	authServiceName string
-	authServicePort string
-	kubeClient      *kubernetes.Clientset
-	credentials     vault.AzureKeyVaultCredentials
+	authServiceName       string
+	authServicePort       string
+	caBundleConfigMapName string
+	kubeClient            *kubernetes.Clientset
+	credentials           azure.Credentials
 }
 
 var config azureKeyVaultConfig
@@ -206,29 +205,6 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleCACert(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		caCert, err := ioutil.ReadFile(config.caFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		w.Write(caCert)
-	} else {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-	}
-}
-
-func serveCA() {
-	log.Infof("CA cert at http://%s:", config.metricsPort)
-
-	caMux := http.NewServeMux()
-	caMux.HandleFunc("/ca", handleCACert)
-	err := http.ListenAndServe(fmt.Sprintf(":%s", config.caPort), caMux)
-	if err != nil {
-		log.Fatalf("error serving ca cert: %s", err)
-	}
-}
-
 func main() {
 	fmt.Fprintln(os.Stdout, "initializing config...")
 	initConfig()
@@ -238,18 +214,19 @@ func main() {
 	setLogLevel(logLevel)
 
 	config = azureKeyVaultConfig{
-		port:                viper.GetString("port"),
-		customAuth:          viper.GetBool("custom_auth"),
-		dockerPullTimeout:   viper.GetInt("custom_docker_pull_timeout"),
-		serveMetrics:        viper.GetBool("metrics_enabled"),
-		metricsPort:         viper.GetString("metrics_port"),
-		certFile:            viper.GetString("tls_cert_file"),
-		keyFile:             viper.GetString("tls_private_key_file"),
-		caFile:              viper.GetString("tls_ca_file"),
-		useAuthService:      viper.GetBool("use_auth_service"),
-		authServiceName:     viper.GetString("webhook_auth_service"),
-		authServicePort:     viper.GetString("webhook_auth_service_port"),
-		cloudConfigHostPath: viper.GetString("cloud_config_host_path"),
+		port:                  viper.GetString("port"),
+		customAuth:            viper.GetBool("custom_auth"),
+		dockerPullTimeout:     viper.GetInt("custom_docker_pull_timeout"),
+		serveMetrics:          viper.GetBool("metrics_enabled"),
+		metricsPort:           viper.GetString("metrics_port"),
+		certFile:              viper.GetString("tls_cert_file"),
+		keyFile:               viper.GetString("tls_private_key_file"),
+		caFile:                viper.GetString("tls_ca_file"),
+		useAuthService:        viper.GetBool("use_auth_service"),
+		authServiceName:       viper.GetString("webhook_auth_service"),
+		authServicePort:       viper.GetString("webhook_auth_service_port"),
+		caBundleConfigMapName: viper.GetString("ca_config_map_name"),
+		cloudConfigHostPath:   viper.GetString("cloud_config_host_path"),
 	}
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
@@ -260,12 +237,13 @@ func main() {
 
 	var err error
 	if config.customAuth {
-		config.credentials, err = vault.NewAzureKeyVaultCredentialsFromEnvironment()
+		config.credentials, err = azure.NewFromEnvironment()
 		if err != nil {
 			log.Fatal(err)
 		}
 	} else {
-		config.credentials, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig(config.cloudConfigHostPath)
+		cloudCnfProvider := azure.NewFromCloudConfig(&config.cloudConfigHostPath)
+		config.credentials, err = cloudCnfProvider.GetCredentials()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -287,7 +265,6 @@ func main() {
 	if config.serveMetrics {
 		httpMux.Handle("/metrics", promhttp.Handler())
 	}
-	httpMux.HandleFunc("/ca", handleCACert)
 	httpMux.HandleFunc("/healthz", healthHandler)
 
 	go func() {

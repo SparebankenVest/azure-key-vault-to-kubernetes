@@ -122,7 +122,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 		} else {
 			log.Infof("did not find credentials to use with registry '%s' - getting default credentials", registryName)
 			// todo: acr is azure specific
-			regCred, ok = getAcrCredentials(registryName)
+			regCred, ok = getAcrCredentials(registryName, container.Image)
 		}
 
 		if !ok {
@@ -202,8 +202,15 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 					Value: fmt.Sprintf("%s.%s.svc:%s", config.authServiceName, namespace(), config.authServicePort),
 				},
 				{
-					Name:  "ENV_INJECTOR_CA_CERT",
-					Value: fmt.Sprintf("%s.%s.svc:%s", config.authServiceName, namespace(), config.caPort),
+					Name: "ENV_INJECTOR_CA_CERT",
+					ValueFrom: &corev1.EnvVarSource{
+						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: config.caBundleConfigMapName,
+							},
+							Key: "akv2k8s-ca",
+						},
+					},
 				},
 			}...)
 		}

@@ -1,9 +1,13 @@
 PACKAGE=github.com/SparebankenVest/azure-key-vault-to-kubernetes
 
+KUBERNETES_VERSION=v1.17.9
+KUBERNETES_DEP_VERSION=v0.17.9
+
 DOCKER_INTERNAL_REG=dokken.azurecr.io
 DOCKER_RELEASE_REG=spvest
 
 DOCKER_CONTROLLER_IMAGE=azure-keyvault-controller
+DOCKER_CA_BUNDLE_CONTROLLER_IMAGE=ca-bundle-controller
 DOCKER_WEBHOOK_IMAGE=azure-keyvault-webhook
 DOCKER_AUTH_SERVICE_IMAGE=azure-keyvault-auth-service
 DOCKER_VAULTENV_IMAGE=azure-keyvault-env
@@ -28,10 +32,13 @@ fmt:
 fmtcheck:
 	$(CURDIR)/scripts/gofmtcheck.sh
 
-build: build-controller build-webhook build-vaultenv
+build: build-controller build-ca-bundle-controller build-webhook build-vaultenv
 
 build-controller:
 	docker build . -t $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) -f images/controller/Dockerfile --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
+
+build-ca-bundle-controller:
+	docker build . -t $(DOCKER_INTERNAL_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) -f images/ca-bundle-controller/Dockerfile --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/ca-bundle-controller" --build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
 
 build-webhook:
 	docker build . -t $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG) -f images/env-injector/Dockerfile --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-secrets-webhook" --build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
@@ -47,6 +54,16 @@ build-akv2k8s-env-test:
 
 test: fmtcheck
 	CGO_ENABLED=0 go test -v $(shell go list ./... | grep -v /pkg/k8s/)
+
+build-local: fmtcheck
+	CGO_ENABLED=0 go build -v $(shell go list ./...)
+
+codegen:
+	@echo "Making sure code-generator has correct version of Kubernetes ($(KUBERNETES_DEP_VERSION))"
+	@echo ""
+	rm -rf ${GOPATH}/src/k8s.io/code-generator
+	git clone --depth 1 --branch $(KUBERNETES_DEP_VERSION) git@github.com:kubernetes/code-generator.git ${GOPATH}/src/k8s.io/code-generator
+	./hack/update-codegen.sh
 
 push: push-controller push-webhook push-vaultenv
 

@@ -3,7 +3,7 @@ title: "Requirements"
 description: "Requirements for installing akv2k8s"
 ---
 
-* Kubernetes version >= 1.13
+* Kubernetes version >= 1.17.9
 * A dedicated kubernetes namespace
 * Enabled admission controllers: MutatingAdmissionWebhook and ValidatingAdmissionWebhook
 * RBAC enabled
