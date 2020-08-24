@@ -68,10 +68,10 @@ jobs:
     #     kubectl apply -R -f ./int-tests/
 
 
-    - name: Push images to public repo
-      run: |
-        docker login -u ${{secrets.PUBLIC_REGISTRY_USERNAME}} -p ${{secrets.PUBLIC_REGISTRY_PASSWORD}}
-        make release DOCKER_RELEASE_TAG=${GITHUB_REF##*/}
+    # - name: Push images to public repo
+    #   run: |
+    #     docker login -u ${{secrets.PUBLIC_REGISTRY_USERNAME}} -p ${{secrets.PUBLIC_REGISTRY_PASSWORD}}
+    #     make release DOCKER_RELEASE_TAG=${GITHUB_REF##*/}
 
     - name: Push images to private repo
       run: |
