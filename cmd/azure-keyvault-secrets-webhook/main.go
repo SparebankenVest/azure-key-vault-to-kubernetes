@@ -44,11 +44,12 @@ import (
 )
 
 const (
-	dockerHubHost      = "index.docker.io"
-	oldDockerHubHost   = "docker.io"
-	injectorDir        = "/azure-keyvault/"
-	injectorExecutable = "azure-keyvault-env"
-	clientCertDir      = "/client-cert/"
+	dockerHubHost           = "index.docker.io"
+	oldDockerHubHost        = "docker.io"
+	injectorDir             = "/azure-keyvault/"
+	injectorExecutable      = "azure-keyvault-env"
+	clientCertDir           = "/client-cert/"
+	initContainerVolumeName = "azure-keyvault-env"
 )
 
 type azureKeyVaultConfig struct {
@@ -123,8 +124,8 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 	}
 
 	podsInspectedCounter.Inc()
-	err := mutatePodSpec(pod)
 
+	err := mutatePodSpec(pod)
 	if err != nil {
 		log.Errorf("failed to mutate pod, error: %+v", err)
 		podsMutatedFailedCounter.Inc()
