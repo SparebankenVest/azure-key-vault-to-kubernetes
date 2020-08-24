@@ -49,7 +49,7 @@ func getInitContainers() []corev1.Container {
 		Command:         []string{"sh", "-c", cmd},
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      "azure-keyvault-env",
+				Name:      initContainerVolumeName,
 				MountPath: injectorDir,
 			},
 		},
@@ -120,8 +120,6 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 		if ok {
 			log.Infof("found credentials to use with registry '%s'", registryName)
 		} else {
-			log.Infof("did not find credentials to use with registry '%s' - getting default credentials", registryName)
-			// todo: acr is azure specific
 			regCred, ok = getAcrCredentials(registryName, container.Image)
 		}
 
@@ -146,17 +144,22 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 		if err != nil {
 			return false, false, fmt.Errorf("failed to sign command args, error: %+v", err)
 		}
+		log.Debug("signed arguments to prevent override")
 
 		publicSigningKey, err := exportRsaPublicKey(pubKey)
 		if err != nil {
 			return false, false, fmt.Errorf("failed to export public rsa key to pem, error: %+v", err)
 		}
 
+		log.Debugf("public signing key for argument verification: \n%s", publicSigningKey)
+
 		mutated = true
 
 		fullExecPath := filepath.Join(injectorDir, injectorExecutable)
+		log.Debugf("full exec path: %s", fullExecPath)
 		container.Command = []string{fullExecPath}
 		container.Args = autoArgs
+		log.Debugf("container args: %+v", autoArgs)
 
 		container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
 			{
@@ -165,6 +168,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 				ReadOnly:  true,
 			},
 		}...)
+		log.Debugf("mounting volume '%s' to '%s'", "azure-keyvault-env", injectorDir)
 
 		container.Env = append(container.Env, []corev1.EnvVar{
 			{
@@ -187,6 +191,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 
 		// Do not add env var for using auth service if already exists
 		if config.useAuthService && !containerOverrideAuthService {
+			log.Debug("configure init-container to use auth service")
 			container.Env = append(container.Env, []corev1.EnvVar{
 				{
 					Name:  "ENV_INJECTOR_USE_AUTH_SERVICE",
@@ -208,7 +213,7 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: config.caBundleConfigMapName,
 							},
-							Key: "akv2k8s-ca",
+							Key: "caCert",
 						},
 					},
 				},
