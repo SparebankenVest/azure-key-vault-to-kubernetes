@@ -538,8 +538,8 @@ func newConfigMap(name string, ns string, secret *corev1.Secret) *corev1.ConfigM
 				}),
 			},
 		},
-		BinaryData: map[string][]byte{
-			"caCert": dataByte,
+		Data: map[string]string{
+			"caCert": string(dataByte),
 		},
 	}
 }
