@@ -126,6 +126,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 	err := mutatePodSpec(pod)
 
 	if err != nil {
+		log.Errorf("failed to mutate pod, error: %+v", err)
 		podsMutatedFailedCounter.Inc()
 	}
 
