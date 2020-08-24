@@ -276,6 +276,7 @@ func TestCreatesConfigMap(t *testing.T) {
 }
 
 func TestCreatesConfigMapInNewNamespace(t *testing.T) {
+	t.Skip("Not finished")
 	f := newFixture(t)
 
 	secretValue := map[string]string{
