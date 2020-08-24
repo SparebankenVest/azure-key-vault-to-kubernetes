@@ -100,6 +100,7 @@ func main() {
 	}
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	kubeNsInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, kubeinformers.WithNamespace(akvNamespace))
 
 	log.Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
@@ -108,11 +109,12 @@ func main() {
 
 	// recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
-	controller := cabundleinjector.NewController(kubeClient, kubeInformerFactory.Core().V1().Secrets(), kubeInformerFactory.Core().V1().Namespaces(), kubeInformerFactory.Core().V1().ConfigMaps(), akvLabelName, akvNamespace, akvSecretName, caConfigMapName)
+	controller := cabundleinjector.NewController(kubeClient, kubeNsInformerFactory.Core().V1().Secrets(), kubeInformerFactory.Core().V1().Namespaces(), kubeInformerFactory.Core().V1().ConfigMaps(), akvLabelName, akvNamespace, akvSecretName, caConfigMapName)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
 	kubeInformerFactory.Start(stopCh)
+	kubeNsInformerFactory.Start(stopCh)
 
 	if err = controller.Run(2, stopCh); err != nil {
 		log.Fatalf("Error running controller: %s", err.Error())
