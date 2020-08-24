@@ -32,6 +32,19 @@ fmt:
 fmtcheck:
 	$(CURDIR)/scripts/gofmtcheck.sh
 
+codegen:
+	@echo "Making sure code-generator has correct version of Kubernetes ($(KUBERNETES_DEP_VERSION))"
+	@echo ""
+	rm -rf ${GOPATH}/src/k8s.io/code-generator
+	git clone --depth 1 --branch $(KUBERNETES_DEP_VERSION) git@github.com:kubernetes/code-generator.git ${GOPATH}/src/k8s.io/code-generator
+	./hack/update-codegen.sh
+
+test: fmtcheck
+	CGO_ENABLED=0 go test -v $(shell go list ./... | grep -v /pkg/k8s/)
+
+build-local: fmtcheck
+	CGO_ENABLED=0 go build -v $(shell go list ./...)
+
 build: build-controller build-ca-bundle-controller build-webhook build-vaultenv
 
 build-controller:
@@ -52,23 +65,13 @@ build-vaultenv:
 build-akv2k8s-env-test:
 	docker build . -t $(DOCKER_RELEASE_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE) -f images/akv2k8s-test/Dockerfile
 
-test: fmtcheck
-	CGO_ENABLED=0 go test -v $(shell go list ./... | grep -v /pkg/k8s/)
-
-build-local: fmtcheck
-	CGO_ENABLED=0 go build -v $(shell go list ./...)
-
-codegen:
-	@echo "Making sure code-generator has correct version of Kubernetes ($(KUBERNETES_DEP_VERSION))"
-	@echo ""
-	rm -rf ${GOPATH}/src/k8s.io/code-generator
-	git clone --depth 1 --branch $(KUBERNETES_DEP_VERSION) git@github.com:kubernetes/code-generator.git ${GOPATH}/src/k8s.io/code-generator
-	./hack/update-codegen.sh
-
-push: push-controller push-webhook push-vaultenv
+push: push-controller push-ca-bundle-controller push-webhook push-vaultenv
 
 push-controller:
 	docker push $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG)
+
+push-ca-bundle-controller:
+	docker push $(DOCKER_INTERNAL_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG)
 
 push-webhook:
 	docker push $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG)
@@ -89,11 +92,12 @@ push-akv2k8s-env-test:
 
 pull-release:
 	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) 
+	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) 
 	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG) 
 	# docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_AUTH_SERVICE_IMAGE):$(DOCKER_INTERNAL_TAG) 
 	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) 
 
-release: release-controller release-webhook release-vaultenv
+release: release-controller release-ca-bundle-controller release-webhook release-vaultenv
 
 release-controller:
 	docker tag $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_RELEASE_TAG)
@@ -101,6 +105,13 @@ release-controller:
 
 	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_RELEASE_TAG)
 	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_CONTROLLER_IMAGE):latest
+
+release-ca-bundle-controller:
+	docker tag $(DOCKER_INTERNAL_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_RELEASE_TAG)
+	docker tag $(DOCKER_INTERNAL_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):latest
+
+	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_RELEASE_TAG)
+	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):latest
 
 release-webhook:
 	docker tag $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_RELEASE_TAG)
