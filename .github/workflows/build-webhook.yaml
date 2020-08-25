@@ -30,3 +30,5 @@ jobs:
       with:
         build-make-action: build-webhook
         push-make-action: push-webhook
+        docker-user: bogus
+        docker-passw: fake-passw

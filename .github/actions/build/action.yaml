@@ -1,13 +1,13 @@
 name: 'Build'
 description: 'Build Go packages'
 inputs:
-  build-make-action:  # id of input
+  build-make-action:  
     description: 'Action in makefile to build package'
     required: true
-  push-make-action:  # id of input
+  push-make-action:  
     description: 'Action in makefile to push package to docker repo'
     required: true
-
+  
 runs:
   using: "composite"
   steps: 
@@ -21,6 +21,6 @@ runs:
 
     - name: Push images to private repo
       run: |
-        docker login -u ${{secrets.PRIVATE_REGISTRY_USERNAME}} -p ${{secrets.PRIVATE_REGISTRY_PASSWORD}} dokken.azurecr.io
+        echo "${{ inputs.docker-passw}}" | docker login -u ${{ inputs.docker-user }} --password-stdin dokken.azurecr.io
         make ${{ inputs.push-make-action }}
       shell: bash  
