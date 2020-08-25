@@ -5,7 +5,7 @@ on:
     branches:
     - master
     paths:
-    - '.github/workflows/build-ca-bundle-controller.yaml'
+    - '.github/workflows/ca-bundle-controller-build.yaml'
     - '.github/actions/**'
     - 'Makefile'
     - 'go.mod'

@@ -5,7 +5,7 @@ on:
     branches:
     - master
     paths:
-    - '.github/workflows/build-vaultenv.yaml'
+    - '.github/workflows/vaultenv-build.yaml'
     - '.github/actions/**'
     - 'Makefile'
     - 'go.mod'

@@ -5,7 +5,7 @@ on:
     branches:
     - master
     paths:
-    - '.github/workflows/build-webhook.yaml'
+    - '.github/workflows/webhook-build.yaml'
     - '.github/actions/**'
     - 'Makefile'
     - 'go.mod'
