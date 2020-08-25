@@ -57,7 +57,6 @@ type azureKeyVaultConfig struct {
 	customAuth          bool
 	namespace           string
 	aadPodBindingLabel  string
-	dockerPullTimeout   int
 	cloudConfigHostPath string
 	serveMetrics        bool
 	metricsPort         string
@@ -80,16 +79,12 @@ var (
 		Name: "akv2k8s_pod_mutations_total",
 		Help: "The total number of pods mutated",
 	})
-)
 
-var (
 	podsInspectedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "akv2k8s_pod_inspections_total",
 		Help: "The total number of pods inspected, including mutated",
 	})
-)
 
-var (
 	podsMutatedFailedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "akv2k8s_pod_mutations_failed_total",
 		Help: "The total number of attempted pod mutations that failed",
@@ -132,17 +127,6 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 	}
 
 	return false, err
-}
-
-func initConfig() {
-	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
-	viper.SetDefault("custom_docker_pull_timeout", 20)
-	viper.SetDefault("use_auth_service", true)
-	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
-	viper.SetDefault("metrics_port", "80")
-	viper.SetDefault("port", "443")
-
-	viper.AutomaticEnv()
 }
 
 func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, recorder metrics.Recorder, logger internalLog.Logger) http.Handler {
@@ -207,6 +191,19 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func initConfig() {
+	viper.SetDefault("ca_config_map_name", "akv2k8s-ca")
+	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
+	viper.SetDefault("custom_docker_pull_timeout", 20)
+	viper.SetDefault("use_auth_service", true)
+	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
+	viper.SetDefault("metrics_enabled", false)
+	viper.SetDefault("metrics_port", "80")
+	viper.SetDefault("port", "443")
+
+	viper.AutomaticEnv()
+}
+
 func main() {
 	fmt.Fprintln(os.Stdout, "initializing config...")
 	initConfig()
@@ -218,7 +215,6 @@ func main() {
 	config = azureKeyVaultConfig{
 		port:                  viper.GetString("port"),
 		customAuth:            viper.GetBool("custom_auth"),
-		dockerPullTimeout:     viper.GetInt("custom_docker_pull_timeout"),
 		serveMetrics:          viper.GetBool("metrics_enabled"),
 		metricsPort:           viper.GetString("metrics_port"),
 		certFile:              viper.GetString("tls_cert_file"),
@@ -230,6 +226,21 @@ func main() {
 		caBundleConfigMapName: viper.GetString("ca_config_map_name"),
 		cloudConfigHostPath:   viper.GetString("cloud_config_host_path"),
 	}
+
+	log.Info("Active settings:")
+	log.Infof("Webhook port       : %s", config.port)
+	log.Infof("Serve metrics      : %s", config.serveMetrics)
+	if config.serveMetrics {
+		log.Infof("Metrics port       : %s", config.metricsPort)
+	}
+	log.Infof("Use custom auth    : %s", config.customAuth)
+	log.Infof("Use auth service   : %s", config.useAuthService)
+	if config.useAuthService {
+		log.Infof("Auth service name  : %s", config.authServiceName)
+		log.Infof("Auth service port  :%s", config.authServicePort)
+	}
+	log.Infof("CA ConfigMap name  : %s", config.caBundleConfigMapName)
+	log.Infof("Cloud config path  : %s", config.cloudConfigHostPath)
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
@@ -261,25 +272,30 @@ func main() {
 		log.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
-	log.Infof("Serving unencrypted traffic at http://:%s", config.metricsPort)
-
 	httpMux := http.NewServeMux()
 	if config.serveMetrics {
 		httpMux.Handle("/metrics", promhttp.Handler())
+
 	}
 	httpMux.HandleFunc("/healthz", healthHandler)
 
 	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%s", config.metricsPort), httpMux)
+		metricsURL := fmt.Sprintf(":%s", config.metricsPort)
+		log.Infof("Serving metrics at %s", metricsURL)
+
+		err := http.ListenAndServe(metricsURL, httpMux)
 		if err != nil {
-			log.Fatalf("error serving on port %s: %s", config.metricsPort, err)
+			log.Fatalf("error serving metrics at %s: %+v", metricsURL, err)
 		}
 	}()
 
 	router := mux.NewRouter()
 	router.Handle("/pods", podHandler)
-	router.HandleFunc("/auth/{namespace}/{pod}", authHandler)
 	router.HandleFunc("/healthz", healthHandler)
+
+	if config.useAuthService {
+		router.HandleFunc("/auth/{namespace}/{pod}", authHandler)
+	}
 
 	log.Infof("Serving TLS encrypted traffic at https://:%s", config.port)
 	err = http.ListenAndServeTLS(fmt.Sprintf(":%s", config.port), config.certFile, config.keyFile, router)

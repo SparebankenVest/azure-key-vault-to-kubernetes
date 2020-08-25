@@ -72,8 +72,8 @@ type imageOptions struct {
 }
 
 func (opts *imageOptions) getConfigFromManifest() (*v1.Image, error) {
-	log.Infof("timeout: %v", config.dockerPullTimeout)
-	timeout := time.Duration(config.dockerPullTimeout) * time.Second
+	log.Debugf("docker image inspection timeout: %v seconds", 20)
+	timeout := time.Duration(20) * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
