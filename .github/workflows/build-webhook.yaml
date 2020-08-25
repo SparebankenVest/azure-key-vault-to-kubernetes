@@ -6,6 +6,7 @@ on:
     - master
     paths:
     - '.github/workflows/build-webhook.yaml'
+    - '.github/actions/**'
     - 'Makefile'
     - 'go.mod'
     - 'go.sum'
