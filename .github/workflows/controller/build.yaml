@@ -1,0 +1,38 @@
+name: Build Controller
+
+on:
+  push:
+    branches:
+    - master
+    paths:
+    - '.github/workflows/build-controller.yaml'
+    - '.github/actions/**'
+    - 'Makefile'
+    - 'go.mod'
+    - 'go.sum'
+    - 'cmd/azure-keyvault-controller/**'
+    - 'pkg/**'
+    - '!docs/**'
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Setup Golang
+      uses: actions/setup-go@v1
+      with:
+        go-version: '1.13.4'
+
+    - name: Build
+      uses: ./.github/actions/build
+      with:
+        build-make-action: build-controller
+
+    - name: Push
+      uses: ./.github/actions/push
+      with:
+        push-make-action: push-controller
+        docker-user: ${{ secrets.PRIVATE_REGISTRY_USERNAME }}
+        docker-passw: ${{ secrets.PRIVATE_REGISTRY_PASSWORD }}
