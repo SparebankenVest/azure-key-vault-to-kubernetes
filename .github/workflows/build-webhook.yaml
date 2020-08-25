@@ -34,5 +34,5 @@ jobs:
       uses: ./.github/actions/push
       with:
         push-make-action: push-webhook
-        docker-user: bogus
-        docker-passw: ${{ secrets.FAKE_SECRET }}
+        docker-user: ${{ secrets.PRIVATE_REGISTRY_USERNAME }}
+        docker-passw: ${{ secrets.PRIVATE_REGISTRY_PASSWORD }}
