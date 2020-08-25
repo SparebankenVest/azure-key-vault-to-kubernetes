@@ -13,12 +13,14 @@ runs:
   steps: 
     - name: Test
       run: make test
+      shell: bash
 
     - name: Build docker image
       run: make ${{ inputs.build-make-action }}
+      shell: bash
 
     - name: Push images to private repo
       run: |
         docker login -u ${{secrets.PRIVATE_REGISTRY_USERNAME}} -p ${{secrets.PRIVATE_REGISTRY_PASSWORD}} dokken.azurecr.io
         make ${{ inputs.push-make-action }}
-        
+      shell: bash  
