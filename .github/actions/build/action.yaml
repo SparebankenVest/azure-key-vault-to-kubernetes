@@ -7,6 +7,12 @@ inputs:
   push-make-action:  
     description: 'Action in makefile to push package to docker repo'
     required: true
+  docker-user:  
+    description: 'Username to authenticate with docker repository'
+    required: true
+  docker-passw:  
+    description: 'Password to authenticate with docker repository'
+    required: true
   
 runs:
   using: "composite"
