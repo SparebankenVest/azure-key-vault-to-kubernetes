@@ -4,15 +4,6 @@ inputs:
   build-make-action:  
     description: 'Action in makefile to build package'
     required: true
-  push-make-action:  
-    description: 'Action in makefile to push package to docker repo'
-    required: true
-  docker-user:  
-    description: 'Username to authenticate with docker repository'
-    required: true
-  docker-passw:  
-    description: 'Password to authenticate with docker repository'
-    required: true
   
 runs:
   using: "composite"
@@ -24,9 +15,3 @@ runs:
     - name: Build docker image
       run: make ${{ inputs.build-make-action }}
       shell: bash
-
-    - name: Push images to private repo
-      run: |
-        echo "${{ inputs.docker-passw}}" | docker login -u ${{ inputs.docker-user }} --password-stdin dokken.azurecr.io
-        make ${{ inputs.push-make-action }}
-      shell: bash  

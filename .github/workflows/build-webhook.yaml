@@ -29,6 +29,10 @@ jobs:
       uses: ./.github/actions/build
       with:
         build-make-action: build-webhook
+
+    - name: Push
+      uses: ./.github/actions/push
+      with:
         push-make-action: push-webhook
         docker-user: bogus
         docker-passw: fake-passw
