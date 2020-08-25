@@ -229,12 +229,12 @@ func main() {
 
 	log.Info("Active settings:")
 	log.Infof("Webhook port       : %s", config.port)
-	log.Infof("Serve metrics      : %s", config.serveMetrics)
+	log.Infof("Serve metrics      : %t", config.serveMetrics)
 	if config.serveMetrics {
 		log.Infof("Metrics port       : %s", config.metricsPort)
 	}
-	log.Infof("Use custom auth    : %s", config.customAuth)
-	log.Infof("Use auth service   : %s", config.useAuthService)
+	log.Infof("Use custom auth    : %t", config.customAuth)
+	log.Infof("Use auth service   : %t", config.useAuthService)
 	if config.useAuthService {
 		log.Infof("Auth service name  : %s", config.authServiceName)
 		log.Infof("Auth service port  :%s", config.authServicePort)
