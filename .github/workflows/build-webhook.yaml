@@ -1,0 +1,26 @@
+name: Build WebHook
+
+on:
+  push:
+    branches:
+    - master
+    paths:
+    - '.github/workflows/build-webhook.yaml'
+    - 'Makefile'
+    - 'go.mod'
+    - 'go.sum'
+    - 'cmd/azure-keyvault-secrets-webhook/**'
+    - 'pkg/**'
+    - '!docs/**'
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Build
+      uses: ./.github/actions/build
+      with:
+        build-make-action: build-webhook
+        push-make-action: push-webhook
