@@ -35,4 +35,4 @@ jobs:
       with:
         push-make-action: push-webhook
         docker-user: bogus
-        docker-passw: fake-passw
+        docker-passw: ${{ secrets.FAKE_SECRET }}
