@@ -59,7 +59,7 @@ type azureKeyVaultConfig struct {
 	aadPodBindingLabel  string
 	cloudConfigHostPath string
 	serveMetrics        bool
-	metricsPort         string
+	httpPort            string
 	certFile            string
 	keyFile             string
 	caFile              string
@@ -198,7 +198,7 @@ func initConfig() {
 	viper.SetDefault("use_auth_service", true)
 	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
 	viper.SetDefault("metrics_enabled", false)
-	viper.SetDefault("metrics_port", "80")
+	viper.SetDefault("port_http", "80")
 	viper.SetDefault("port", "443")
 
 	viper.AutomaticEnv()
@@ -214,9 +214,9 @@ func main() {
 
 	config = azureKeyVaultConfig{
 		port:                  viper.GetString("port"),
+		httpPort:              viper.GetString("port_http"),
 		customAuth:            viper.GetBool("custom_auth"),
 		serveMetrics:          viper.GetBool("metrics_enabled"),
-		metricsPort:           viper.GetString("metrics_port"),
 		certFile:              viper.GetString("tls_cert_file"),
 		keyFile:               viper.GetString("tls_private_key_file"),
 		caFile:                viper.GetString("tls_ca_file"),
@@ -230,9 +230,6 @@ func main() {
 	log.Info("Active settings:")
 	log.Infof("Webhook port       : %s", config.port)
 	log.Infof("Serve metrics      : %t", config.serveMetrics)
-	if config.serveMetrics {
-		log.Infof("Metrics port       : %s", config.metricsPort)
-	}
 	log.Infof("Use custom auth    : %t", config.customAuth)
 	log.Infof("Use auth service   : %t", config.useAuthService)
 	if config.useAuthService {
@@ -273,32 +270,38 @@ func main() {
 	}
 
 	httpMux := http.NewServeMux()
+	httpURL := fmt.Sprintf(":%s", config.httpPort)
+
 	if config.serveMetrics {
 		httpMux.Handle("/metrics", promhttp.Handler())
-
+		log.Infof("Serving metrics at %s/metrics", httpURL)
 	}
 	httpMux.HandleFunc("/healthz", healthHandler)
+	log.Infof("Serving healthz at %s/healthz", httpURL)
 
 	go func() {
-		metricsURL := fmt.Sprintf(":%s", config.metricsPort)
-		log.Infof("Serving metrics at %s", metricsURL)
 
-		err := http.ListenAndServe(metricsURL, httpMux)
+		err := http.ListenAndServe(httpURL, httpMux)
 		if err != nil {
-			log.Fatalf("error serving metrics at %s: %+v", metricsURL, err)
+			log.Fatalf("error serving metrics at %s: %+v", httpURL, err)
 		}
 	}()
 
 	router := mux.NewRouter()
+	tlsURL := fmt.Sprintf(":%s", config.port)
+
 	router.Handle("/pods", podHandler)
+	log.Infof("Serving encrypted webhook at %s/pods", tlsURL)
+
 	router.HandleFunc("/healthz", healthHandler)
+	log.Infof("Serving encrypted healthz at %s/healthz", tlsURL)
 
 	if config.useAuthService {
 		router.HandleFunc("/auth/{namespace}/{pod}", authHandler)
+		log.Infof("Serving encrypted auth at %s/auth", tlsURL)
 	}
 
-	log.Infof("Serving TLS encrypted traffic at https://:%s", config.port)
-	err = http.ListenAndServeTLS(fmt.Sprintf(":%s", config.port), config.certFile, config.keyFile, router)
+	err = http.ListenAndServeTLS(tlsURL, config.certFile, config.keyFile, router)
 	if err != nil {
 		log.Fatalf("error serving webhook: %+v", err)
 	}
