@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@master
+    
+    - name: Version
+      run: make print-v-ca-bundle-controller
       
     - name: Pull images from private repo
       run: |

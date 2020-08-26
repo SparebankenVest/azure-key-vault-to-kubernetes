@@ -11,6 +11,9 @@ jobs:
     steps:
     - uses: actions/checkout@master
       
+    - name: Version
+      run: make print-v-webhook
+
     - name: Pull image from private repo
       run: |
         echo "${{ secrets.PRIVATE_REGISTRY_PASSWORD }}" | docker login -u ${{ secrets.PRIVATE_REGISTRY_USERNAME }} --password-stdin dokken.azurecr.io

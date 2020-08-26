@@ -28,6 +28,15 @@ VCS_URL := https://$(PACKAGE)
 print-v-webhook:
 	@echo $(DOCKER_RELEASE_TAG_WEBHOOK) 
 
+print-v-controller:
+	@echo $(DOCKER_RELEASE_TAG_CONTROLLER) 
+
+print-v-vaultenv:
+	@echo $(DOCKER_RELEASE_TAG_VAULTENV) 
+
+print-v-ca-bundle-controller:
+	@echo $(DOCKER_RELEASE_TAG_CA_BUNDLE_CONTROLLER) 
+
 docs-install-dev:
 	cd ./docs && npm install
 
