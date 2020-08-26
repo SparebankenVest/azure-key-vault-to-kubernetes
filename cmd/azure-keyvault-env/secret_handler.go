@@ -136,11 +136,11 @@ func (h *AzureKeyVaultSecretHandler) Handle() (string, error) {
 
 // Handle getting and formating Azure Key Vault Certificate from Azure Key Vault to Kubernetes
 func (h *AzureKeyVaultCertificateHandler) Handle() (string, error) {
-	options := vault.CertificateOptions {
-		ExportPrivateKey: h.query == corev1.TLSPrivateKeyKey,
+	options := vault.CertificateOptions{
+		ExportPrivateKey:  h.query == corev1.TLSPrivateKeyKey,
 		EnsureServerFirst: h.secretSpec.Spec.Output.Secret.ChainOrder == "ensureserverfirst",
 	}
-	
+
 	cert, err := h.vaultService.GetCertificate(&h.secretSpec.Spec.Vault, &options)
 
 	if err != nil {

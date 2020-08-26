@@ -144,7 +144,7 @@ func (h *AzureCertificateHandler) Handle() (map[string][]byte, error) {
 	values := make(map[string][]byte)
 	var err error
 	options := vault.CertificateOptions{
-		ExportPrivateKey: h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeTLS || h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeOpaque,
+		ExportPrivateKey:  h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeTLS || h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeOpaque,
 		EnsureServerFirst: h.secretSpec.Spec.Output.Secret.ChainOrder == "ensureserverfirst",
 	}
 
