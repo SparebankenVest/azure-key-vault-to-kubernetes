@@ -96,6 +96,7 @@ type AzureKeyVaultOutputSecret struct {
 	// +optional
 	Type    corev1.SecretType `json:"type,omitempty"`
 	DataKey string            `json:"dataKey"`
+	ChainOrder string		  `json:"chainOrder"`
 }
 
 // AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource

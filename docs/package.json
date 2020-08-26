@@ -7,13 +7,16 @@
   },
   "dependencies": {
     "algoliasearch": "^4.0.3",
-    "gatsby": "2.19.41",
+    "gatsby": "2.24.50",
     "gatsby-plugin-gtag": "^1.0.13",
-    "gatsby-source-graphql": "^2.1.34",
+    "gatsby-source-graphql": "^2.7.1",
     "gatsby-theme-apollo-docs": "4.0.14",
     "instantsearch.css": "^7.4.2",
-    "react": "16.12.0",
-    "react-dom": "16.12.0",
+    "react": "16.13.1",
+    "react-dom": "16.13.1",
     "react-instantsearch-dom": "^6.3.0"
+  },
+  "devDependencies": {
+    "gatsby-cli": "^2.12.88"
   }
 }

@@ -1,4 +1,4 @@
-// Copyright © 2019 Sparebanken Vest
+// Copyright © 2020 Sparebanken Vest
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,17 +18,7 @@
 package main
 
 import (
-	"crypto"
-	"crypto/rsa"
-	"crypto/sha256"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/base64"
-	"encoding/json"
-	"encoding/pem"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -36,7 +26,7 @@ import (
 	"time"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
@@ -56,6 +46,10 @@ type injectorConfig struct {
 	waitTimeBetweenRetries int
 	useAuthService         bool
 	skipArgsValidation     bool
+	authServiceAddress     string
+	caCert                 string
+	signatureB64           string
+	pubKeyBase64           string
 }
 
 var config injectorConfig
@@ -117,152 +111,6 @@ func getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret, query s
 	return secretHandler.Handle()
 }
 
-type oauthToken struct {
-	Token string `json:"token"`
-}
-
-func createHTTPClientWithTrustedCA(host string) (*http.Client, error) {
-	caURL := fmt.Sprintf("http://%s/ca", host)
-	client := &http.Client{
-		Timeout: time.Second * 10,
-	}
-
-	res, err := client.Get(caURL)
-	if err != nil {
-		return nil, err
-	}
-
-	defer res.Body.Close()
-	caCert, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	tlsConf := &tls.Config{
-		RootCAs: caCertPool,
-	}
-	tlsConf.BuildNameToCertificate()
-
-	tlsClient := &http.Client{
-		Timeout: time.Second * 10,
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConf,
-		},
-	}
-	return tlsClient, nil
-}
-
-func getCredentials(useAuthService bool) (vault.AzureKeyVaultCredentials, error) {
-	if useAuthService {
-		authServiceAddress := viper.GetString("env_injector_auth_service")
-		if authServiceAddress == "" {
-			logger.Fatal(fmt.Errorf("cannot call auth service: env var ENV_INJECTOR_AUTH_SERVICE does not exist"))
-		}
-
-		caCertAddress := viper.GetString("env_injector_ca_cert")
-		if caCertAddress == "" {
-			logger.Fatal(fmt.Errorf("cannot get ca cert: env var ENV_INJECTOR_CA_CERT does not exist"))
-		}
-
-		client, err := createHTTPClientWithTrustedCA(caCertAddress)
-		if err != nil {
-			logger.Fatalf("failed to download ca cert, error: %+v", err)
-		}
-
-		url := fmt.Sprintf("https://%s/auth/%s/%s", authServiceAddress, config.namespace, config.podName)
-		logger.Infof("requesting azure key vault oauth token from %s", url)
-
-		res, err := client.Get(url)
-		if err != nil {
-			logger.Fatalf("request token failed from %s, error: %+v", url, err)
-		}
-		defer res.Body.Close()
-
-		if res.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("failed to get credentials, %s", res.Status)
-		}
-
-		var creds vault.AzureKeyVaultOAuthCredentials
-		err = json.NewDecoder(res.Body).Decode(&creds)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode body, error %+v", err)
-		}
-
-		return creds, nil
-	}
-
-	creds, err := vault.NewAzureKeyVaultCredentialsFromEnvironment()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get credentials for azure key vault, error %+v", err)
-	}
-	return creds, nil
-}
-
-func verifyPKCS(signature string, plaintext string, pubkey rsa.PublicKey) bool {
-	sig, _ := base64.StdEncoding.DecodeString(signature)
-	hashed := sha256.Sum256([]byte(plaintext))
-	err := rsa.VerifyPKCS1v15(&pubkey, crypto.SHA256, hashed[:], sig)
-	return err == nil
-}
-
-func parseRsaPublicKey(pubPem string) (*rsa.PublicKey, error) {
-	block, _ := pem.Decode([]byte(pubPem))
-	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM block containing public signing key")
-	}
-
-	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	switch pub := pub.(type) {
-	case *rsa.PublicKey:
-		return pub, nil
-	default:
-		break // fall through
-	}
-	return nil, fmt.Errorf("Key type is not RSA")
-}
-
-func validateArgsSignature(origArgs string) {
-	signatureB64 := viper.GetString("env_injector_args_signature")
-	if signatureB64 == "" {
-		logger.Fatalf("failed to get ENV_INJECTOR_ARGS_SIGNATURE")
-	}
-
-	signatureArray, err := base64.StdEncoding.DecodeString(signatureB64)
-	if err != nil {
-		logger.Fatalf("failed to decode base64 signature string, error: %+v", err)
-	}
-
-	signature := string(signatureArray)
-
-	pubKeyBase64 := viper.GetString("env_injector_args_key")
-	if pubKeyBase64 == "" {
-		logger.Fatalf("failed to get ENV_INJECTOR_ARGS_KEY, error: %+v", err)
-	}
-
-	bPubKey, err := base64.StdEncoding.DecodeString(pubKeyBase64)
-	if err != nil {
-		logger.Fatalf("failed to decode base64 public key string, error: %+v", err)
-	}
-
-	pubKey := string(bPubKey)
-
-	pubRsaKey, err := parseRsaPublicKey(pubKey)
-	if err != nil {
-		logger.Fatalf("failed to parse rsa public key to verify args: %+v", err)
-	}
-
-	if !verifyPKCS(signature, origArgs, *pubRsaKey) {
-		logger.Fatal("args does not match original args defined by env-injector")
-	}
-}
-
 func initConfig() {
 	viper.SetDefault("env_injector_retries", 3)
 	viper.SetDefault("env_injector_wait_before_retry", 3)
@@ -282,6 +130,15 @@ func setLogLevel(logLevel string) {
 		log.Errorf("error setting log level: %s", err.Error())
 	}
 	log.SetLevel(logrusLevel)
+}
+
+func validateConfig(requiredEnvVars map[string]string) error {
+	for key, value := range requiredEnvVars {
+		if value == "" {
+			return fmt.Errorf("environment variable %s not provided or empty", strings.ToUpper(key))
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -304,10 +161,22 @@ func main() {
 		waitTimeBetweenRetries: viper.GetInt("env_injector_wait_before_retry"),
 		useAuthService:         viper.GetBool("env_injector_use_auth_service"),
 		skipArgsValidation:     viper.GetBool("env_injector_skip_args_validation"),
+		authServiceAddress:     viper.GetString("env_injector_auth_service"),
+		caCert:                 viper.GetString("env_injector_ca_cert"),
+		signatureB64:           viper.GetString("env_injector_args_signature"),
+		pubKeyBase64:           viper.GetString("env_injector_args_key"),
 	}
 
-	if config.namespace == "" {
-		logger.Fatalf("current namespace not provided in environment variable ENV_INJECTOR_POD_NAMESPACE")
+	requiredEnvVars := map[string]string{
+		"env_injector_auth_service":   config.authServiceAddress,
+		"env_injector_ca_cert":        config.caCert,
+		"env_injector_args_signature": config.signatureB64,
+		"env_injector_args_key":       config.pubKeyBase64,
+	}
+
+	err = validateConfig(requiredEnvVars)
+	if err != nil {
+		logger.Fatalf("failed validating config, error: %+v", err)
 	}
 
 	logger = logger.WithFields(log.Fields{
@@ -331,13 +200,13 @@ func main() {
 		origArgs = os.Args[1:]
 
 		if !config.skipArgsValidation {
-			validateArgsSignature(strings.Join(origArgs, " "))
+			validateArgsSignature(strings.Join(origArgs, " "), config.signatureB64, config.pubKeyBase64)
 		}
 
 		logger.Infof("found original container command to be %s %s", origCommand, origArgs)
 	}
 
-	creds, err := getCredentials(config.useAuthService)
+	creds, err := getCredentials(config.useAuthService, config.authServiceAddress, config.caCert)
 	if err != nil {
 		log.Fatalf("failed to get credentials, error: %+v", err)
 	}
@@ -411,7 +280,7 @@ func main() {
 			if secret == "" {
 				logger.Fatalf("secret not found in azure key vault: %s", keyVaultSecretSpec.Spec.Vault.Object.Name)
 			} else {
-				logger.Infof("secret %s injected into evn var %s for executable %s", keyVaultSecretSpec.Spec.Vault.Object.Name, name, origCommand)
+				logger.Infof("secret %s injected into env var %s for executable %s", keyVaultSecretSpec.Spec.Vault.Object.Name, name, origCommand)
 				environ[i] = fmt.Sprintf("%s=%s", name, secret)
 			}
 		}

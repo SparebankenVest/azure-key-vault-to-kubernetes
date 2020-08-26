@@ -36,7 +36,8 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-controller/controller"
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	informers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/signals"
@@ -117,13 +118,15 @@ func main() {
 	eventBroadcaster.StartLogging(log.Tracef)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
-	var vaultAuth vault.AzureKeyVaultCredentials
+	var vaultAuth azure.Credentials
 	if customAuth {
-		if vaultAuth, err = vault.NewAzureKeyVaultCredentialsFromEnvironment(); err != nil {
+		if vaultAuth, err = azure.NewFromEnvironment(); err != nil {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
 		}
 	} else {
-		if vaultAuth, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig(cloudconfig); err != nil {
+		cloudCnfProvider := azure.NewFromCloudConfig(&cloudconfig)
+
+		if vaultAuth, err = cloudCnfProvider.GetCredentials(); err != nil {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
 		}
 	}

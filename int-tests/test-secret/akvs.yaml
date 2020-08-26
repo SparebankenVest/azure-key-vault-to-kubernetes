@@ -1,0 +1,11 @@
+apiVersion: spv.no/v1
+kind: AzureKeyVaultSecret
+metadata:
+  name: test-secret
+  namespace: akv2k8s-test
+spec:
+  vault:
+    name: akv2k8s-test
+    object:
+      type: secret
+      name: my-secret

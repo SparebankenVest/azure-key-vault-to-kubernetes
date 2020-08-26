@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 
 	yaml "gopkg.in/yaml.v2"
@@ -136,8 +136,12 @@ func (h *AzureKeyVaultSecretHandler) Handle() (string, error) {
 
 // Handle getting and formating Azure Key Vault Certificate from Azure Key Vault to Kubernetes
 func (h *AzureKeyVaultCertificateHandler) Handle() (string, error) {
-	exportPrivateKey := h.query == corev1.TLSPrivateKeyKey
-	cert, err := h.vaultService.GetCertificate(&h.secretSpec.Spec.Vault, exportPrivateKey)
+	options := vault.CertificateOptions{
+		ExportPrivateKey:  h.query == corev1.TLSPrivateKeyKey,
+		EnsureServerFirst: h.secretSpec.Spec.Output.Secret.ChainOrder == "ensureserverfirst",
+	}
+
+	cert, err := h.vaultService.GetCertificate(&h.secretSpec.Spec.Vault, &options)
 
 	if err != nil {
 		return "", err
@@ -150,7 +154,7 @@ func (h *AzureKeyVaultCertificateHandler) Handle() (string, error) {
 	var privKey []byte
 	var pubKey []byte
 
-	if exportPrivateKey {
+	if options.ExportPrivateKey {
 		if privKey, err = cert.ExportPrivateKeyAsPem(); err != nil {
 			return "", err
 		}
