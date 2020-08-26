@@ -46,7 +46,7 @@ func (f *fakeVaultService) GetSecret(secret *akv.AzureKeyVault) (string, error) 
 func (f *fakeVaultService) GetKey(secret *akv.AzureKeyVault) (string, error) {
 	return "", nil
 }
-func (f *fakeVaultService) GetCertificate(secret *akv.AzureKeyVault, exportPrivateKey bool) (*vault.Certificate, error) {
+func (f *fakeVaultService) GetCertificate(secret *akv.AzureKeyVault, options *vault.CertificateOptions) (*vault.Certificate, error) {
 	if f.fakeCertValue != "" {
 		return vault.NewCertificateFromPem(f.fakeCertValue)
 	}
