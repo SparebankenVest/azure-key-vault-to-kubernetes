@@ -31,30 +31,32 @@ Fore more details, see the [Controller Helm Chart](/stable/azure-key-vault-contr
 
 ## Custom Authentication for the Env Injector
 
-The Env-Injector operates locally compared to the Controller, which operates centrally. The Env-Injector running inside a Pod's container needs access to Azure Key Vault credentials to inject secrets. Two options are available to make credentials available during environment injection:
+The Env-Injector execute locally inside your Pod and needs access to Azure Key Vault credentials to inject secrets. Two options are available:
 
-1) The Env-Injector running inside the container request credentials from the Env-Injector authentication service
-2) The Pod hosting the container provide credentials to the Env-Injector running inside the container
+1) The Env-Injector running inside the container request credentials from the Env-Injector authentication service (default / centralized)
+2) The Pod hosting the container provide credentials to the Env-Injector running inside the container (custom authentication / local)
 
-For option 1 you only provide credentials once, during the installation of the Env-Injector.
+For option 1 you only provide credentials when installation of the Env-Injector.
 
-For option 2 you have to provide Azure Key Vault credentials to every Pod using Env-Injector.
+For option 2 you provide credentials to every Pod that will use the Env-Injector.
 
-Option 1 is easiest and most convinient, but also give ALL pods
+Option 1 is easiest and most convenient, but will give the same credentials to all Pods using Env-Injector. 
 
 **Recommendations:**
 
-|                                                      | Env-Injector Auth Service | Pass credentials to every Pod |
+|                                                      | Env-Injector Auth Service | Credentials in Pod |
 | ---------------------------------------------------- | :-----------------------: | :---------------------------: |
 | Using one Azure Key Vault per cluster                | &#10004;                  |                               |
 | Using multiple Azure Key Vaults per cluster (f.ex. one Key Vault per application) and it is OK to use the same credentials to all Key Vaults | &#10004;                  |                               |
 | Multi-tenant environment (multiple Azure Key Vaults) |                           | &#10004;                      |
 
+
+|                                                      | Env-Injector Auth Service | Credentials in Pod |
+| ---------------------------------------------------- | :-----------------------: | :---------------------------: |
 | Provide credentials only during Env-Injector install | &#10004;
-| Must provide credentials to every Pod using Env-Injector | | &#10004;|
-| Azure Key Vault credentials available to all Pods using Env-Injector | &#10004; ||
+| Must provide credentials to every Pod when using Env-Injector | | &#10004;|
+| The same Azure Key Vault credentials used in all Pods using Env-Injector | &#10004; ||
 | Recommended if there is one Azure Key Vault per cluster | &#10004; | |
-In practice this means the code that downloads the secrets for Azure Key Vault runs inside the application Container and are executed before the original executable of that container. After the container has started, a Kubernetes user with the right credentials are able to exec into the container. Several steps have been taken to avoid exposing sensitive data in this scenario and are explained below. Another scenario is data stored in Kubernetes Secrets
 
 To use custom authentication for the Env Injector there are three options:
 
@@ -65,19 +67,6 @@ To use custom authentication for the Env Injector there are three options:
 To avoid using option no. 3, support for a more convenient solution (no. 2) is supported where the Azure Key Vault credentials in the Env Injector (using [Authentication options](#custom-authentication-options) below) is "forwarded" to the the Pods. The Env Injector will create a Kubernetes Secret containing the credentials and mutate the Pod's env section to reference the credentials in the Secret. 
 
 Fore more details, see the [Env Injector Helm Chart](/stable/azure-key-vault-env-injector/README/#installing-the-chart).
-
-### Centralized vs Local credentials
-
-|Auth method | Centralized | Local |
-|------------|-------------|-------|
-|[AAD Pod Identity](https://github.com/Azure/aad-pod-identity) | (&#10004;)|&#10004; |
-|Client credentials |&#10004; |&#10004;|
-|Certificate | &#10004; | &#10004; |
-|Username/password | &#10004; | &#10004; |
-
-With centralized credentials, the credentials are stored in the same Kuberntes namespace as the Env-Injector and the Env-Injector can provide ...
-
-Local credentials is when the credentials are passed directly to the Pod
 
 ## Custom Authentication Options
 
