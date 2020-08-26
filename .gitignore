@@ -3,3 +3,4 @@ debug.test
 .vscode
 /vendor/
 *.tmp
+test.yaml

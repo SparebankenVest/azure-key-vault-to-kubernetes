@@ -38,7 +38,7 @@ az keyvault set-policy --n akv2k8s-test --spn <spn for akv2k8s> --secret-permiss
 ### Add certificate - required for certificate-tutorials
 
 ```bash
-az keyvault certificate create --vault-name akv2k8s-test --name my-certificate -p "$(az keyvault certificate get-default-policy)"
+az keyvault certificate create --vault-name akv2k8s-test --name my-certificate -p "$(az keyvault certificate get-default-policy -o json)"
 ```
 
 Authorize Access to Certificates:

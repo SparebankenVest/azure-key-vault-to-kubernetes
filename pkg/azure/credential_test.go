@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package client
+package azure
 
 import (
 	"os"
@@ -69,12 +69,12 @@ func ensureIntegrationEnvironment(t *testing.T) {
 func TestAudience(t *testing.T) {
 	ensureIntegrationEnvironment(t)
 
-	creds, err := NewAzureKeyVaultCredentialsFromEnvironment()
+	creds, err := NewFromEnvironment()
 	if err != nil {
 		t.Error(err)
 	}
 
-	token := creds.(*azureKeyVaultCredentials).Token
+	token := creds.(*credentials).Token
 	err = token.Refresh()
 	if err != nil {
 		t.Error(err)

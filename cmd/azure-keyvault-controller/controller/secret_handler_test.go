@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,7 +46,7 @@ func (f *fakeVaultService) GetSecret(secret *akv.AzureKeyVault) (string, error) 
 func (f *fakeVaultService) GetKey(secret *akv.AzureKeyVault) (string, error) {
 	return "", nil
 }
-func (f *fakeVaultService) GetCertificate(secret *akv.AzureKeyVault, exportPrivateKey bool) (*vault.Certificate, error) {
+func (f *fakeVaultService) GetCertificate(secret *akv.AzureKeyVault, options *vault.CertificateOptions) (*vault.Certificate, error) {
 	if f.fakeCertValue != "" {
 		return vault.NewCertificateFromPem(f.fakeCertValue)
 	}

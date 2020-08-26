@@ -1,0 +1,23 @@
+name: Release Webhook
+
+on:
+  push:
+    tags:
+    - 'webhook-[0-9]+.[0-9]+.[0-9]+**'
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@master
+      
+    - name: Pull image from private repo
+      run: |
+        echo "${{ secrets.PRIVATE_REGISTRY_PASSWORD }}" | docker login -u ${{ secrets.PRIVATE_REGISTRY_USERNAME }} --password-stdin dokken.azurecr.io
+        make pull-webhook
+
+    - name: Push image to public repo
+      run: |
+        echo "${{ secrets.PUBLIC_REGISTRY_PASSWORD }}" | docker login -u ${{ secrets.PUBLIC_REGISTRY_USERNAME }} --password-stdin
+        make release-webhook DOCKER_RELEASE_TAG=${GITHUB_REF##*/}
+        

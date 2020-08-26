@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
@@ -143,22 +143,25 @@ func (h *AzureSecretHandler) Handle() (map[string][]byte, error) {
 func (h *AzureCertificateHandler) Handle() (map[string][]byte, error) {
 	values := make(map[string][]byte)
 	var err error
-
-	exportPrivateKey := h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeTLS || h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeOpaque
-	if !exportPrivateKey && h.secretSpec.Spec.Output.Secret.DataKey == "" {
-		return nil, fmt.Errorf("no datakey spesified for output secret")
+	options := vault.CertificateOptions{
+		ExportPrivateKey:  h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeTLS || h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeOpaque,
+		EnsureServerFirst: h.secretSpec.Spec.Output.Secret.ChainOrder == "ensureserverfirst",
 	}
 
-	log.Infof("Exporting certificate with private key: %t", exportPrivateKey)
+	if !options.ExportPrivateKey && h.secretSpec.Spec.Output.Secret.DataKey == "" {
+		return nil, fmt.Errorf("no datakey specified for output secret")
+	}
 
-	cert, err := h.vaultService.GetCertificate(&h.secretSpec.Spec.Vault, exportPrivateKey)
+	log.Infof("Exporting certificate with private key: %t", options.ExportPrivateKey)
+
+	cert, err := h.vaultService.GetCertificate(&h.secretSpec.Spec.Vault, &options)
 	if err != nil {
 		return nil, err
 	}
 
 	if h.secretSpec.Spec.Output.Secret.Type == corev1.SecretTypeOpaque {
 		values[h.secretSpec.Spec.Output.Secret.DataKey] = cert.ExportRaw()
-	} else if exportPrivateKey {
+	} else if options.ExportPrivateKey {
 		if values[corev1.TLSCertKey], err = cert.ExportPublicKeyAsPem(); err != nil {
 			return nil, err
 		}

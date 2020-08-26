@@ -1,0 +1,17 @@
+name: 'Build'
+description: 'Build Go packages'
+inputs:
+  build-make-action:  
+    description: 'Action in makefile to build package'
+    required: true
+  
+runs:
+  using: "composite"
+  steps: 
+    - name: Test
+      run: make test
+      shell: bash
+
+    - name: Build docker image
+      run: make ${{ inputs.build-make-action }}
+      shell: bash
