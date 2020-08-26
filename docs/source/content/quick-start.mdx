@@ -21,7 +21,7 @@ See [installation](installation).
 
 ## Ensure Kubernetes can access objects in Azure Key Vault
 
-By default akv2k8s use the AKS cluster credentials to authenticate with Azure Key Vault (if you run outside Azure, see using [custom credentials](security/authentication#custom-authentication)). Run the following command to authorize akv2k8s to access `secret`-objects in Azure Key Vault.
+By default akv2k8s use the AKS cluster credentials to authenticate with Azure Key Vault (if you run outside Azure, see using [custom credentials](security/authentication#akv-authentication-with-the-controller)). Run the following command to authorize akv2k8s to access `secret`-objects in Azure Key Vault.
 
 ```bash
 az keyvault set-policy \

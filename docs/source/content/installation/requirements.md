@@ -7,7 +7,7 @@ description: "Requirements for installing akv2k8s"
 * A dedicated kubernetes namespace
 * Enabled admission controllers: MutatingAdmissionWebhook and ValidatingAdmissionWebhook
 * RBAC enabled
-* Default [authentication](../security/authentication) requires Kubernetes cluster running in Azure - use [custom authentication](../security/authentication#custom-authentication) if running outside Azure
+* Default [authentication](../security/authentication) requires Kubernetes cluster running in Azure - use [custom authentication](../security/authentication) if running outside Azure
 
 ## Dedicated namespace for akv2k8s
 

@@ -1,13 +1,15 @@
 ---
-title: "Authentication"
+title: "Authentication with Azure Key Vault"
 description: "Learn about the different options for authenticating with Azure Key Vault."
 ---
 
-By default both the Controller and the Env Injector will assume it is running on Azure (since Azure Key Vault is most commonly used in Azure) - and use the default AKS service principal for authentication - unless custom authentication is provided (see [Custom Authentication](#custom-authentication) below). 
+By default both the Controller and the Env Injector will assume it is running on Azure (since Azure Key Vault is most commonly used in Azure) - and use the default AKS credentials for authentication (a Service Principal or Azure Managed Identities) - unless custom authentication is provided.
 
-Default authentication is the AKS credentials that are available on all Nodes (hosts) at `/etc/kubernetes/azure.json`. These credentials are the same as the Kubernetes cluster use when interacting with Azure to create VM's, Load Balancers and other cloud infrastructure. 
+The Controller and Env-Injector have to handle AKV authentication quite differently, as the Controller is centralized and the Env-Injector executes in context of Pods.
 
-> **Note: The preferred solution would be to use [Azure Managed Identities](https://docs.microsoft.com/en-us/azure/aks/use-managed-identity), but this is still in preview - so for now we rely on the default AKS service principal.**
+To get more options for AKV authentication, see:
+  * [AKV Authentication with the Controller](#akv-authentication-with-the-controller) for AKV Controller authentication options
+  * [AKV Authentication with the Env-Injector](#akv-authentication-with-the-env-injector) for AKV Env-Injector authentication options
 
 ## Situations where Default Authentication does not Work
 
@@ -17,54 +19,47 @@ Currently only one situations has been identified, where default authentication 
 
 Two solutions exists:  
   1. Change the Pod Security Policy to list `/etc/kubernetes/azure.json` under [AllowedHostPaths](https://kubernetes.io/docs/concepts/policy/pod-security-policy/#volumes-and-file-systems) 
-  2. Or [use custom authentication](#custom-authentication). 
+  2. Or use custom authentication (see below). 
 
-## Custom Authentication
+## AKV Authentication with the Controller
 
-It is possible to give the Controller and/or the Env Injector specific credentials to authenticate with Azure Key Vault. The authentication requirements for the Controller and Env Injector are covered below.
-
-## Custom Authentication for the Controller 
-
-The Controller will need Azure Key Vault credentials to get Secrets from Azure Key Vault and store them as Kubernetes Secrets. In order to provide custom credentials, pass inn the value `keyVault.customAuth.enabled=true` to the Controller Helm Chart together with one of the [Authentication options](#custom-authentication-options) described below.
+The Controller will need Azure Key Vault credentials to get Secrets from Azure Key Vault and store them as Kubernetes Secrets. **If the default option (AKS credentials) works for you, use that.** If not, use custom authentication by passing inn the value `keyVault.customAuth.enabled=true` to the Controller and pick one of the [Authentication options](#custom-authentication-options) described below.
 
 Fore more details, see the [Controller Helm Chart](/stable/azure-key-vault-controller/README/#installing-the-chart).
 
-## Custom Authentication for the Env Injector
+## AKV Authentication with the Env-Injector
 
-The Env-Injector execute locally inside your Pod and needs access to Azure Key Vault credentials to inject secrets. Two options are available:
+The Env-Injector execute locally inside your Pod and needs access to Azure Key Vault credentials to inject secrets. You can either use default authentication (AKS credentials) or custom authentication. 
 
-1) The Env-Injector running inside the container request credentials from the Env-Injector authentication service (default / centralized)
-2) The Pod hosting the container provide credentials to the Env-Injector running inside the container (custom authentication / local)
+Below we outline some guidelines to when you should use Default or Custom authentication. 
 
-For option 1 you only provide credentials when installation of the Env-Injector.
+|                                                      | Default | Custom Authentication |
+| ---------------------------------------------------- | :-----------------------: | :---------------------------: |
+| Kubernetes runs on Azure AKS          | &#10004;||
+| Kubernetes runs outside Azure           | | &#10004;|
 
-For option 2 you provide credentials to every Pod that will use the Env-Injector.
-
-Option 1 is easiest and most convenient, but will give the same credentials to all Pods using Env-Injector. 
-
-**Recommendations:**
-
-|                                                      | Env-Injector Auth Service | Credentials in Pod |
+|                                                      | Default | Custom Authentication |
 | ---------------------------------------------------- | :-----------------------: | :---------------------------: |
 | Using one Azure Key Vault per cluster                | &#10004;                  |                               |
-| Using multiple Azure Key Vaults per cluster (f.ex. one Key Vault per application) and it is OK to use the same credentials to all Key Vaults | &#10004;                  |                               |
-| Multi-tenant environment (multiple Azure Key Vaults) |                           | &#10004;                      |
+| Using multiple Azure Key Vaults per cluster (like one Key Vault per application) and it is OK to use the same credentials to all Key Vaults | &#10004;                  |                               |
+| Multi-tenant environment (multiple Azure Key Vaults per cluster) |                           | &#10004;                      |
 
+Implications:
 
-|                                                      | Env-Injector Auth Service | Credentials in Pod |
+|                                                      | Default | Custom Authentication |
 | ---------------------------------------------------- | :-----------------------: | :---------------------------: |
-| Provide credentials only during Env-Injector install | &#10004;
-| Must provide credentials to every Pod when using Env-Injector | | &#10004;|
-| The same Azure Key Vault credentials used in all Pods using Env-Injector | &#10004; ||
-| Recommended if there is one Azure Key Vault per cluster | &#10004; | |
+| Provide credentials only once, during Env-Injector install | &#10004;
+| Provide credentials to every Pod using Env-Injector | | &#10004;|
+| The same Azure Key Vault credentials used in all Pods | &#10004; ||
 
-To use custom authentication for the Env Injector there are three options:
+### Custom AKV Authentication with the Env-Injector
+
+Custom AKV Authentication for the Env-Injector means providing AKV credentials to every Pod using environment injection. Typically this means in every Kubernetes Deployment definition. 
+
+Two options are currently available:
 
 1. Use Microsft's [AAD Pod Identity](https://github.com/Azure/aad-pod-identity) (see [Using Custom Authentication with AAD Pod Identity](/stable/azure-key-vault-env-injector/README/#using-custom-authentication-with-aad-pod-identity))
-2. Use custom credentials through credential injection (see [Using Custom Authentication with Credential Injection Enabled](/stable/azure-key-vault-env-injector/README/#using-custom-authentication-with-credential-injection-enabled))
-3. Provide credentials for each Pod using the Env Injector pattern using [Authentication options](#custom-authentication-options) below.
-
-To avoid using option no. 3, support for a more convenient solution (no. 2) is supported where the Azure Key Vault credentials in the Env Injector (using [Authentication options](#custom-authentication-options) below) is "forwarded" to the the Pods. The Env Injector will create a Kubernetes Secret containing the credentials and mutate the Pod's env section to reference the credentials in the Secret. 
+2. Provide credentials for each Pod using [Authentication options](#custom-authentication-options) below.
 
 Fore more details, see the [Env Injector Helm Chart](/stable/azure-key-vault-env-injector/README/#installing-the-chart).
 
