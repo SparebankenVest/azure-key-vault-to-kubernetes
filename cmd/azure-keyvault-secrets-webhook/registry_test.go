@@ -10,6 +10,8 @@ import (
 )
 
 func TestDockerPull(t *testing.T) {
+	config.dockerImageInspectionTimeout = 20
+
 	opts := imageOptions{
 		image:        "openjdk:slim",
 		credentials:  types.DockerAuthConfig{},
