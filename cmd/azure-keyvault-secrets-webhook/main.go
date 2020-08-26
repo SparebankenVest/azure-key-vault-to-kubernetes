@@ -53,10 +53,10 @@ const (
 )
 
 type azureKeyVaultConfig struct {
-	port                string
-	customAuth          bool
-	namespace           string
-	aadPodBindingLabel  string
+	port       string
+	customAuth bool
+	namespace  string
+	// aadPodBindingLabel  string
 	cloudConfigHostPath string
 	serveMetrics        bool
 	httpPort            string
@@ -65,11 +65,12 @@ type azureKeyVaultConfig struct {
 	caFile              string
 	useAuthService      bool
 	// nameLocallyOverrideAuthService string
-	authServiceName       string
-	authServicePort       string
-	caBundleConfigMapName string
-	kubeClient            *kubernetes.Clientset
-	credentials           azure.Credentials
+	dockerImageInspectionTimeout int
+	authServiceName              string
+	authServicePort              string
+	caBundleConfigMapName        string
+	kubeClient                   *kubernetes.Clientset
+	credentials                  azure.Credentials
 }
 
 var config azureKeyVaultConfig
@@ -194,7 +195,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 func initConfig() {
 	viper.SetDefault("ca_config_map_name", "akv2k8s-ca")
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
-	viper.SetDefault("custom_docker_pull_timeout", 20)
+	viper.SetDefault("docker_image_inspection_timeout", 20)
 	viper.SetDefault("use_auth_service", true)
 	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
 	viper.SetDefault("metrics_enabled", false)
@@ -213,18 +214,19 @@ func main() {
 	setLogLevel(logLevel)
 
 	config = azureKeyVaultConfig{
-		port:                  viper.GetString("port"),
-		httpPort:              viper.GetString("port_http"),
-		customAuth:            viper.GetBool("custom_auth"),
-		serveMetrics:          viper.GetBool("metrics_enabled"),
-		certFile:              viper.GetString("tls_cert_file"),
-		keyFile:               viper.GetString("tls_private_key_file"),
-		caFile:                viper.GetString("tls_ca_file"),
-		useAuthService:        viper.GetBool("use_auth_service"),
-		authServiceName:       viper.GetString("webhook_auth_service"),
-		authServicePort:       viper.GetString("webhook_auth_service_port"),
-		caBundleConfigMapName: viper.GetString("ca_config_map_name"),
-		cloudConfigHostPath:   viper.GetString("cloud_config_host_path"),
+		port:                         viper.GetString("port"),
+		httpPort:                     viper.GetString("port_http"),
+		customAuth:                   viper.GetBool("custom_auth"),
+		serveMetrics:                 viper.GetBool("metrics_enabled"),
+		certFile:                     viper.GetString("tls_cert_file"),
+		keyFile:                      viper.GetString("tls_private_key_file"),
+		caFile:                       viper.GetString("tls_ca_file"),
+		useAuthService:               viper.GetBool("use_auth_service"),
+		authServiceName:              viper.GetString("webhook_auth_service"),
+		authServicePort:              viper.GetString("webhook_auth_service_port"),
+		caBundleConfigMapName:        viper.GetString("ca_config_map_name"),
+		cloudConfigHostPath:          viper.GetString("cloud_config_host_path"),
+		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
 	}
 
 	log.Info("Active settings:")

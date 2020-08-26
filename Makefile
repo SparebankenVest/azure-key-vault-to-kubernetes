@@ -28,8 +28,11 @@ VCS_URL := https://$(PACKAGE)
 print-v-webhook:
 	@echo $(DOCKER_RELEASE_TAG_WEBHOOK) 
 
-run-docs-dev:
-	cd ./docs && npm install && GATSBY_ALGOLIA_ENABLED=false npm run start
+docs-install-dev:
+	cd ./docs && npm install
+
+docs-run-dev:
+	cd ./docs && GATSBY_ALGOLIA_ENABLED=false npm run start
 
 fmt:
 	@echo "==> Fixing source code with gofmt..."
