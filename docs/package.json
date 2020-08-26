@@ -14,7 +14,7 @@
     "instantsearch.css": "^7.4.2",
     "react": "16.13.1",
     "react-dom": "16.13.1",
-    "react-instantsearch-dom": "^6.3.0"
+    "react-instantsearch-dom": "^6.4.0"
   },
   "devDependencies": {
     "gatsby-cli": "^2.12.88"
