@@ -10,7 +10,7 @@
     "gatsby": "2.24.50",
     "gatsby-plugin-gtag": "^1.0.13",
     "gatsby-source-graphql": "^2.7.1",
-    "gatsby-theme-apollo-docs": "4.0.14",
+    "gatsby-theme-apollo-docs": "4.3.6",
     "instantsearch.css": "^7.4.2",
     "react": "16.13.1",
     "react-dom": "16.13.1",
