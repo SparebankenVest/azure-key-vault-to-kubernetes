@@ -12,6 +12,7 @@ type podData struct {
 	remoteAddress string
 	name          string
 	namespace     string
+	token         string
 }
 
 func authorize(clientset *kubernetes.Clientset, podData podData) error {

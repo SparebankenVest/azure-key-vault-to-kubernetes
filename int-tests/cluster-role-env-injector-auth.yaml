@@ -1,0 +1,26 @@
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRole
+# metadata:
+#   name: akv2k8s-auth
+# rules:
+# - apiGroups: [""]
+#   #
+#   # at the HTTP level, the name of the resource for accessing Secret
+#   # objects is "secrets"
+#   resources: ["secrets"]
+#   verbs: ["get", "watch", "list"]
+# ---
+
+apiVersion: rbac.authorization.k8s.io/v1
+# This cluster role binding allows anyone in the "manager" group to read secrets in any namespace.
+kind: ClusterRoleBinding
+metadata:
+  name: akv2k8s-auth-global
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: akv2k8s-test
+roleRef:
+  kind: ClusterRole
+  name: system:discovery
+  apiGroup: rbac.authorization.k8s.io

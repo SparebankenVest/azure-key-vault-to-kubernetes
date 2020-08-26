@@ -62,7 +62,7 @@ func NewCertificateFromPem(pem string) (*Certificate, error) {
 	// privateDer, rest := pem.Decode([]byte(c.cert))
 	// publicDer, _ := pem.Decode(rest)
 
-	cert, err := importPem(pem)
+	cert, err := importPem(pem, false)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func NewCertificateFromPem(pem string) (*Certificate, error) {
 }
 
 // NewCertificateFromPfx creates a new Certificate from a PFX certificate
-func NewCertificateFromPfx(pfx []byte) (*Certificate, error) {
+func NewCertificateFromPfx(pfx []byte, ensureServerFirst bool) (*Certificate, error) {
 	pemList, err := pkcs12.ToPEM(pfx, "")
 
 	if err != nil {
@@ -85,7 +85,7 @@ func NewCertificateFromPfx(pfx []byte) (*Certificate, error) {
 		mergedPems.WriteString(string(pem.EncodeToMemory(pemCert)))
 	}
 
-	cert, err := importPem(mergedPems.String())
+	cert, err := importPem(mergedPems.String(), ensureServerFirst)
 	if err != nil {
 		return nil, err
 	}
@@ -161,9 +161,10 @@ func (cert *Certificate) ExportRaw() []byte {
 	return cert.raw
 }
 
-func importPem(pemCert string) (*Certificate, error) {
+func importPem(pemCert string, ensureServerFirst bool) (*Certificate, error) {
 	var cert Certificate
-	var publicDers []byte
+	var publicDers [][]byte
+	var joinedPublicDers []byte
 	var err error
 	raw := []byte(pemCert)
 
@@ -173,7 +174,7 @@ func importPem(pemCert string) (*Certificate, error) {
 			break
 		}
 		if pemBlock.Type == "CERTIFICATE" {
-			publicDers = append(publicDers, pemBlock.Bytes...)
+			publicDers = append(publicDers, pemBlock.Bytes)
 		} else {
 			err = parsePrivateKey(pemBlock.Bytes, &cert)
 			if err != nil {
@@ -183,7 +184,18 @@ func importPem(pemCert string) (*Certificate, error) {
 		raw = rest
 	}
 
-	cert.Certificates, err = x509.ParseCertificates(publicDers)
+	if ensureServerFirst && len(publicDers) > 1 {
+		publicDers = append(
+			publicDers[len(publicDers)-1:],
+			publicDers[0:len(publicDers)-1]...,
+		)
+	}
+
+	for _, der := range publicDers {
+		joinedPublicDers = append(joinedPublicDers, der...)
+	}
+
+	cert.Certificates, err = x509.ParseCertificates(joinedPublicDers)
 	if err != nil {
 		return nil, err
 	}

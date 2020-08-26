@@ -22,8 +22,9 @@ spec:
   output: # ignored by env injector, required by controller to output kubernetes secret
     secret: 
       name: <name of the kubernetes secret to create>
-      dataKey: <required when type is opaque - name of the kubernetes secret data key to assign value to - ignored for all other types>
       type: <optional - kubernetes secret type - defaults to opaque>
+      dataKey: <required when type is opaque - name of the kubernetes secret data key to assign value to - ignored for all other types>
+      chainOrder: <optional - used when server certificate is at the end of the chain - set to ensureserverfirst>
 ```
 
 > **Note - the `output` is only used by the Controller to create the Azure Key Vault secret as a Kubernetes native Secret - it is ignored and not needed by the Env Injector.**
@@ -85,3 +86,7 @@ This must be a properly formatted **Private** SSH Key stored in a Secret object.
 | `certificate` | Azure Key Vault Certificate - A TLS certificate with just the public key or both public and private key if exportable |
 | `key`         | Azure Key Vault Key - A RSA or EC key used for signing |
 | `multi-key-value-secret`  | A special kind of Azure Key Vault Secret only understood by the Controller and the Env Injector. For cases where a secret contains `json` or `yaml` key/value items that will be directly exported as key/value items in the Kubernetes secret, or access with queries in the Evn Injector. When `multi-key-value-secret` type is used, the `contentType` property MUST also be set to either `application/x-json` or `application/x-yaml`. |
+
+## Chain Order
+
+When exporting a PFX certificate from Key Vault the server certificate sometimes end up at the end of the chain instead of the beginning. If this is used together with, for example, ingress-nginx the certificate won't be loaded and it will revert back to default. By setting `chainOrder` to `ensureserverfirst` the server certificate will be moved first in the chain.

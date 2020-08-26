@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+
 	"github.com/containers/image/v5/transports/alltransports"
 	"github.com/containers/image/v5/types"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -32,7 +34,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/pkg/credentialprovider/azure"
 )
 
 func getContainerCmd(container corev1.Container, creds types.DockerAuthConfig) ([]string, error) {
@@ -71,8 +72,8 @@ type imageOptions struct {
 }
 
 func (opts *imageOptions) getConfigFromManifest() (*v1.Image, error) {
-	log.Infof("timeout: %v", config.dockerPullTimeout)
-	timeout := time.Duration(config.dockerPullTimeout) * time.Second
+	log.Debugf("docker image inspection timeout: %v seconds", 20)
+	timeout := time.Duration(20) * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -172,23 +173,22 @@ func getRegistryCreds(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (
 	return creds, nil
 }
 
-func getAcrCredentials(host string) (types.DockerAuthConfig, bool) {
+func getAcrCredentials(host string, image string) (types.DockerAuthConfig, bool) {
 	isAcr, wildcardHost := hostIsAzureContainerRegistry(host)
 
 	if !isAcr {
 		return types.DockerAuthConfig{}, false
 	}
 
-	conf := azure.NewACRProvider(&config.cloudConfigHostPath)
-	if conf.Enabled() {
-		dockerConfList := conf.Provide()
-		if len(dockerConfList) > 0 {
-			dockerConf := dockerConfList[wildcardHost]
-			return types.DockerAuthConfig{
-				Username: dockerConf.Username,
-				Password: dockerConf.Password,
-			}, true
-		}
+	cloudCnfProvider := azure.NewFromCloudConfig(&config.cloudConfigHostPath)
+	dockerConfList, err := cloudCnfProvider.GetAcrCredentials(image)
+	if err != nil {
+		return types.DockerAuthConfig{}, false
+	}
+
+	if len(dockerConfList) > 0 {
+		dockerConf := dockerConfList[wildcardHost]
+		return dockerConf, true
 	}
 
 	return types.DockerAuthConfig{}, false
