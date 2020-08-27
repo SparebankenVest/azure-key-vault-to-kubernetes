@@ -20,10 +20,18 @@ DOCKER_RELEASE_TAG_CONTROLLER := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"con
 DOCKER_RELEASE_TAG_VAULTENV := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"vaultenv-"/""/g)
 DOCKER_RELEASE_TAG_CA_BUNDLE_CONTROLLER := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"ca-bundle-controller-"/""/g)
 
+TAG=
+
+# Used for integration tests
+AKV2K8S_CLIENT_ID=
+AKV2K8S_CLIENT_SECRET=
+AKV2K8S_CLIENT_TENANT_ID=
+# AKV2K8S_AZURE_SUBSCRIPTION=
+
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_URL := https://$(PACKAGE)
 
-.PHONY: run-docs-dev build build-controller build-webhook build-auth-service build-vaultenv build-akv2k8s-env-test test push push-controller push-webhook push-auth-service push-vaultenv push-akv2k8s-env-test pull-release release release-controller release-webhook release-auth-service release-vaultenv
+.PHONY: check-tag run-docs-dev build build-controller build-webhook build-auth-service build-vaultenv build-akv2k8s-env-test test push push-controller push-webhook push-auth-service push-vaultenv push-akv2k8s-env-test pull-release release release-controller release-webhook release-auth-service release-vaultenv
 
 print-v-webhook:
 	@echo $(DOCKER_RELEASE_TAG_WEBHOOK) 
@@ -36,6 +44,29 @@ print-v-vaultenv:
 
 print-v-ca-bundle-controller:
 	@echo $(DOCKER_RELEASE_TAG_CA_BUNDLE_CONTROLLER) 
+
+tag-all: tag-webhook tag-controller tag-ca-bundle-controller tag-vaultenv
+
+tag-webhook: check-tag
+	git tag -a webhook-$(TAG) -m "Webhook version $(TAG)"
+	git push --tags
+
+tag-controller: check-tag
+	git tag -a controller-$(TAG) -m "Controller version $(TAG)"
+	git push --tags
+
+tag-ca-bundle-controller: check-tag
+	git tag -a ca-bundle-controller-$(TAG) -m "CA Bundle Controller version $(TAG)"
+	git push --tags
+
+tag-vaultenv: check-tag
+	git tag -a vaultenv-$(TAG) -m "Vaultenv version $(TAG)"
+	git push --tags
+
+check-tag:
+ifndef TAG
+	$(error TAG is undefined)
+endif
 
 docs-install-dev:
 	cd ./docs && npm install
@@ -59,6 +90,20 @@ codegen:
 	./hack/update-codegen.sh
 
 test: fmtcheck
+	CGO_ENABLED=0 go test -v $(shell go list ./... | grep -v /pkg/k8s/)
+
+init-int-test:
+	$(eval azure_client_id := $(shell az keyvault secret show --name int-test-azure-client-id --vault-name akv2k8s-test --subscription $(AKV2K8S_AZURE_SUBSCRIPTION) --output tsv --query 'value'))
+	$(eval azure_client_secret := $(shell az keyvault secret show --name int-test-azure-client-secret --vault-name akv2k8s-test --subscription $(AKV2K8S_AZURE_SUBSCRIPTION) --output tsv --query 'value'))
+	$(eval azure_tenant_id := $(shell az keyvault secret show --name int-test-azure-tenant-id --vault-name akv2k8s-test --subscription $(AKV2K8S_AZURE_SUBSCRIPTION) --output tsv --query 'value'))
+
+	AKV2K8S_CLIENT_ID=$(azure_client_id) 
+	AKV2K8S_CLIENT_SECRET=$(azure_client_secret) 
+	AKV2K8S_CLIENT_TENANT_ID=$(azure_tenant_id)
+
+int-test-local: fmtcheck init-int-test int-test
+
+int-test:
 	CGO_ENABLED=0 go test -v $(shell go list ./... | grep -v /pkg/k8s/)
 
 build-local: fmtcheck
