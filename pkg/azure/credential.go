@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"regexp"
 	"strings"
 
@@ -58,7 +57,6 @@ type DockerConfig map[string]docker.DockerAuthConfig
 
 // CloudConfigProvider provides credentials for Azure
 type CloudConfigProvider struct {
-	file                  *string
 	config                *auth.AzureAuthConfig
 	environment           *azure.Environment
 	servicePrincipalToken *adal.ServicePrincipalToken
@@ -89,18 +87,23 @@ type crendentialsToken struct {
 }
 
 // NewFromCloudConfig parses the specified configFile and returns a DockerConfigProvider
-func NewFromCloudConfig(configFile *string) *CloudConfigProvider {
-	token, config, env, err := getServicePrincipalTokenFromCloudConfig(configFile)
+func NewFromCloudConfig(configReader io.Reader) (*CloudConfigProvider, error) {
+	authSettings, err := azureAuth.GetSettingsFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
+	}
+
+	token, config, err := getServicePrincipalTokenFromCloudConfig(configReader, authSettings.Environment)
 
 	if err != nil {
+		return nil, err
+	}
 
-	}
 	return &CloudConfigProvider{
-		file:                  configFile,
 		config:                config,
-		environment:           env,
+		environment:           &authSettings.Environment,
 		servicePrincipalToken: token,
-	}
+	}, nil
 }
 
 // NewFromServicePrincipalToken gets a credentials object from a service principal token to use with Azure Key Vault
@@ -293,24 +296,84 @@ func (c OAuthCredentials) Endpoint(keyVaultName string) string {
 	return fmt.Sprintf(c.EndpointPartial, keyVaultName)
 }
 
-func getServicePrincipalTokenFromCloudConfig(cloudConfigPath *string) (*adal.ServicePrincipalToken, *auth.AzureAuthConfig, *azure.Environment, error) {
-	f, err := os.Open(*cloudConfigPath)
+func getServicePrincipalTokenFromCloudConfig(configReader io.Reader, env azure.Environment) (*adal.ServicePrincipalToken, *auth.AzureAuthConfig, error) {
+	config, err := ParseConfig(configReader)
 	if err != nil {
-		return nil, nil, nil, err
-	}
-	defer f.Close()
-
-	config, env, err := ParseConfig(f)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed reading cloud config, error: %+v", err)
+		return nil, nil, fmt.Errorf("failed reading cloud config, error: %+v", err)
 	}
 
-	token, err := auth.GetServicePrincipalToken(config, env)
-	return token, config, env, err
+	if config.UseManagedIdentityExtension {
+		// klog.V(2).Infoln("azure: using managed identity extension to retrieve access token")
+		msiEndpoint, err := adal.GetMSIVMEndpoint()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed getting the managed service identity endpoint: %+v", err)
+		}
+
+		if len(config.UserAssignedIdentityID) > 0 {
+			// klog.V(4).Info("azure: using User Assigned MSI ID to retrieve access token")
+			token, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(msiEndpoint,
+				env.ResourceIdentifiers.KeyVault,
+				config.UserAssignedIdentityID)
+
+			return token, config, err
+		}
+		// klog.V(4).Info("azure: using System Assigned MSI to retrieve access token")
+		token, err := adal.NewServicePrincipalTokenFromMSI(
+			msiEndpoint,
+			env.ResourceIdentifiers.KeyVault)
+
+		return token, config, err
+	}
+
+	oauthConfig, err := adal.NewOAuthConfig(env.ActiveDirectoryEndpoint, config.TenantID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating the OAuth config: %v", err)
+	}
+
+	if len(config.AADClientSecret) > 0 {
+		// klog.V(2).Infoln("azure: using client_id+client_secret to retrieve access token")
+		token, err := adal.NewServicePrincipalToken(
+			*oauthConfig,
+			config.AADClientID,
+			config.AADClientSecret,
+			env.ResourceIdentifiers.KeyVault)
+
+		return token, config, err
+	}
+
+	if len(config.AADClientCertPath) > 0 && len(config.AADClientCertPassword) > 0 {
+		// klog.V(2).Infoln("azure: using jwt client_assertion (client_cert+client_private_key) to retrieve access token")
+		certData, err := ioutil.ReadFile(config.AADClientCertPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("reading the client certificate from file %s: %v", config.AADClientCertPath, err)
+		}
+		certificate, privateKey, err := decodePkcs12(certData, config.AADClientCertPassword)
+		if err != nil {
+			return nil, nil, fmt.Errorf("decoding the client certificate: %v", err)
+		}
+		token, err := adal.NewServicePrincipalTokenFromCertificate(
+			*oauthConfig,
+			config.AADClientID,
+			certificate,
+			privateKey,
+			env.ResourceIdentifiers.KeyVault)
+		return token, config, err
+	}
+
+	return nil, nil, fmt.Errorf("No credentials provided for AAD application %s", config.AADClientID)
 }
 
 func createAuthorizerFromServicePrincipalToken(token *adal.ServicePrincipalToken) (autorest.Authorizer, error) {
-	err := token.Refresh()
+	authSettings, err := azureAuth.GetSettingsFromEnvironment()
+	if err != nil {
+		return nil, err
+	}
+
+	if token.Token().Resource != authSettings.Environment.KeyVaultEndpoint {
+		err = token.RefreshExchange(authSettings.Environment.KeyVaultEndpoint)
+	} else {
+		err = token.Refresh()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -323,32 +386,27 @@ func createAuthorizerFromOAuthToken(token string) (autorest.Authorizer, error) {
 }
 
 // ParseConfig returns a parsed configuration for an Azure cloudprovider config file
-func ParseConfig(configReader io.Reader) (*auth.AzureAuthConfig, *azure.Environment, error) {
+func ParseConfig(configReader io.Reader) (*auth.AzureAuthConfig, error) {
 	var config auth.AzureAuthConfig
 
 	if configReader == nil {
-		return &config, nil, nil
+		return &config, nil
 	}
 
 	limitedReader := &io.LimitedReader{R: configReader, N: maxReadLength}
 	configContents, err := ioutil.ReadAll(limitedReader)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if limitedReader.N <= 0 {
-		return nil, nil, errors.New("the read limit is reached")
+		return nil, errors.New("the read limit is reached")
 	}
 	err = yaml.Unmarshal(configContents, &config)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	environment, err := auth.ParseAzureEnvironment(config.Cloud)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &config, environment, nil
+	return &config, nil
 }
 
 func getACRDockerEntryFromARMToken(config *auth.AzureAuthConfig, token *adal.ServicePrincipalToken, loginServer string) (*docker.DockerAuthConfig, error) {

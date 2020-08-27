@@ -17,7 +17,9 @@ limitations under the License.
 package azure
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -45,29 +47,10 @@ func ensureIntegrationEnvironment(t *testing.T) {
 	os.Setenv("AZURE_TENANT_ID", os.Getenv("AKV2K8S_CLIENT_TENANT_ID"))
 }
 
-// func TestChinaCloud(t *testing.T) {
-// 	ensureIntegrationEnvironment(t)
-
-// 	os.Setenv("AZURE_ENVIRONMENT", "AzureChinaCloud")
-
-// 	creds, err := NewAzureKeyVaultCredentialsFromEnvironment()
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-
-// 	token := creds.(*azureKeyVaultCredentials).Token
-// 	err = token.Refresh()
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-
-// 	if token.Token().Resource != azure.ChinaCloud.ResourceIdentifiers.KeyVault {
-// 		t.Errorf("Endpoint incorrect. Expected '%s', but got '%s'", azure.ChinaCloud.ResourceIdentifiers.KeyVault, token.Token().Resource)
-// 	}
-// }
-
-func TestAudience(t *testing.T) {
+func TestChinaCloud(t *testing.T) {
 	ensureIntegrationEnvironment(t)
+
+	os.Setenv("AZURE_ENVIRONMENT", "AzureChinaCloud")
 
 	creds, err := NewFromEnvironment()
 	if err != nil {
@@ -80,7 +63,96 @@ func TestAudience(t *testing.T) {
 		t.Error(err)
 	}
 
+	if token.Token().Resource != azure.ChinaCloud.ResourceIdentifiers.KeyVault {
+		t.Errorf("Endpoint incorrect. Expected '%s', but got '%s'", azure.ChinaCloud.ResourceIdentifiers.KeyVault, token.Token().Resource)
+	}
+}
+
+func TestIntegrationAuthFromEnvironmentAudience(t *testing.T) {
+	ensureIntegrationEnvironment(t)
+
+	creds, err := NewFromEnvironment()
+	if err != nil {
+		t.Error(err)
+	}
+
+	token := creds.(*credentials).Token
+	t.Logf("%s", creds.Endpoint("test"))
+	err = token.Refresh()
+	if err != nil {
+		t.Error(err)
+	}
+
 	if token.Token().Resource != azure.PublicCloud.ResourceIdentifiers.KeyVault {
 		t.Error()
+	}
+}
+
+func TestIntegrationAuthFromConfigAudience(t *testing.T) {
+	ensureIntegrationEnvironment(t)
+
+	tenantId := os.Getenv("AZURE_TENANT_ID")
+	subscriptionId := "0967fd64-a807-47e1-bf05-0e55e24a68d5"
+	clientId := os.Getenv("AZURE_CLIENT_ID")
+	clientSecret := os.Getenv("AZURE_CLIENT_SECRET")
+
+	config := fmt.Sprintf(`{
+    "cloud":"AzurePublicCloud",
+    "tenantId": "%s",
+    "subscriptionId": "%s",
+    "aadClientId": "%s",
+    "aadClientSecret": "%s",
+		"resourceGroup": "",
+    "location": "westeurope",
+    "vmType": "vmss",
+    "subnetName": "",
+    "securityGroupName": "",
+    "vnetName": "",
+    "vnetResourceGroup": "",
+    "routeTableName": "",
+    "primaryAvailabilitySetName": "",
+    "primaryScaleSetName": "",
+    "cloudProviderBackoffMode": "v2",
+    "cloudProviderBackoff": true,
+    "cloudProviderBackoffRetries": 6,
+    "cloudProviderBackoffDuration": 5,
+    "cloudProviderRatelimit": true,
+    "cloudProviderRateLimitQPS": 10,
+    "cloudProviderRateLimitBucket": 100,
+    "cloudProviderRatelimitQPSWrite": 10,
+    "cloudProviderRatelimitBucketWrite": 100,
+    "useManagedIdentityExtension": false,
+    "userAssignedIdentityID": "",
+    "useInstanceMetadata": true,
+    "loadBalancerSku": "Standard",
+    "disableOutboundSNAT": false,
+    "excludeMasterFromStandardLB": true,
+    "providerVaultName": "",
+    "maximumLoadBalancerRuleCount": 250,
+    "providerKeyName": "k8s",
+    "providerKeyVersion": ""
+}`, tenantId, subscriptionId, clientId, clientSecret)
+
+	r := strings.NewReader(config)
+
+	conf, err := NewFromCloudConfig(r)
+	if err != nil {
+		t.Error(err)
+	}
+
+	creds, err := conf.GetCredentials()
+	if err != nil {
+		t.Error(err)
+	}
+
+	token := creds.(*credentials).Token
+	t.Logf("%s", creds.Endpoint("test"))
+	err = token.Refresh()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if token.Token().Resource != azure.PublicCloud.ResourceIdentifiers.KeyVault {
+		t.Errorf("expected resource uri '%s', got '%s'", azure.PublicCloud.ResourceIdentifiers.KeyVault, token.Token().Resource)
 	}
 }

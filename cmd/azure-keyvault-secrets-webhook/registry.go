@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -180,7 +181,19 @@ func getAcrCredentials(host string, image string) (types.DockerAuthConfig, bool)
 		return types.DockerAuthConfig{}, false
 	}
 
-	cloudCnfProvider := azure.NewFromCloudConfig(&config.cloudConfigHostPath)
+	f, err := os.Open(config.cloudConfigHostPath)
+	if err != nil {
+		log.Errorf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
+		return types.DockerAuthConfig{}, false
+	}
+	defer f.Close()
+
+	cloudCnfProvider, err := azure.NewFromCloudConfig(f)
+	if err != nil {
+		log.Errorf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
+		return types.DockerAuthConfig{}, false
+	}
+
 	dockerConfList, err := cloudCnfProvider.GetAcrCredentials(image)
 	if err != nil {
 		return types.DockerAuthConfig{}, false

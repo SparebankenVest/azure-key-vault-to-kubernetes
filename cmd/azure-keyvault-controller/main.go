@@ -124,7 +124,16 @@ func main() {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
 		}
 	} else {
-		cloudCnfProvider := azure.NewFromCloudConfig(&cloudconfig)
+		f, err := os.Open(cloudconfig)
+		if err != nil {
+			log.Fatalf("Failed reading azure config from %s, error: %+v", cloudconfig, err)
+		}
+		defer f.Close()
+
+		cloudCnfProvider, err := azure.NewFromCloudConfig(f)
+		if err != nil {
+			log.Fatalf("Failed reading azure config from %s, error: %+v", cloudconfig, err)
+		}
 
 		if vaultAuth, err = cloudCnfProvider.GetCredentials(); err != nil {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())

@@ -254,7 +254,17 @@ func main() {
 			log.Fatal(err)
 		}
 	} else {
-		cloudCnfProvider := azure.NewFromCloudConfig(&config.cloudConfigHostPath)
+		f, err := os.Open(config.cloudConfigHostPath)
+		if err != nil {
+			log.Fatalf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
+		}
+		defer f.Close()
+
+		cloudCnfProvider, err := azure.NewFromCloudConfig(f)
+		if err != nil {
+			log.Fatalf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
+		}
+
 		config.credentials, err = cloudCnfProvider.GetCredentials()
 		if err != nil {
 			log.Fatal(err)
