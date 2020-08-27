@@ -230,16 +230,16 @@ func main() {
 	}
 
 	log.Info("Active settings:")
-	log.Infof("Webhook port       : %s", config.port)
-	log.Infof("Serve metrics      : %t", config.serveMetrics)
-	log.Infof("Use custom auth    : %t", config.customAuth)
-	log.Infof("Use auth service   : %t", config.useAuthService)
+	log.Infof("  Webhook port       : %s", config.port)
+	log.Infof("  Serve metrics      : %t", config.serveMetrics)
+	log.Infof("  Use custom auth    : %t", config.customAuth)
+	log.Infof("  Use auth service   : %t", config.useAuthService)
 	if config.useAuthService {
-		log.Infof("Auth service name  : %s", config.authServiceName)
-		log.Infof("Auth service port  :%s", config.authServicePort)
+		log.Infof("  Auth service name  : %s", config.authServiceName)
+		log.Infof("  Auth service port  : %s", config.authServicePort)
 	}
-	log.Infof("CA ConfigMap name  : %s", config.caBundleConfigMapName)
-	log.Infof("Cloud config path  : %s", config.cloudConfigHostPath)
+	log.Infof("  CA ConfigMap name  : %s", config.caBundleConfigMapName)
+	log.Infof("  Cloud config path  : %s", config.cloudConfigHostPath)
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)

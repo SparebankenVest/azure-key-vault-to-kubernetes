@@ -101,10 +101,7 @@ init-int-test:
 	AKV2K8S_CLIENT_SECRET=$(azure_client_secret) 
 	AKV2K8S_CLIENT_TENANT_ID=$(azure_tenant_id)
 
-int-test-local: fmtcheck init-int-test int-test
-
-int-test:
-	CGO_ENABLED=0 go test -v $(shell go list ./... | grep -v /pkg/k8s/)
+int-test-local: fmtcheck init-int-test test
 
 build-local: fmtcheck
 	CGO_ENABLED=0 go build -v $(shell go list ./...)
