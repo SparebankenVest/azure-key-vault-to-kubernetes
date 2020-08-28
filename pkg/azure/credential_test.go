@@ -45,28 +45,29 @@ func ensureIntegrationEnvironment(t *testing.T) {
 	os.Setenv("AZURE_CLIENT_ID", os.Getenv("AKV2K8S_CLIENT_ID"))
 	os.Setenv("AZURE_CLIENT_SECRET", os.Getenv("AKV2K8S_CLIENT_SECRET"))
 	os.Setenv("AZURE_TENANT_ID", os.Getenv("AKV2K8S_CLIENT_TENANT_ID"))
+	os.Setenv("AZURE_SUBSCRIPTION_ID", os.Getenv("AKV2K8S_AZURE_SUBSCRIPTION_ID"))
 }
 
-func TestChinaCloud(t *testing.T) {
-	ensureIntegrationEnvironment(t)
+// func TestChinaCloud(t *testing.T) {
+// 	ensureIntegrationEnvironment(t)
 
-	os.Setenv("AZURE_ENVIRONMENT", "AzureChinaCloud")
+// 	os.Setenv("AZURE_ENVIRONMENT", "AzureChinaCloud")
 
-	creds, err := NewFromEnvironment()
-	if err != nil {
-		t.Error(err)
-	}
+// 	creds, err := NewFromEnvironment()
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
 
-	token := creds.(*credentials).Token
-	err = token.Refresh()
-	if err != nil {
-		t.Error(err)
-	}
+// 	token := creds.(*credentials).Token
+// 	err = token.Refresh()
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
 
-	if token.Token().Resource != azure.ChinaCloud.ResourceIdentifiers.KeyVault {
-		t.Errorf("Endpoint incorrect. Expected '%s', but got '%s'", azure.ChinaCloud.ResourceIdentifiers.KeyVault, token.Token().Resource)
-	}
-}
+// 	if token.Token().Resource != azure.ChinaCloud.ResourceIdentifiers.KeyVault {
+// 		t.Errorf("Endpoint incorrect. Expected '%s', but got '%s'", azure.ChinaCloud.ResourceIdentifiers.KeyVault, token.Token().Resource)
+// 	}
+// }
 
 func TestIntegrationAuthFromEnvironmentAudience(t *testing.T) {
 	ensureIntegrationEnvironment(t)
@@ -77,14 +78,13 @@ func TestIntegrationAuthFromEnvironmentAudience(t *testing.T) {
 	}
 
 	token := creds.(*credentials).Token
-	t.Logf("%s", creds.Endpoint("test"))
 	err = token.Refresh()
 	if err != nil {
 		t.Error(err)
 	}
 
 	if token.Token().Resource != azure.PublicCloud.ResourceIdentifiers.KeyVault {
-		t.Error()
+		t.Errorf("expected resource uri '%s', got '%s'", azure.PublicCloud.ResourceIdentifiers.KeyVault, token.Token().Resource)
 	}
 }
 
@@ -92,7 +92,7 @@ func TestIntegrationAuthFromConfigAudience(t *testing.T) {
 	ensureIntegrationEnvironment(t)
 
 	tenantId := os.Getenv("AZURE_TENANT_ID")
-	subscriptionId := "0967fd64-a807-47e1-bf05-0e55e24a68d5"
+	subscriptionId := os.Getenv("AZURE_SUBSCRIPTION_ID")
 	clientId := os.Getenv("AZURE_CLIENT_ID")
 	clientSecret := os.Getenv("AZURE_CLIENT_SECRET")
 
@@ -146,7 +146,6 @@ func TestIntegrationAuthFromConfigAudience(t *testing.T) {
 	}
 
 	token := creds.(*credentials).Token
-	t.Logf("%s", creds.Endpoint("test"))
 	err = token.Refresh()
 	if err != nil {
 		t.Error(err)
