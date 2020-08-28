@@ -193,6 +193,7 @@ func NewFromEnvironment() (Credentials, error) {
 		EndpointPartial: endpoint,
 	}
 
+	// ClientID / Secret
 	if creds, err := authSettings.GetClientCredentials(); err == nil {
 		creds.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
 		creds.Resource = authSettings.Environment.ResourceIdentifiers.KeyVault
@@ -206,6 +207,7 @@ func NewFromEnvironment() (Credentials, error) {
 		return akvCreds, nil
 	}
 
+	// Certificate
 	if creds, err := authSettings.GetClientCertificate(); err == nil {
 		creds.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
 		creds.Resource = authSettings.Environment.ResourceIdentifiers.KeyVault
@@ -218,6 +220,7 @@ func NewFromEnvironment() (Credentials, error) {
 		return akvCreds, nil
 	}
 
+	// Username / Password
 	if creds, err := authSettings.GetUsernamePassword(); err == nil {
 		creds.AADEndpoint = authSettings.Environment.ActiveDirectoryEndpoint
 		creds.Resource = authSettings.Environment.ResourceIdentifiers.KeyVault
@@ -236,8 +239,9 @@ func NewFromEnvironment() (Credentials, error) {
 		return nil, err
 	}
 
+	// User-Assigned Managed Identity
 	if msi.ClientID != "" {
-		token, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(msiEndpoint, msi.Resource, msi.ClientID)
+		token, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(msiEndpoint, authSettings.Environment.ResourceIdentifiers.KeyVault, msi.ClientID)
 		if err != nil {
 			return nil, err
 		}
@@ -245,7 +249,8 @@ func NewFromEnvironment() (Credentials, error) {
 		return akvCreds, nil
 	}
 
-	token, err := adal.NewServicePrincipalTokenFromMSI(msiEndpoint, msi.Resource)
+	// System-Assigned Managed Identity
+	token, err := adal.NewServicePrincipalTokenFromMSI(msiEndpoint, authSettings.Environment.ResourceIdentifiers.KeyVault)
 	if err != nil {
 		return nil, err
 	}
@@ -364,16 +369,7 @@ func getServicePrincipalTokenFromCloudConfig(configReader io.Reader, env azure.E
 }
 
 func createAuthorizerFromServicePrincipalToken(token *adal.ServicePrincipalToken) (autorest.Authorizer, error) {
-	authSettings, err := azureAuth.GetSettingsFromEnvironment()
-	if err != nil {
-		return nil, err
-	}
-
-	if token.Token().Resource != authSettings.Environment.KeyVaultEndpoint {
-		err = token.RefreshExchange(authSettings.Environment.KeyVaultEndpoint)
-	} else {
-		err = token.Refresh()
-	}
+	err := token.Refresh()
 	if err != nil {
 		return nil, err
 	}

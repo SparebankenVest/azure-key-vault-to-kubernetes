@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/azure"
+	akv2k8sTesting "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/testing"
 )
 
 // func TestAuthDefault(t *testing.T) {
@@ -36,17 +37,6 @@ import (
 // 		t.Fail()
 // 	}
 // }
-
-func ensureIntegrationEnvironment(t *testing.T) {
-	if os.Getenv("AKV2K8S_CLIENT_ID") == "" {
-		t.Skip("Skipping integration test - no credentials")
-	}
-
-	os.Setenv("AZURE_CLIENT_ID", os.Getenv("AKV2K8S_CLIENT_ID"))
-	os.Setenv("AZURE_CLIENT_SECRET", os.Getenv("AKV2K8S_CLIENT_SECRET"))
-	os.Setenv("AZURE_TENANT_ID", os.Getenv("AKV2K8S_CLIENT_TENANT_ID"))
-	os.Setenv("AZURE_SUBSCRIPTION_ID", os.Getenv("AKV2K8S_AZURE_SUBSCRIPTION_ID"))
-}
 
 // func TestChinaCloud(t *testing.T) {
 // 	ensureIntegrationEnvironment(t)
@@ -70,7 +60,7 @@ func ensureIntegrationEnvironment(t *testing.T) {
 // }
 
 func TestIntegrationAuthFromEnvironmentAudience(t *testing.T) {
-	ensureIntegrationEnvironment(t)
+	akv2k8sTesting.EnsureIntegrationEnvironment(t)
 
 	creds, err := NewFromEnvironment()
 	if err != nil {
@@ -89,7 +79,7 @@ func TestIntegrationAuthFromEnvironmentAudience(t *testing.T) {
 }
 
 func TestIntegrationAuthFromConfigAudience(t *testing.T) {
-	ensureIntegrationEnvironment(t)
+	akv2k8sTesting.EnsureIntegrationEnvironment(t)
 
 	tenantId := os.Getenv("AZURE_TENANT_ID")
 	subscriptionId := os.Getenv("AZURE_SUBSCRIPTION_ID")
