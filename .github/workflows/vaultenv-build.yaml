@@ -28,10 +28,10 @@ jobs:
     - name: Build
       uses: ./.github/actions/build
       env:
-        AKV2K8S_CLIENT_ID: secret.INT_TEST_CLIENT_ID
-        AKV2K8S_CLIENT_SECRET: secret.INT_TEST_CLIENT_SECRET
-        AKV2K8S_CLIENT_TENANT_ID: secret.INT_TEST_TENANT_ID
-        AKV2K8S_AZURE_SUBSCRIPTION: secret.INT_TEST_SUBSCRIPTION
+        AKV2K8S_CLIENT_ID: ${{ secret.INT_TEST_CLIENT_ID }}
+        AKV2K8S_CLIENT_SECRET: ${{ secret.INT_TEST_CLIENT_SECRET }}
+        AKV2K8S_CLIENT_TENANT_ID: ${{ secret.INT_TEST_TENANT_ID }}
+        AKV2K8S_AZURE_SUBSCRIPTION: ${{ secret.INT_TEST_SUBSCRIPTION }}
       with:
         build-make-action: build-vaultenv
 
