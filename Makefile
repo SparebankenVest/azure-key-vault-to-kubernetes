@@ -1,7 +1,7 @@
 PACKAGE=github.com/SparebankenVest/azure-key-vault-to-kubernetes
 
-KUBERNETES_VERSION=v1.17.9
-KUBERNETES_DEP_VERSION=v0.17.9
+KUBERNETES_VERSION=v1.15.11
+KUBERNETES_DEP_VERSION=v0.15.11
 
 DOCKER_INTERNAL_REG=dokken.azurecr.io
 DOCKER_RELEASE_REG=spvest
@@ -22,16 +22,10 @@ DOCKER_RELEASE_TAG_CA_BUNDLE_CONTROLLER := $(shell echo $(DOCKER_RELEASE_TAG) | 
 
 TAG=
 
-# Used for integration tests
-AKV2K8S_CLIENT_ID=
-AKV2K8S_CLIENT_SECRET=
-AKV2K8S_CLIENT_TENANT_ID=
-# AKV2K8S_AZURE_SUBSCRIPTION=
-
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_URL := https://$(PACKAGE)
 
-.PHONY: check-tag run-docs-dev build build-controller build-webhook build-auth-service build-vaultenv build-akv2k8s-env-test test push push-controller push-webhook push-auth-service push-vaultenv push-akv2k8s-env-test pull-release release release-controller release-webhook release-auth-service release-vaultenv
+.PHONY: int-test-init int-test-local check-tag run-docs-dev build build-controller build-webhook build-auth-service build-vaultenv build-akv2k8s-env-test test push push-controller push-webhook push-auth-service push-vaultenv push-akv2k8s-env-test pull-release release release-controller release-webhook release-auth-service release-vaultenv
 
 print-v-webhook:
 	@echo $(DOCKER_RELEASE_TAG_WEBHOOK) 
@@ -90,18 +84,15 @@ codegen:
 	./hack/update-codegen.sh
 
 test: fmtcheck
-	CGO_ENABLED=0 go test -v $(shell go list ./... | grep -v /pkg/k8s/)
+	@CGO_ENABLED=0 AKV2K8S_CLIENT_ID=$(AKV2K8S_CLIENT_ID) AKV2K8S_CLIENT_SECRET=$(AKV2K8S_CLIENT_SECRET) AKV2K8S_CLIENT_TENANT_ID=$(AKV2K8S_CLIENT_TENANT_ID) AKV2K8S_AZURE_SUBSCRIPTION_ID=$(AKV2K8S_AZURE_SUBSCRIPTION_ID) go test -count=1 -v $(shell go list ./... | grep -v /pkg/k8s/)
 
-init-int-test:
-	$(eval azure_client_id := $(shell az keyvault secret show --name int-test-azure-client-id --vault-name akv2k8s-test --subscription $(AKV2K8S_AZURE_SUBSCRIPTION) --output tsv --query 'value'))
-	$(eval azure_client_secret := $(shell az keyvault secret show --name int-test-azure-client-secret --vault-name akv2k8s-test --subscription $(AKV2K8S_AZURE_SUBSCRIPTION) --output tsv --query 'value'))
-	$(eval azure_tenant_id := $(shell az keyvault secret show --name int-test-azure-tenant-id --vault-name akv2k8s-test --subscription $(AKV2K8S_AZURE_SUBSCRIPTION) --output tsv --query 'value'))
+init-int-test-local:
+	$(eval AKV2K8S_CLIENT_ID ?= $(shell az keyvault secret show --name int-test-azure-client-id --vault-name akv2k8s-test --subscription $(AKV2K8S_AZURE_SUBSCRIPTION_ID) --output tsv --query 'value'))
+	$(eval AKV2K8S_CLIENT_SECRET ?= $(shell az keyvault secret show --name int-test-azure-client-secret --vault-name akv2k8s-test --subscription $(AKV2K8S_AZURE_SUBSCRIPTION_ID) --output tsv --query 'value'))
+	$(eval AKV2K8S_CLIENT_TENANT_ID ?= $(shell az keyvault secret show --name int-test-azure-tenant-id --vault-name akv2k8s-test --subscription $(AKV2K8S_AZURE_SUBSCRIPTION_ID) --output tsv --query 'value'))
 
-	AKV2K8S_CLIENT_ID=$(azure_client_id) 
-	AKV2K8S_CLIENT_SECRET=$(azure_client_secret) 
-	AKV2K8S_CLIENT_TENANT_ID=$(azure_tenant_id)
+int-test-local: init-int-test-local test
 
-int-test-local: fmtcheck init-int-test test
 
 build-local: fmtcheck
 	CGO_ENABLED=0 go build -v $(shell go list ./...)
