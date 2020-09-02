@@ -30,8 +30,7 @@
   
 <p align="center"><i>Azure Key Vault to Kubernetes (akv2k8s) makes Azure Key Vault secrets, certificates and keys available to your applications in Kubernetes, in a simple and secure way.</i></p> 
 
-<p align="center"><i>Documentation available at <a href="https://akv2k8s.io">https://akv2k8s.io</a></i></p> 
-<p align="center"><i>Join our <a href=" https://join.slack.com/t/akv2k8s/shared_invite/zt-gsptc7if-g_lW4jHrYVrLGMX0MdYw_g">Slack workspace</a></i></p>
+<p align="center"><i>Documentation available at <a href="https://akv2k8s.io">https://akv2k8s.io</a> and join our <a href="https://join.slack.com/t/akv2k8s/shared_invite/zt-gsptc7if-g_lW4jHrYVrLGMX0MdYw_g">Slack Workspace</a> to ask questions to the akv2k8s community.</i></p>
 
 ## Overview
 
