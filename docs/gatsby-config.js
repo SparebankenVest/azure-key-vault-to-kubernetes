@@ -82,7 +82,6 @@ module.exports = {
             'tutorials/env-injection/1-secret',
             'tutorials/env-injection/2-certificate',
             'tutorials/env-injection/3-signing-key',
-            // 'tutorials/env-injection/4-multi-value-secret',
             'tutorials/env-injection/5-pfx-certificate',
           ],
           Security: [
