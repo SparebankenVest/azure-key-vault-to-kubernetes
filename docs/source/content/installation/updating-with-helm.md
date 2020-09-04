@@ -30,5 +30,5 @@ helm install azure-key-vault-env-injector \
 For more details about installation options, see the 
 individual Helm charts:
 
-* [Controller](/vdefault/stable/azure-key-vault-controller/README/)
-* [Env Injector](/vdefault/stable/azure-key-vault-env-injector/README/)
+* [Controller](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-controller/README.md)
+* [Env Injector](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector/README.md)

@@ -58,10 +58,10 @@ Custom AKV Authentication for the Env-Injector means providing AKV credentials t
 
 Two options are currently available:
 
-1. Use Microsft's [AAD Pod Identity](https://github.com/Azure/aad-pod-identity) (see [Using Custom Authentication with AAD Pod Identity](/vdefault/stable/azure-key-vault-env-injector/README/))
+1. Use Microsft's [AAD Pod Identity](https://github.com/Azure/aad-pod-identity) (see [Using Custom Authentication with AAD Pod Identity](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector/README.md))
 2. Provide credentials for each Pod using [Authentication options](#custom-authentication-options) below.
 
-Fore more details, see the [Env Injector Helm Chart](/vdefault/stable/azure-key-vault-env-injector/README/).
+Fore more details, see the [Env Injector Helm Chart](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector/README.md).
 
 ## Custom Authentication Options
 
