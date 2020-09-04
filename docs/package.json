@@ -1,7 +1,7 @@
 {
   "scripts": {
     "prestart": "gatsby clean",
-    "start": "gatsby develop",
+    "start": "GATSBY_ALGOLIA_ENABLED=false gatsby develop",
     "build": "gatsby build",
     "serve": "gatsby serve"
   },
