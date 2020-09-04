@@ -51,7 +51,7 @@ module.exports = {
         baseUrl: 'https://akv2k8s.io',
         baseDir: 'docs',
         logoLink: 'https://akv2k8s.io/',
-        contentDir: 'source/content/',
+        contentDir: 'source/content',
         siteName: '',
         pageTitle: 'akv2k8s docs',
         subtitle: '',
