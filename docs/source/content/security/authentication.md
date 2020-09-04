@@ -25,7 +25,7 @@ Two solutions exists:
 
 The Controller will need Azure Key Vault credentials to get Secrets from Azure Key Vault and store them as Kubernetes Secrets. **If the default option (AKS credentials) works for you, use that.** If not, use custom authentication by passing inn the value `keyVault.customAuth.enabled=true` to the Controller and pick one of the [Authentication options](#custom-authentication-options) described below.
 
-Fore more details, see the [Controller Helm Chart](/vdefault/stable/azure-key-vault-controller/README/).
+Fore more details, see the [Controller Helm Chart](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-controller/README.md).
 
 ## AKV Authentication with the Env-Injector
 
