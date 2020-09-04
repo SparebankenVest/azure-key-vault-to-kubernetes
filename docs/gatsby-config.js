@@ -51,7 +51,7 @@ module.exports = {
         baseUrl: 'https://akv2k8s.io',
         baseDir: 'docs',
         logoLink: 'https://akv2k8s.io/',
-        contentDir: 'source/content/',
+        contentDir: 'source/content',
         siteName: '',
         pageTitle: 'akv2k8s docs',
         subtitle: '',
@@ -63,6 +63,10 @@ module.exports = {
         spectrumPath: '',
         spectrumHandle: '',
         twitterHandle: '',
+        defaultVersion: '1.1',
+        versions: {
+          '1.0': 'doc-version-1.0.2',
+        },
         sidebarCategories: {
           null: ['index', 'why-akv2k8s', 'quick-start', 'how-it-works'],
           'Installation': [
@@ -82,7 +86,6 @@ module.exports = {
             'tutorials/env-injection/1-secret',
             'tutorials/env-injection/2-certificate',
             'tutorials/env-injection/3-signing-key',
-            // 'tutorials/env-injection/4-multi-value-secret',
             'tutorials/env-injection/5-pfx-certificate',
           ],
           Security: [
