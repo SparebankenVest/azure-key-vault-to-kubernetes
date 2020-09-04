@@ -25,7 +25,7 @@ Two solutions exists:
 
 The Controller will need AKV credentials to get Secrets from AKV and store them as Kubernetes Secrets. **If the default option (AKS credentials) works for you, use that.** If not, use custom authentication by passing inn the value `keyVault.customAuth.enabled=true` to the Controller and pick one of the [Authentication options](#custom-akv-authentication-options) described below.
 
-Fore more details, see the [Controller Helm Chart](/vdefault/stable/azure-key-vault-controller/README/).
+Fore more details, see the [Controller Helm Chart](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-controller/README.md).
 
 ## AKV Authentication with the Env-Injector
 
@@ -37,7 +37,7 @@ The Env-Injector execute locally inside Pods and needs AKV credentials to downlo
 
 > **For multi-tenant environments (using namespaces as isolation), Option 2 is currently the only viable option.**
 
-Fore more details, see the [Env Injector Helm Chart](/vdefault/stable/azure-key-vault-env-injector/README/) and which custom AKV authentication options are available below.
+Fore more details, see the [Env Injector Helm Chart](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector/README.md) and which custom AKV authentication options are available below.
 
 ## Custom AKV Authentication Options
 

@@ -14,20 +14,17 @@ module.exports = {
         anonymize: false,
       },
     },
-    {
-      resolve: `gatsby-source-git`,
-      options: {
-        name: `default`,
-        remote: `https://github.com/SparebankenVest/public-helm-charts.git`,
-        // Optionally supply a branch. If none supplied, you'll get the default branch.
-        // branch: `develop`,
-        // Tailor which files get imported eg. import the docs folder from a codebase.
-        patterns: [
-          'stable/azure-key-vault-controller/README.md', 
-          'stable/azure-key-vault-env-injector/README.md', 
-          ]
-      }
-    },
+    // {
+    //   resolve: `gatsby-source-git`,
+    //   options: {
+    //     name: `default`,
+    //     remote: `https://github.com/SparebankenVest/public-helm-charts.git`,
+    //     patterns: [
+    //       'stable/azure-key-vault-controller/README.md', 
+    //       'stable/azure-key-vault-env-injector/README.md', 
+    //       ]
+    //   }
+    // },
     // {
     //   resolve: "gatsby-source-graphql",
     //   options: {
