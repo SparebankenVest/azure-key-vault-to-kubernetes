@@ -384,7 +384,7 @@ func (c *Controller) syncHandlerSecret(key string) error {
 	log.Debugf("looping all labelled namespaces looking for config map '%s'", c.caBundleConfigMapName)
 
 	for _, ns := range labelledNamespaces {
-		configMap, err := c.configMapLister.ConfigMaps(ns.Name).Get("akv2k8s-ca")
+		configMap, err := c.configMapLister.ConfigMaps(ns.Name).Get(c.caBundleConfigMapName)
 
 		// If the resource doesn't exist, we'll create it
 		if errors.IsNotFound(err) {
