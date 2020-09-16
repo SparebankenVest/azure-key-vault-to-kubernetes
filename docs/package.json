@@ -12,7 +12,7 @@
     "gatsby-source-graphql": "^2.7.1",
     "gatsby-source-git": "1.1.0",
     "gatsby-theme-apollo-docs": "4.3.6",
-    "instantsearch.css": "^7.4.3",
+    "instantsearch.css": "^7.4.4",
     "react": "16.13.1",
     "react-dom": "16.13.1",
     "react-instantsearch-dom": "^6.7.0"
