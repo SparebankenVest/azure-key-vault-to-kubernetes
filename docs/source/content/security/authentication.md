@@ -39,6 +39,14 @@ The Env-Injector execute locally inside Pods and needs AKV credentials to downlo
 
 Fore more details, see the [Env Injector Helm Chart](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector/README.md) and which custom AKV authentication options are available below.
 
+## Using custom authentication with AAD Pod Identity
+
+Requires Pod Identity: https://github.com/Azure/aad-pod-identity
+
+When deploying Pods, set the `aadpodidbinding` according to the 
+[AAD Pod Identity project docs](https://github.com/Azure/aad-pod-identity/blob/master/README.md) and
+the env-injector will use these credentials when communicating with Azure Key Vault.
+
 ## Custom AKV Authentication Options
 
 The following authentication options are available:

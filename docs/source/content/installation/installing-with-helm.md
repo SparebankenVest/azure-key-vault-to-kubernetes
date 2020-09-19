@@ -51,7 +51,7 @@ individual Helm charts:
 
 ## Installing with Helm outside Azure AKS 
 
-When running inside Azure AKS, akv2k8s can use the AKS cluster credentials for authorizing with Azure Key Vault (default behavior). Outside Azure AKS - credentials (Azure Service Principal) must be provided by setting `keyVault.customAuth=true`. See [Authentication](../security/authentication) for more details.
+When running inside Azure AKS, akv2k8s will use the AKS cluster credentials by default to authenticate with Azure Key Vault. Outside Azure AKS - credentials must be provided by setting `keyVault.customAuth=true` and provide credentials as documentend under [Authentication](../security/authentication) for more details.
 
 Create `akv2k8s` namespace:
 
