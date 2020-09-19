@@ -13,6 +13,7 @@ on:
     - 'cmd/ca-bundle-controller/**'
     - 'pkg/**'
     - '!docs/**'
+    - '!crds/**'
 
 jobs:
   build-deploy:
