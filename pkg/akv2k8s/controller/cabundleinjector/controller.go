@@ -140,7 +140,7 @@ func NewController(kubeclientset kubernetes.Interface, secretInformer coreinform
 			// 	return
 			// }
 
-			log.Debugf("Secret '%s' monitored by CA Bundle Injector added. Adding to queue.", secret.Name)
+			log.Infof("Secret '%s' monitored by CA Bundle Injector added. Adding to queue.", secret.Name)
 			controller.enqueueSecret(obj)
 		},
 		UpdateFunc: func(old, new interface{}) { // When CA Bundle gets changed in akv2k8s
@@ -157,7 +157,7 @@ func NewController(kubeclientset kubernetes.Interface, secretInformer coreinform
 				return
 			}
 			secret := new.(*corev1.Secret)
-			log.Debugf("Secret '%s' monitored by CA Bundle Injector changed. Handling.", secret.Name)
+			log.Infof("Secret '%s' monitored by CA Bundle Injector changed. Handling.", secret.Name)
 			controller.enqueueSecret(new)
 		},
 		DeleteFunc: func(obj interface{}) { // When CA Bundle gets deleted in akv2k8s
@@ -167,7 +167,7 @@ func NewController(kubeclientset kubernetes.Interface, secretInformer coreinform
 				return
 			}
 
-			log.Debugf("Secret '%s' monitored by CA Bundle Injector deleted. Handling.", secret.Name)
+			log.Infof("Secret '%s' monitored by CA Bundle Injector deleted. Handling.", secret.Name)
 			controller.enqueueSecret(obj)
 		},
 	})
@@ -180,7 +180,7 @@ func NewController(kubeclientset kubernetes.Interface, secretInformer coreinform
 				return
 			}
 
-			log.Debugf("Namespace '%s' labeled '%s' will be monitored by CA Bundle Injector. Adding to queue.", ns.Name, lbl)
+			log.Infof("Namespace '%s' labeled '%s' will be monitored by CA Bundle Injector. Adding to queue.", ns.Name, lbl)
 			controller.enqueueNewNamespace(obj)
 		},
 		UpdateFunc: func(old, new interface{}) { // When an existing namespace gets updated, that potentually have akv2k8s label on it
@@ -202,7 +202,7 @@ func NewController(kubeclientset kubernetes.Interface, secretInformer coreinform
 			}
 
 			ns := new.(*corev1.Namespace)
-			log.Debugf("labels in namespace '%s' changed, handling.", ns.Name)
+			log.Infof("labels in namespace '%s' changed, handling.", ns.Name)
 			controller.enqueueChangedNamespace(new)
 		},
 		// DeleteFunc: func(obj interface{}) {
@@ -382,7 +382,7 @@ func (c *Controller) syncHandlerSecret(key string) error {
 		return err
 	}
 
-	log.Debugf("looping all labelled namespaces looking for config map '%s'", c.caBundleConfigMapName)
+	log.Infof("looping all labelled namespaces looking for config map '%s' to update", c.caBundleConfigMapName)
 
 	for _, ns := range labelledNamespaces {
 		configMap, err := c.configMapLister.ConfigMaps(ns.Name).Get(c.caBundleConfigMapName)
@@ -463,7 +463,6 @@ func (c *Controller) syncHandlerNewNamespace(key string) error {
 			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 			_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
 			if err != nil {
-				log.Errorf("failed to create configmap '%s' in namespace '%s', error: %+v", newConfigMap.Name, ns.Name, err)
 				return err
 			}
 			return nil
@@ -482,7 +481,6 @@ func (c *Controller) syncHandlerNewNamespace(key string) error {
 		newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 		_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Update(newConfigMap)
 		if err != nil {
-			log.Errorf("failed to update configmap '%s' in namespace '%s', error: %+v", newConfigMap.Name, ns.Name, err)
 			return err
 		}
 	}
@@ -510,7 +508,6 @@ func (c *Controller) syncHandlerChangedNamespace(key string) error {
 			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 			_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
 			if err != nil {
-				log.Errorf("failed to create configmap '%s' in namespace '%s', error: %+v", newConfigMap.Name, ns.Name, err)
 				return err
 			}
 			return nil
