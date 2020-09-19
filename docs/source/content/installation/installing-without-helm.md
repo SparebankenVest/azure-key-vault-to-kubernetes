@@ -19,9 +19,9 @@ helm repo update
 Render akv2k8s charts locally:
 
 ```bash
-helm install --debug --dry-run akv2k8s spv-charts/azure-key-vault-controller
+helm install --debug --dry-run azure-key-vault-controller spv-charts/azure-key-vault-controller
   --namespace akv2k8s <options>
-helm install --debug --dry-run akv2k8s spv-charts/azure-key-vault-env-injector \
+helm install --debug --dry-run azure-key-vault-env-injector spv-charts/azure-key-vault-env-injector \
   --set installCrd=false --namespace akv2k8s <options>
 ```
 
@@ -30,14 +30,15 @@ helm install --debug --dry-run akv2k8s spv-charts/azure-key-vault-env-injector \
 Download the Git repository:
 
 ```bash
-git clone git@github.com:SparebankenVest/c.git
+git clone git@github.com:SparebankenVest/public-helm-charts.git
 ```
 
-Render chart template locally:
+Render chart templates locally:
 
 ```bash
 cd public-helm-charts
-helm template akv2k8s ./stable/azure-key-vault-env-injector/ <options>
+helm template azure-key-vault-controller ./stable/azure-key-vault-controller/ <options>
+helm template azure-key-vault-env-injector ./stable/azure-key-vault-env-injector/ <options>
 ```
 
 ## Options and more
