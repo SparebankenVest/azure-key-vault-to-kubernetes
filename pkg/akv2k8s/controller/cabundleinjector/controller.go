@@ -449,7 +449,7 @@ func (c *Controller) syncHandlerNewNamespace(key string) error {
 	}
 
 	log.Debugf("Looking for configmap '%s' in labelled namespace '%s'", c.caBundleConfigMapName, key)
-	_, err = c.configMapLister.ConfigMaps(key).Get(c.caBundleConfigMapName)
+	cm, err := c.configMapLister.ConfigMaps(key).Get(c.caBundleConfigMapName)
 
 	if err != nil {
 		if errors.IsNotFound(err) { // if configmap does not exist, create it
@@ -472,7 +472,21 @@ func (c *Controller) syncHandlerNewNamespace(key string) error {
 		return err
 	}
 
-	log.Debugf("configmap '%s' found in new labelled namespace '%s' - strange... ignoring", c.caBundleConfigMapName, key)
+	if cm != nil {
+		log.Debugf("configmap '%s' exists in namespace '%s' with old ca bundle - updating", c.caBundleConfigMapName, key)
+		secret, err := c.kubeclientset.CoreV1().Secrets(c.caBundleSecretNamespaceName).Get(c.caBundleSecretName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
+		_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Update(newConfigMap)
+		if err != nil {
+			log.Errorf("failed to update configmap '%s' in namespace '%s', error: %+v", newConfigMap.Name, ns.Name, err)
+			return err
+		}
+	}
+
 	return nil
 }
 
