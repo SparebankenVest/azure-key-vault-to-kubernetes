@@ -118,13 +118,13 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 		regCred, ok := creds[registryName]
 
 		if ok {
-			log.Infof("found credentials to use with registry '%s'", registryName)
-		} else {
+			log.Infof("found imagePullSecrets credentials to use with registry '%s'", registryName)
+		} else if config.runningInsideAzureAks {
 			regCred, ok = getAcrCredentials(registryName, container.Image)
 		}
 
 		if !ok {
-			log.Infof("did not find credentials to use with registry '%s' - skipping credentials", registryName)
+			log.Debugf("did not find credentials to use with registry during docker image inspection '%s' - skipping credentials", registryName)
 		}
 
 		autoArgs, err := getContainerCmd(container, regCred)
@@ -239,7 +239,7 @@ func mutatePodSpec(pod *corev1.Pod) error {
 		return err
 	}
 
-	regCred, err := getRegistryCreds(*clientset, podSpec)
+	regCred, err := getRegistryCredsFromImagePullSecrets(*clientset, podSpec)
 	if err != nil {
 		return err
 	}

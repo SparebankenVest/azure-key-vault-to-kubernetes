@@ -113,7 +113,7 @@ func (opts *imageOptions) getConfigFromManifest() (*v1.Image, error) {
 	return config, nil
 }
 
-func getRegistryCreds(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (map[string]types.DockerAuthConfig, error) {
+func getRegistryCredsFromImagePullSecrets(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (map[string]types.DockerAuthConfig, error) {
 	creds := make(map[string]types.DockerAuthConfig)
 
 	var conf struct {
@@ -178,6 +178,13 @@ func getAcrCredentials(host string, image string) (types.DockerAuthConfig, bool)
 	isAcr, wildcardHost := hostIsAzureContainerRegistry(host)
 
 	if !isAcr {
+		return types.DockerAuthConfig{}, false
+	}
+
+	//Check if cloud config file exists
+	_, err := os.Stat(config.cloudConfigHostPath)
+	if err != nil {
+		log.Debugf("did not find cloud config - most likely because we're not in Azure/AKS")
 		return types.DockerAuthConfig{}, false
 	}
 

@@ -53,9 +53,10 @@ const (
 )
 
 type azureKeyVaultConfig struct {
-	port       string
-	customAuth bool
-	namespace  string
+	port                  string
+	runningInsideAzureAks bool
+	customAuth            bool
+	namespace             string
 	// aadPodBindingLabel  string
 	cloudConfigHostPath string
 	serveMetrics        bool
@@ -66,6 +67,7 @@ type azureKeyVaultConfig struct {
 	useAuthService      bool
 	// nameLocallyOverrideAuthService string
 	dockerImageInspectionTimeout int
+	useAksCredentialsWithAcs     bool
 	authServiceName              string
 	authServicePort              string
 	caBundleConfigMapName        string
@@ -193,9 +195,11 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func initConfig() {
+	viper.SetDefault("running_inside_azure_aks", true)
 	viper.SetDefault("ca_config_map_name", "akv2k8s-ca")
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
 	viper.SetDefault("docker_image_inspection_timeout", 20)
+	viper.SetDefault("docker_image_inspection_use_acs_credentials", true)
 	viper.SetDefault("use_auth_service", true)
 	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
 	viper.SetDefault("metrics_enabled", false)
@@ -216,6 +220,7 @@ func main() {
 	config = azureKeyVaultConfig{
 		port:                         viper.GetString("port"),
 		httpPort:                     viper.GetString("port_http"),
+		runningInsideAzureAks:        viper.GetBool("running_inside_azure_aks"),
 		customAuth:                   viper.GetBool("custom_auth"),
 		serveMetrics:                 viper.GetBool("metrics_enabled"),
 		certFile:                     viper.GetString("tls_cert_file"),
@@ -227,19 +232,29 @@ func main() {
 		caBundleConfigMapName:        viper.GetString("ca_config_map_name"),
 		cloudConfigHostPath:          viper.GetString("cloud_config_host_path"),
 		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
+		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
+	}
+
+	if !config.runningInsideAzureAks {
+		config.useAksCredentialsWithAcs = false
 	}
 
 	log.Info("Active settings:")
-	log.Infof("  Webhook port       : %s", config.port)
-	log.Infof("  Serve metrics      : %t", config.serveMetrics)
-	log.Infof("  Use custom auth    : %t", config.customAuth)
-	log.Infof("  Use auth service   : %t", config.useAuthService)
+	log.Infof("  Running inside Azure AKS  : %t", config.runningInsideAzureAks)
+	log.Infof("  Webhook port              : %s", config.port)
+	log.Infof("  Serve metrics             : %t", config.serveMetrics)
+	log.Infof("  Use custom auth           : %t", config.customAuth)
+	log.Infof("  Use auth service          : %t", config.useAuthService)
 	if config.useAuthService {
-		log.Infof("  Auth service name  : %s", config.authServiceName)
-		log.Infof("  Auth service port  : %s", config.authServicePort)
+		log.Infof("  Auth service name         : %s", config.authServiceName)
+		log.Infof("  Auth service port         : %s", config.authServicePort)
 	}
-	log.Infof("  CA ConfigMap name  : %s", config.caBundleConfigMapName)
-	log.Infof("  Cloud config path  : %s", config.cloudConfigHostPath)
+	if config.runningInsideAzureAks {
+		log.Infof("  Use AKS creds with ACS    : %s", config.useAksCredentialsWithAcs)
+	}
+	log.Infof("  Docker inspection timeout : %s", config.dockerImageInspectionTimeout)
+	log.Infof("  CA ConfigMap name         : %s", config.caBundleConfigMapName)
+	log.Infof("  Cloud config path         : %s", config.cloudConfigHostPath)
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
@@ -248,7 +263,7 @@ func main() {
 	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, metricsRecorder, internalLogger)
 
 	var err error
-	if config.customAuth {
+	if !config.runningInsideAzureAks || config.customAuth {
 		config.credentials, err = azure.NewFromEnvironment()
 		if err != nil {
 			log.Fatal(err)
