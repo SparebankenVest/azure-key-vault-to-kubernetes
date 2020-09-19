@@ -243,7 +243,6 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	}
 
 	log.Info("Starting workers")
-	// Launch two workers to process AzureKeyVaultSecret resources
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runSecretWorker, time.Second, stopCh)
 		go wait.Until(c.runNewNamespaceWorker, time.Second, stopCh)
@@ -306,14 +305,16 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 
 		var err error
 		log.Debugf("Handling '%s' in queue...", key)
-		successMsg = "Successfully synced CA Bundle '%s'"
 
 		switch typeOfQueue {
 		case workQueueTypeSecret:
+			successMsg = "Successfully synced CA Bundle from updated secret '%s' to all enabled namespaces"
 			err = c.syncHandlerSecret(key)
 		case workQueueTypeNewNamespace:
+			successMsg = "Successfully synced CA Bundle to new namespace '%s'"
 			err = c.syncHandlerNewNamespace(key)
 		case workQueueTypeChangedNamespace:
+			successMsg = "Successfully synced CA Bundle to changed namespace '%s'"
 			err = c.syncHandlerChangedNamespace(key)
 		}
 
@@ -482,8 +483,8 @@ func (c *Controller) syncHandlerChangedNamespace(key string) error {
 		return err
 	}
 
-	log.Debugf("Looking for configmap '%s' in labelled namespace '%s'", c.caBundleConfigMapName, key)
-	cm, err := c.configMapLister.ConfigMaps(key).Get(c.caBundleConfigMapName)
+	log.Debugf("Looking for configmap '%s' in labelled namespace '%s'", c.caBundleConfigMapName, ns.Name)
+	cm, err := c.configMapLister.ConfigMaps(ns.Name).Get(c.caBundleConfigMapName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Debugf("configmap '%s' not found in updated namespace '%s' - creating", c.caBundleConfigMapName, key)
