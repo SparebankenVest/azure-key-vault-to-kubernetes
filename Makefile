@@ -39,7 +39,11 @@ print-v-vaultenv:
 print-v-ca-bundle-controller:
 	@echo $(DOCKER_RELEASE_TAG_CA_BUNDLE_CONTROLLER) 
 
-tag-all: tag-webhook tag-controller tag-ca-bundle-controller tag-vaultenv
+tag-all: tag-crd tag-webhook tag-controller tag-ca-bundle-controller tag-vaultenv
+
+tag-crd: check-tag
+	git tag -a crd-$(TAG) -m "CRD version $(TAG)"
+	git push --tags
 
 tag-webhook: check-tag
 	git tag -a webhook-$(TAG) -m "Webhook version $(TAG)"
