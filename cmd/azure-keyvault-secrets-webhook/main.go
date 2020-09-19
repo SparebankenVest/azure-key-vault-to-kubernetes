@@ -250,9 +250,9 @@ func main() {
 		log.Infof("  Auth service port         : %s", config.authServicePort)
 	}
 	if config.runningInsideAzureAks {
-		log.Infof("  Use AKS creds with ACS    : %s", config.useAksCredentialsWithAcs)
+		log.Infof("  Use AKS creds with ACS    : %t", config.useAksCredentialsWithAcs)
 	}
-	log.Infof("  Docker inspection timeout : %s", config.dockerImageInspectionTimeout)
+	log.Infof("  Docker inspection timeout : %d", config.dockerImageInspectionTimeout)
 	log.Infof("  CA ConfigMap name         : %s", config.caBundleConfigMapName)
 	log.Infof("  Cloud config path         : %s", config.cloudConfigHostPath)
 
