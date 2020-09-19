@@ -53,31 +53,9 @@ Goals for this project was:
 
 All of these goals are met.
 
-## Requirements
-
-* Kubernetes version >= 1.13 
-* Enabled admission controllers: MutatingAdmissionWebhook and ValidatingAdmissionWebhook
-* RBAC enabled
-* Default [authentication](#authentication) requires Kubernetes cluster running in Azure - use custom authentication if running outside Azure
-
 ## Installation
 
-It's recommended to use Helm charts for installation:
-
-Controller: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-controller
-
-Env Injector: https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector
-
-For more details, see full documentation at https://akv2k8s.io.
-
-
-### Installation without Helm
-
-If Helm is not an option in Kubernetes, use Helm on a local computer to generate the Kubernetes templates like below:
-
-`helm install --debug --dry-run <options>`
-
-See the individual Helm charts above for `<options>`.
+For installation instructions, see documentation at https://akv2k8s.io/installation/
 
 ## Credits
 
@@ -105,5 +83,5 @@ Azure Key Vault to Kubernetes is licensed under Apache License 2.0.
 
 ### Contribute to the Documentation
 
-The documentation is located at [docs/content](docs/content). We're using Gatsby + MDX (Markdown + JSX) to generate static docs for https://akv2k8s.io. See [docs/README.md](docs/README.md) for details.
+The documentation is located at [docs/source/content](docs/source/content). We're using Gatsby + MDX (Markdown + JSX) to generate static docs for https://akv2k8s.io. See [docs/README.md](docs/README.md) for details.
 
