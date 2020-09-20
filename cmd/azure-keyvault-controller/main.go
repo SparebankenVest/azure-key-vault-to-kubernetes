@@ -87,7 +87,7 @@ func main() {
 
 	customAuth, err = getEnvBool("CUSTOM_AUTH", false)
 	if err != nil {
-		log.Fatalf("Error parsing env var AZURE_VAULT_MAX_FAILURE_ATTEMPTS: %s", err.Error())
+		log.Fatalf("Error parsing env var CUSTOM_AUTH: %s", err.Error())
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
