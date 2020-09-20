@@ -53,19 +53,17 @@ const (
 )
 
 type azureKeyVaultConfig struct {
-	port                  string
-	runningInsideAzureAks bool
-	customAuth            bool
-	namespace             string
-	// aadPodBindingLabel  string
-	cloudConfigHostPath string
-	serveMetrics        bool
-	httpPort            string
-	certFile            string
-	keyFile             string
-	caFile              string
-	useAuthService      bool
-	// nameLocallyOverrideAuthService string
+	port                         string
+	runningInsideAzureAks        bool
+	customAuth                   bool
+	namespace                    string
+	cloudConfigHostPath          string
+	serveMetrics                 bool
+	httpPort                     string
+	certFile                     string
+	keyFile                      string
+	caFile                       string
+	useAuthService               bool
 	dockerImageInspectionTimeout int
 	useAksCredentialsWithAcs     bool
 	authServiceName              string
@@ -106,6 +104,17 @@ func setLogLevel(logLevel string) {
 		log.Fatalf("error setting log level: %s", err.Error())
 	}
 	log.SetLevel(logrusLevel)
+}
+
+func setLogFormat(logFormat string) {
+	switch logFormat {
+	case "fmt":
+		log.SetFormatter(&log.TextFormatter{})
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.Warnf("Log format %s not supported - using default fmt", logFormat)
+	}
 }
 
 func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
@@ -205,7 +214,8 @@ func initConfig() {
 	viper.SetDefault("metrics_enabled", false)
 	viper.SetDefault("port_http", "80")
 	viper.SetDefault("port", "443")
-
+	viper.SetDefault("log_level", "Info")
+	viper.SetDefault("log_format", "fmt")
 	viper.AutomaticEnv()
 }
 
@@ -214,8 +224,11 @@ func main() {
 	initConfig()
 	fmt.Fprintln(os.Stdout, "config initialized")
 
-	logLevel := viper.GetString("LOG_LEVEL")
+	logLevel := viper.GetString("log_level")
 	setLogLevel(logLevel)
+
+	logFormat := viper.GetString("log_format")
+	setLogFormat(logFormat)
 
 	config = azureKeyVaultConfig{
 		port:                         viper.GetString("port"),
