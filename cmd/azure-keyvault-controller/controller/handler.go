@@ -352,8 +352,10 @@ func createNewSecret(azureKeyVaultSecret *akv.AzureKeyVaultSecret, azureSecretVa
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: azureKeyVaultSecret.Namespace,
+			Name:        secretName,
+			Namespace:   azureKeyVaultSecret.Namespace,
+			Labels:      azureKeyVaultSecret.Labels,
+			Annotations: azureKeyVaultSecret.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(azureKeyVaultSecret, schema.GroupVersionKind{
 					Group:   akv.SchemeGroupVersion.Group,
