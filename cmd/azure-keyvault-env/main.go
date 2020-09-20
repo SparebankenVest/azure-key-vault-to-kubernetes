@@ -59,11 +59,18 @@ type stop struct {
 	error
 }
 
-func formatLogger() {
-	log.SetFormatter(&log.TextFormatter{
-		DisableColors: true,
-		FullTimestamp: true,
-	})
+func formatLogger(logFormat string) {
+	switch logFormat {
+	case "fmt":
+		log.SetFormatter(&log.TextFormatter{
+			DisableColors: true,
+			FullTimestamp: true,
+		})
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.Warnf("Log format %s not supported - using default fmt", logFormat)
+	}
 
 	logger = log.WithFields(log.Fields{
 		"component":   "akv2k8s",
@@ -117,6 +124,8 @@ func initConfig() {
 	viper.SetDefault("env_injector_custom_auth", false)
 	viper.SetDefault("env_injector_use_auth_service", true)
 	viper.SetDefault("env_injector_skip_args_validation", false)
+	viper.SetDefault("env_injector_log_level", "Info")
+	viper.SetDefault("env_injector_log_format", "fmt")
 	viper.AutomaticEnv()
 }
 
@@ -150,7 +159,8 @@ func main() {
 
 	logLevel := viper.GetString("env_injector_log_level")
 	setLogLevel(logLevel)
-	formatLogger()
+	logFormat := viper.GetString("env_injector_log_format")
+	formatLogger(logFormat)
 
 	logger.Debugf("azure key vault env injector initializing")
 

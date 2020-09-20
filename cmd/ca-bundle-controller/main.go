@@ -42,6 +42,7 @@ var (
 	kubeconfig  string
 	cloudconfig string
 	logLevel    string
+	logFormat   string
 
 	azureVaultFastRate        time.Duration
 	azureVaultSlowRate        time.Duration
@@ -54,14 +55,9 @@ const controllerAgentName = "ca-bundle-controller"
 func main() {
 	flag.Parse()
 
-	log.SetFormatter(&log.TextFormatter{
-		DisableColors: true,
-		FullTimestamp: true,
-	})
-
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
-	setLogLevel()
+	initLog()
 
 	akvLabelName, err := getEnvStr("AKV_LABEL_NAME", "azure-key-vault-env-injection")
 	if err != nil {
@@ -128,7 +124,7 @@ func init() {
 	flag.StringVar(&cloudconfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
 }
 
-func setLogLevel() {
+func initLog() {
 	if logLevel == "" {
 		var ok bool
 		if logLevel, ok = os.LookupEnv("LOG_LEVEL"); !ok {
@@ -142,6 +138,22 @@ func setLogLevel() {
 	}
 	log.SetLevel(logrusLevel)
 	log.Printf("Log level set to '%s'", logrusLevel.String())
+
+	logFormat := "fmt"
+	logFormat, _ = os.LookupEnv("LOG_FORMAT")
+
+	switch logFormat {
+	case "fmt":
+		log.SetFormatter(&log.TextFormatter{
+			DisableColors: true,
+			FullTimestamp: true,
+		})
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.Warnf("Log format %s not supported - using default fmt", logFormat)
+	}
+
 }
 
 func getEnvDuration(key string, fallback time.Duration) (time.Duration, error) {

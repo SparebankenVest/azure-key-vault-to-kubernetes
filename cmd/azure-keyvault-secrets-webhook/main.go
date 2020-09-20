@@ -109,7 +109,10 @@ func setLogLevel(logLevel string) {
 func setLogFormat(logFormat string) {
 	switch logFormat {
 	case "fmt":
-		log.SetFormatter(&log.TextFormatter{})
+		log.SetFormatter(&log.TextFormatter{
+			DisableColors: true,
+			FullTimestamp: true,
+		})
 	case "json":
 		log.SetFormatter(&log.JSONFormatter{})
 	default:

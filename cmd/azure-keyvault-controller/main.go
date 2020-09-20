@@ -60,10 +60,10 @@ const controllerAgentName = "azurekeyvaultcontroller"
 func main() {
 	flag.Parse()
 
-	log.SetFormatter(&log.TextFormatter{
-		DisableColors: true,
-		FullTimestamp: true,
-	})
+	logFormat := "fmt"
+	logFormat, _ = os.LookupEnv("LOG_FORMAT")
+
+	setLogFormat(logFormat)
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -164,6 +164,20 @@ func init() {
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&logLevel, "log-level", "", "log level")
 	flag.StringVar(&cloudconfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
+}
+
+func setLogFormat(logFormat string) {
+	switch logFormat {
+	case "fmt":
+		log.SetFormatter(&log.TextFormatter{
+			DisableColors: true,
+			FullTimestamp: true,
+		})
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.Warnf("Log format %s not supported - using default fmt", logFormat)
+	}
 }
 
 func setLogLevel() {
