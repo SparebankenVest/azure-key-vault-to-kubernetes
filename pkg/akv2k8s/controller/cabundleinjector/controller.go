@@ -537,7 +537,7 @@ func (c *Controller) isNamespacesLabelled(ns *corev1.Namespace) bool {
 }
 
 func newConfigMap(name string, ns string, secret *corev1.Secret) *corev1.ConfigMap {
-	dataByte := secret.Data["caCert"]
+	dataByte := secret.Data["ca.crt"]
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

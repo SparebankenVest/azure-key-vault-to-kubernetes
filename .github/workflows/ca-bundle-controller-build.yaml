@@ -37,7 +37,7 @@ jobs:
       with:
         build-make-action: build-ca-bundle-controller
 
-    - name: Push}}
+    - name: Push
       uses: ./.github/actions/push
       with:
         push-make-action: push-ca-bundle-controller
