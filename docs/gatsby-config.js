@@ -71,7 +71,6 @@ module.exports = {
             'installation/requirements',
             'installation/installing-with-helm',
             'installation/installing-without-helm',
-            'installation/updating-with-helm',
           ],
           Tutorials: [
             'tutorials/index',
@@ -91,9 +90,6 @@ module.exports = {
             'security/authorization',
             'security/enable-env-injection',
           ],
-          'Availability': [
-            'getting-started/scaling',
-          ],
           Troubleshooting: [
             'troubleshooting/controller-log',
             'troubleshooting/env-injector-log-level',
@@ -102,8 +98,6 @@ module.exports = {
           Reference: [
             'reference/index',
             'reference/azure-key-vault-secret',
-            'stable/azure-key-vault-controller/README',
-            'stable/azure-key-vault-env-injector/README',
           ],
         },
         navConfig: {},
