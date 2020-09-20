@@ -43,23 +43,18 @@ tag-all: tag-crd tag-webhook tag-controller tag-ca-bundle-controller tag-vaulten
 
 tag-crd: check-tag
 	git tag -a crd-$(TAG) -m "CRD version $(TAG)"
-	git push --tags
 
 tag-webhook: check-tag
 	git tag -a webhook-$(TAG) -m "Webhook version $(TAG)"
-	git push --tags
 
 tag-controller: check-tag
 	git tag -a controller-$(TAG) -m "Controller version $(TAG)"
-	git push --tags
 
 tag-ca-bundle-controller: check-tag
 	git tag -a ca-bundle-controller-$(TAG) -m "CA Bundle Controller version $(TAG)"
-	git push --tags
 
 tag-vaultenv: check-tag
 	git tag -a vaultenv-$(TAG) -m "Vaultenv version $(TAG)"
-	git push --tags
 
 check-tag:
 ifndef TAG
