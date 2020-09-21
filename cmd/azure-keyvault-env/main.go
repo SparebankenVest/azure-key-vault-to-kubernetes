@@ -41,6 +41,7 @@ const (
 
 type injectorConfig struct {
 	namespace              string
+	secretNamespace        string
 	podName                string
 	retryTimes             int
 	waitTimeBetweenRetries int
@@ -166,6 +167,7 @@ func main() {
 
 	config = injectorConfig{
 		namespace:              viper.GetString("env_injector_pod_namespace"),
+		secretNamespace:        viper.GetString("env_injector_secret_namespace"),
 		podName:                viper.GetString("HOSTNAME"),
 		retryTimes:             viper.GetInt("env_injector_retries"),
 		waitTimeBetweenRetries: viper.GetInt("env_injector_wait_before_retry"),
@@ -187,6 +189,10 @@ func main() {
 	err = validateConfig(requiredEnvVars)
 	if err != nil {
 		logger.Fatalf("failed validating config, error: %+v", err)
+	}
+
+	if config.secretNamespace == "" {
+		config.secretNamespace = config.namespace
 	}
 
 	logger = logger.WithFields(log.Fields{
@@ -262,13 +268,13 @@ func main() {
 			}
 
 			logger.Debugf("getting azurekeyvaultsecret resource '%s' from kubernetes", secretName)
-			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
+			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(config.secretNamespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
 				logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %s", secretName, err.Error())
 				logger.Infof("will retry getting azurekeyvaultsecret resource up to %d times, waiting %d seconds between retries", config.retryTimes, config.waitTimeBetweenRetries)
 
 				err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
-					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
+					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(config.secretNamespace).Get(secretName, v1.GetOptions{})
 					if err != nil {
 						logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %+v", secretName, err)
 						return err
