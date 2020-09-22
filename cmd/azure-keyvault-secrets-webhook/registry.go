@@ -209,6 +209,7 @@ func getAcrCredentials(host string, image string) (types.DockerAuthConfig, bool)
 	}
 
 	if len(dockerConfList) > 0 {
+		log.Infof("found azure acr credentials for %s", host)
 		dockerConf := dockerConfList[wildcardHost]
 		return dockerConf, true
 	}
