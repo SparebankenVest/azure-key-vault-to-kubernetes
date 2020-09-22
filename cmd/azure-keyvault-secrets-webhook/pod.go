@@ -119,8 +119,11 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 
 		if ok {
 			log.Infof("found imagePullSecrets credentials to use with registry '%s'", registryName)
-		} else if config.runningInsideAzureAks {
+		} else if config.runningInsideAzureAks && config.useAksCredentialsWithAcs {
+			log.Info("we are running inside azure aks, trying to get acr credentials")
 			regCred, ok = getAcrCredentials(registryName, container.Image)
+		} else {
+			log.Debugf("not trying to get acr credentials, as we are not on aks or configured to not use aks credentials with acr")
 		}
 
 		if !ok {
