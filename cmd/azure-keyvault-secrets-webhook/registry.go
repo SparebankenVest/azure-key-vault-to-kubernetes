@@ -85,7 +85,7 @@ func (opts *imageOptions) getConfigFromManifest() (*v1.Image, error) {
 
 	ref, err := alltransports.ParseImageName(opts.image)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse docker image name:  %+v", err)
 	}
 
 	sys := &types.SystemContext{
@@ -103,11 +103,13 @@ func (opts *imageOptions) getConfigFromManifest() (*v1.Image, error) {
 
 	abc, err := ref.NewImage(ctx, sys)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing image name %q: %v", opts.image, err)
+		return nil, fmt.Errorf("failed to get docker image %q: %+v", opts.image, err)
 	}
+	defer abc.Close()
+
 	config, err := abc.OCIConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error reading OCI-formatted configuration data: %v", err)
+		return nil, fmt.Errorf("error reading OCI-formatted configuration data: %+v", err)
 	}
 
 	return config, nil
