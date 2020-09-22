@@ -62,7 +62,6 @@ type azureKeyVaultConfig struct {
 	httpPort                     string
 	certFile                     string
 	keyFile                      string
-	caFile                       string
 	useAuthService               bool
 	dockerImageInspectionTimeout int
 	useAksCredentialsWithAcs     bool
@@ -241,7 +240,6 @@ func main() {
 		serveMetrics:                 viper.GetBool("metrics_enabled"),
 		certFile:                     viper.GetString("tls_cert_file"),
 		keyFile:                      viper.GetString("tls_private_key_file"),
-		caFile:                       viper.GetString("tls_ca_file"),
 		useAuthService:               viper.GetBool("use_auth_service"),
 		authServiceName:              viper.GetString("webhook_auth_service"),
 		authServicePort:              viper.GetString("webhook_auth_service_port"),

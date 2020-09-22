@@ -178,6 +178,7 @@ func getAcrCredentials(host string, image string) (types.DockerAuthConfig, bool)
 	isAcr, wildcardHost := hostIsAzureContainerRegistry(host)
 
 	if !isAcr {
+		log.Debugf("docker container registry is not a azure container registry")
 		return types.DockerAuthConfig{}, false
 	}
 
@@ -203,6 +204,7 @@ func getAcrCredentials(host string, image string) (types.DockerAuthConfig, bool)
 
 	dockerConfList, err := cloudCnfProvider.GetAcrCredentials(image)
 	if err != nil {
+		log.Errorf("failed getting azure acr credentials, error: %+v", err)
 		return types.DockerAuthConfig{}, false
 	}
 
@@ -211,6 +213,7 @@ func getAcrCredentials(host string, image string) (types.DockerAuthConfig, bool)
 		return dockerConf, true
 	}
 
+	log.Warnf("no acr credentials found for %s", host)
 	return types.DockerAuthConfig{}, false
 }
 
