@@ -14,9 +14,12 @@
 //
 // Note: Code is based on azure_credentials.go in Kubernetes (https://github.com/kubernetes/kubernetes/blob/v1.17.9/pkg/credentialprovider/azure/azure_credentials.go)
 
+// Todo: Needs refactoring
+
 package azure
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -29,6 +32,7 @@ import (
 
 	"golang.org/x/crypto/pkcs12"
 
+	"github.com/Azure/azure-sdk-for-go/services/containerregistry/mgmt/2017-10-01/containerregistry"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -61,6 +65,7 @@ type CloudConfigProvider struct {
 	config                *auth.AzureAuthConfig
 	environment           *azure.Environment
 	servicePrincipalToken *adal.ServicePrincipalToken
+	registryClient        RegistriesClient
 }
 
 // Credentials has credentials needed to authenticate with azure key vault.
@@ -87,6 +92,44 @@ type crendentialsToken struct {
 	token string
 }
 
+// RegistriesClient is a testable interface for the ACR client List operation.
+type RegistriesClient interface {
+	List(ctx context.Context) ([]containerregistry.Registry, error)
+}
+
+// azRegistriesClient implements RegistriesClient.
+type azRegistriesClient struct {
+	client containerregistry.RegistriesClient
+}
+
+func newAzRegistriesClient(subscriptionID, endpoint string, token *adal.ServicePrincipalToken) *azRegistriesClient {
+	registryClient := containerregistry.NewRegistriesClient(subscriptionID)
+	registryClient.BaseURI = endpoint
+	registryClient.Authorizer = autorest.NewBearerAuthorizer(token)
+
+	return &azRegistriesClient{
+		client: registryClient,
+	}
+}
+
+func (az *azRegistriesClient) List(ctx context.Context) ([]containerregistry.Registry, error) {
+	iterator, err := az.client.ListComplete(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]containerregistry.Registry, 0)
+	for ; iterator.NotDone(); err = iterator.Next() {
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, iterator.Value())
+	}
+
+	return result, nil
+}
+
 // NewFromCloudConfig parses the specified configFile and returns a DockerConfigProvider
 func NewFromCloudConfig(configReader io.Reader) (*CloudConfigProvider, error) {
 	authSettings, err := azureAuth.GetSettingsFromEnvironment()
@@ -100,10 +143,13 @@ func NewFromCloudConfig(configReader io.Reader) (*CloudConfigProvider, error) {
 		return nil, err
 	}
 
+	registryClient := newAzRegistriesClient(config.SubscriptionID, authSettings.Environment.ResourceManagerEndpoint, token)
+
 	return &CloudConfigProvider{
 		config:                config,
 		environment:           &authSettings.Environment,
 		servicePrincipalToken: token,
+		registryClient:        registryClient,
 	}, nil
 }
 
@@ -129,18 +175,32 @@ func (c CloudConfigProvider) GetCredentials() (Credentials, error) {
 	}, nil
 }
 
+func getLoginServer(registry containerregistry.Registry) string {
+	return *(*registry.RegistryProperties).LoginServer
+}
+
 // GetAcrCredentials will get Docker credentials for Azure Container Registry
 func (c CloudConfigProvider) GetAcrCredentials(image string) (DockerConfig, error) {
 	cfg := DockerConfig{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	if c.config.UseManagedIdentityExtension {
-		log.Debug("getting acr credentials using managed identity")
-		if loginServer := parseACRLoginServerFromImage(image, c.environment); loginServer == "" {
-			log.Infof("image(%s) is not from ACR, skip MSI authentication", image)
-		} else {
-			if cred, err := getACRDockerEntryFromARMToken(c.config, c.servicePrincipalToken, loginServer); err == nil {
-				cfg[loginServer] = *cred
+		log.Debug("listing registries")
+
+		result, err := c.registryClient.List(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to list registries: %v", err)
+		}
+
+		for ix := range result {
+			loginServer := getLoginServer(result[ix])
+			log.Debugf("loginServer: %s", loginServer)
+			cred, err := getACRDockerEntryFromARMToken(c.config, c.servicePrincipalToken, loginServer)
+			if err != nil {
+				continue
 			}
+			cfg[loginServer] = *cred
 		}
 	} else {
 		// Add our entry for each of the supported container registry URLs
@@ -150,27 +210,6 @@ func (c CloudConfigProvider) GetAcrCredentials(image string) (DockerConfig, erro
 				Password: c.config.AADClientSecret,
 			}
 			cfg[url] = *cred
-		}
-
-		// Handle the custom cloud case
-		// In clouds where ACR is not yet deployed, the string will be empty
-		if c.environment != nil && strings.Contains(c.environment.ContainerRegistryDNSSuffix, ".azurecr.") {
-			customAcrSuffix := "*" + c.environment.ContainerRegistryDNSSuffix
-			hasBeenAdded := false
-			for _, url := range containerRegistryUrls {
-				if strings.EqualFold(url, customAcrSuffix) {
-					hasBeenAdded = true
-					break
-				}
-			}
-
-			if !hasBeenAdded {
-				cred := &docker.DockerAuthConfig{
-					Username: c.config.AADClientID,
-					Password: c.config.AADClientSecret,
-				}
-				cfg[customAcrSuffix] = *cred
-			}
 		}
 	}
 
@@ -410,9 +449,9 @@ func ParseConfig(configReader io.Reader) (*auth.AzureAuthConfig, error) {
 
 func getACRDockerEntryFromARMToken(config *auth.AzureAuthConfig, token *adal.ServicePrincipalToken, loginServer string) (*docker.DockerAuthConfig, error) {
 	// Run EnsureFresh to make sure the token is valid and does not expire
-	if err := token.EnsureFresh(); err != nil {
-		return nil, fmt.Errorf("Failed to ensure fresh service principal token: %v", err)
-	}
+	// if err := token.EnsureFresh(); err != nil {
+	// 	return nil, fmt.Errorf("Failed to ensure fresh service principal token: %v", err)
+	// }
 	armAccessToken := token.OAuthToken()
 
 	log.Debugf("discovering auth redirects for: %s", loginServer)
