@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 
 	"github.com/containers/image/v5/transports/alltransports"
 	"github.com/containers/image/v5/types"
@@ -107,12 +107,12 @@ func (opts *imageOptions) getConfigFromManifest() (*v1.Image, error) {
 	}
 	defer abc.Close()
 
-	config, err := abc.OCIConfig(ctx)
+	dockerConfig, err := abc.OCIConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error reading OCI-formatted configuration data: %+v", err)
 	}
 
-	return config, nil
+	return dockerConfig, nil
 }
 
 func getRegistryCredsFromImagePullSecrets(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (map[string]types.DockerAuthConfig, error) {
@@ -198,7 +198,7 @@ func getAcrCredentials(host string, image string) (types.DockerAuthConfig, bool)
 	}
 	defer f.Close()
 
-	cloudCnfProvider, err := azure.NewFromCloudConfig(f)
+	cloudCnfProvider, err := credentialprovider.NewAcrCredentialsFromCloudConfig(f)
 	if err != nil {
 		log.Errorf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
 		return types.DockerAuthConfig{}, false

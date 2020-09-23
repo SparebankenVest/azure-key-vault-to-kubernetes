@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	akv2k8sTesting "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/testing"
-	auth "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+	auth "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	akvs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

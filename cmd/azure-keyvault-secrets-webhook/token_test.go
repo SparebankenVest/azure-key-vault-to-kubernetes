@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 )
 
 func TestMarshallToken(t *testing.T) {
@@ -17,7 +17,7 @@ func TestMarshallToken(t *testing.T) {
 	os.Setenv("AZURE_CLIENT_SECRET", os.Getenv("AKV2K8S_CLIENT_SECRET"))
 	os.Setenv("AZURE_TENANT_ID", os.Getenv("AKV2K8S_CLIENT_TENANT_ID"))
 
-	creds, err := azure.NewFromEnvironment()
+	creds, err := credentialprovider.NewFromEnvironment()
 	if err != nil {
 		t.Error(err)
 	}
@@ -27,7 +27,7 @@ func TestMarshallToken(t *testing.T) {
 		t.Error(err)
 	}
 
-	var creds2 azure.OAuthCredentials
+	var creds2 credentialprovider.OAuthCredentials
 	err = json.Unmarshal(data, &creds2)
 	if err != nil {
 		t.Error(err)

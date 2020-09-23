@@ -30,7 +30,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 )
 
 func createHTTPClientWithTrustedCA(caCert []byte) (*http.Client, error) {
@@ -51,7 +51,7 @@ func createHTTPClientWithTrustedCA(caCert []byte) (*http.Client, error) {
 	return tlsClient, nil
 }
 
-func getCredentials(useAuthService bool, authServiceAddress, caCert string) (azure.Credentials, error) {
+func getCredentials(useAuthService bool, authServiceAddress, caCert string) (credentialprovider.Credentials, error) {
 	if useAuthService {
 		client, err := createHTTPClientWithTrustedCA([]byte(caCert))
 		if err != nil {
@@ -71,7 +71,7 @@ func getCredentials(useAuthService bool, authServiceAddress, caCert string) (azu
 			return nil, fmt.Errorf("failed to get credentials, %s", res.Status)
 		}
 
-		var creds azure.OAuthCredentials
+		var creds credentialprovider.OAuthCredentials
 		err = json.NewDecoder(res.Body).Decode(&creds)
 
 		if err != nil {
@@ -82,7 +82,7 @@ func getCredentials(useAuthService bool, authServiceAddress, caCert string) (azu
 		return creds, nil
 	}
 
-	creds, err := azure.NewFromEnvironment()
+	creds, err := credentialprovider.NewFromEnvironment()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get credentials for azure key vault, error %+v", err)
 	}

@@ -24,7 +24,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -69,7 +69,7 @@ type azureKeyVaultConfig struct {
 	authServicePort              string
 	caBundleConfigMapName        string
 	kubeClient                   *kubernetes.Clientset
-	credentials                  azure.Credentials
+	credentials                  credentialprovider.Credentials
 }
 
 var config azureKeyVaultConfig
@@ -278,7 +278,7 @@ func main() {
 
 	var err error
 	if !config.runningInsideAzureAks || config.customAuth {
-		config.credentials, err = azure.NewFromEnvironment()
+		config.credentials, err = credentialprovider.NewFromEnvironment()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -289,7 +289,7 @@ func main() {
 		}
 		defer f.Close()
 
-		cloudCnfProvider, err := azure.NewFromCloudConfig(f)
+		cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
 		if err != nil {
 			log.Fatalf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
 		}
