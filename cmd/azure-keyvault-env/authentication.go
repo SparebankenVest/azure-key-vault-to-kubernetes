@@ -34,21 +34,6 @@ import (
 )
 
 func createHTTPClientWithTrustedCA(caCert []byte) (*http.Client, error) {
-	// caURL := fmt.Sprintf("http://%s/ca", host)
-	// client := &http.Client{
-	// 	Timeout: time.Second * 10,
-	// }
-
-	// res, err := client.Get(caURL)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// defer res.Body.Close()
-	// caCert, err := ioutil.ReadAll(res.Body)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
@@ -93,6 +78,7 @@ func getCredentials(useAuthService bool, authServiceAddress, caCert string) (azu
 			return nil, fmt.Errorf("failed to decode body, error %+v", err)
 		}
 
+		logger.Info("successfully received oauth token")
 		return creds, nil
 	}
 
