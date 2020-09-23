@@ -36,6 +36,7 @@ import (
 	"github.com/spf13/pflag"
 
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/legacy-cloud-providers/azure/auth"
 	"sigs.k8s.io/yaml"
 )
@@ -133,7 +134,9 @@ func (c CloudConfigProvider) GetAcrCredentials(image string) (DockerConfig, erro
 	cfg := DockerConfig{}
 
 	if c.config.UseManagedIdentityExtension {
+		log.Debug("getting acr credentials using managed identity")
 		if loginServer := parseACRLoginServerFromImage(image, c.environment); loginServer == "" {
+			log.Infof("image(%s) is not from ACR, skip MSI authentication", image)
 		} else {
 			if cred, err := getACRDockerEntryFromARMToken(c.config, c.servicePrincipalToken, loginServer); err == nil {
 				cfg[loginServer] = *cred
@@ -308,21 +311,21 @@ func getServicePrincipalTokenFromCloudConfig(configReader io.Reader, env azure.E
 	}
 
 	if config.UseManagedIdentityExtension {
-		// klog.V(2).Infoln("azure: using managed identity extension to retrieve access token")
+		log.Debug("azure: using managed identity extension to retrieve access token")
 		msiEndpoint, err := adal.GetMSIVMEndpoint()
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed getting the managed service identity endpoint: %+v", err)
 		}
 
 		if len(config.UserAssignedIdentityID) > 0 {
-			// klog.V(4).Info("azure: using User Assigned MSI ID to retrieve access token")
+			log.Debug("azure: using User Assigned MSI ID to retrieve access token")
 			token, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(msiEndpoint,
 				env.ResourceIdentifiers.KeyVault,
 				config.UserAssignedIdentityID)
 
 			return token, config, err
 		}
-		// klog.V(4).Info("azure: using System Assigned MSI to retrieve access token")
+		log.Debug("azure: using System Assigned MSI to retrieve access token")
 		token, err := adal.NewServicePrincipalTokenFromMSI(
 			msiEndpoint,
 			env.ResourceIdentifiers.KeyVault)
@@ -336,7 +339,7 @@ func getServicePrincipalTokenFromCloudConfig(configReader io.Reader, env azure.E
 	}
 
 	if len(config.AADClientSecret) > 0 {
-		// klog.V(2).Infoln("azure: using client_id+client_secret to retrieve access token")
+		log.Debug("azure: using client_id+client_secret to retrieve access token")
 		token, err := adal.NewServicePrincipalToken(
 			*oauthConfig,
 			config.AADClientID,
@@ -347,7 +350,7 @@ func getServicePrincipalTokenFromCloudConfig(configReader io.Reader, env azure.E
 	}
 
 	if len(config.AADClientCertPath) > 0 && len(config.AADClientCertPassword) > 0 {
-		// klog.V(2).Infoln("azure: using jwt client_assertion (client_cert+client_private_key) to retrieve access token")
+		log.Debug("azure: using jwt client_assertion (client_cert+client_private_key) to retrieve access token")
 		certData, err := ioutil.ReadFile(config.AADClientCertPath)
 		if err != nil {
 			return nil, nil, fmt.Errorf("reading the client certificate from file %s: %v", config.AADClientCertPath, err)
@@ -412,17 +415,19 @@ func getACRDockerEntryFromARMToken(config *auth.AzureAuthConfig, token *adal.Ser
 	}
 	armAccessToken := token.OAuthToken()
 
+	log.Debugf("discovering auth redirects for: %s", loginServer)
 	directive, err := receiveChallengeFromLoginServer(loginServer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to receive challenge: %s", err)
 	}
 
-	registryRefreshToken, err := performTokenExchange(
-		loginServer, directive, config.TenantID, armAccessToken)
+	log.Debug("exchanging an acr refresh_token")
+	registryRefreshToken, err := performTokenExchange(loginServer, directive, config.TenantID, armAccessToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform token exchange: %s", err)
 	}
 
+	log.Debugf("adding ACR docker config entry for: %s", loginServer)
 	return &docker.DockerAuthConfig{
 		Username: dockerTokenLoginUsernameGUID,
 		Password: registryRefreshToken,
