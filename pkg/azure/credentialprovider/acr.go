@@ -74,7 +74,9 @@ func (c AcrCloudConfigProvider) GetAcrCredentials(image string) (DockerConfig, e
 		if loginServer := parseACRLoginServerFromImage(image, c.environment); loginServer == "" {
 			log.Debugf("image(%s) is not from ACR, skip MSI authentication", image)
 		} else {
+			log.Debug("getting acr gredentials for %s", loginServer)
 			if cred, err := getACRDockerEntryFromARMToken(c.config, *c.environment, c.servicePrincipalToken, loginServer); err == nil {
+				log.Debug("found acr gredentials for %s", loginServer)
 				cfg[loginServer] = *cred
 			}
 		}
