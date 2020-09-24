@@ -19,6 +19,7 @@
 package credentialprovider
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -41,6 +42,20 @@ func (c AzureKeyVaultCredentials) Authorizer() (autorest.Authorizer, error) {
 // Endpoint takes the name of the keyvault and creates a correct andpoint url
 func (c AzureKeyVaultCredentials) Endpoint(keyVaultName string) string {
 	return fmt.Sprintf(c.EndpointPartial, keyVaultName)
+}
+
+// MarshalJSON will get a fresh oauth token from the service principal token and serialize.
+// This token will expire after the default oauth token lifetime for the service principal.
+func (c AzureKeyVaultCredentials) MarshalJSON() ([]byte, error) {
+	err := c.Token.Refresh()
+	if err != nil {
+		return nil, fmt.Errorf("failed to refresh token before marshalling, error: %+v", err)
+	}
+
+	return json.Marshal(&OAuthCredentials{
+		OAuthToken:      c.Token.OAuthToken(),
+		EndpointPartial: c.EndpointPartial,
+	})
 }
 
 // GetAzureKeyVaultCredentials will get Azure credentials
