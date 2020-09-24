@@ -17,14 +17,12 @@ package credentialprovider
 import (
 	"context"
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
 
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
 	docker "github.com/containers/image/v5/types"
-
 	log "github.com/sirupsen/logrus"
 	"k8s.io/legacy-cloud-providers/azure/auth"
 )
@@ -34,42 +32,10 @@ var (
 	acrRE                 = regexp.MustCompile(`.*\.azurecr\.io|.*\.azurecr\.cn|.*\.azurecr\.de|.*\.azurecr\.us`)
 )
 
-// AcrCloudConfigProvider provides credentials for Azure
-type AcrCloudConfigProvider struct {
-	config                *auth.AzureAuthConfig
-	environment           *azure.Environment
-	servicePrincipalToken *adal.ServicePrincipalToken
-}
-
-// NewAcrCredentialsFromCloudConfig parses the specified configFile and returns a DockerConfigProvider
-func NewAcrCredentialsFromCloudConfig(configReader io.Reader) (*AcrCloudConfigProvider, error) {
-	config, err := ParseConfig(configReader)
-	if err != nil {
-		return nil, fmt.Errorf("failed reading cloud config, error: %+v", err)
-	}
-
-	env, err := auth.ParseAzureEnvironment(config.Cloud)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse environment from cloud config, error: %+v", err)
-	}
-
-	token, err := getServicePrincipalTokenFromCloudConfig(config, env, env.ServiceManagementEndpoint)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &AcrCloudConfigProvider{
-		config:                config,
-		environment:           env,
-		servicePrincipalToken: token,
-	}, nil
-}
-
 // GetAcrCredentials will get Docker credentials for Azure Container Registry
 // It will either get a exact match to the login server for the image (eg xxx.azureacr.io) or
 // get credentials for a wildcard match (eg *.azureacr.io* or *.azureacr.cn*)
-func (c AcrCloudConfigProvider) GetAcrCredentials(image string) (*docker.DockerAuthConfig, error) {
+func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*docker.DockerAuthConfig, error) {
 	cred := &docker.DockerAuthConfig{
 		Username: "",
 		Password: "",
@@ -80,7 +46,12 @@ func (c AcrCloudConfigProvider) GetAcrCredentials(image string) (*docker.DockerA
 		if loginServer := parseACRLoginServerFromImage(image, c.environment); loginServer == "" {
 			log.Debugf("image(%s) is not from ACR, skip MSI authentication", image)
 		} else {
-			if managedCred, err := getACRDockerEntryFromARMToken(c.config, *c.environment, c.servicePrincipalToken, loginServer); err == nil {
+			token, err := getServicePrincipalTokenFromCloudConfig(c.config, c.environment, c.environment.ServiceManagementEndpoint)
+
+			if err != nil {
+				return nil, err
+			}
+			if managedCred, err := getACRDockerEntryFromARMToken(c.config, *c.environment, token, loginServer); err == nil {
 				log.Debugf("found acr gredentials for %s", loginServer)
 				return managedCred, nil
 			}
@@ -96,7 +67,7 @@ func (c AcrCloudConfigProvider) GetAcrCredentials(image string) (*docker.DockerA
 }
 
 // IsAcrRegistry checks if an image blongs to a ACR registry
-func (c AcrCloudConfigProvider) IsAcrRegistry(image string) bool {
+func (c CloudConfigCredentialProvider) IsAcrRegistry(image string) bool {
 	return parseACRLoginServerFromImage(image, c.environment) != ""
 }
 

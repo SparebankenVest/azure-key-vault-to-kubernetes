@@ -62,12 +62,17 @@ import (
 func TestIntegrationAuthFromEnvironmentAudience(t *testing.T) {
 	akv2k8sTesting.EnsureIntegrationEnvironment(t)
 
-	creds, err := NewFromEnvironment()
+	provider, err := NewFromEnvironment()
 	if err != nil {
 		t.Error(err)
 	}
 
-	token := creds.(*credentials).Token
+	creds, err := provider.GetAzureKeyVaultCredentials()
+	if err != nil {
+		t.Error(err)
+	}
+
+	token := creds.Token
 	err = token.Refresh()
 	if err != nil {
 		t.Error(err)
@@ -81,9 +86,9 @@ func TestIntegrationAuthFromEnvironmentAudience(t *testing.T) {
 func TestIntegrationAuthFromConfigAudience(t *testing.T) {
 	akv2k8sTesting.EnsureIntegrationEnvironment(t)
 
-	tenantId := os.Getenv("AZURE_TENANT_ID")
-	subscriptionId := os.Getenv("AZURE_SUBSCRIPTION_ID")
-	clientId := os.Getenv("AZURE_CLIENT_ID")
+	tenantID := os.Getenv("AZURE_TENANT_ID")
+	subscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
+	clientID := os.Getenv("AZURE_CLIENT_ID")
 	clientSecret := os.Getenv("AZURE_CLIENT_SECRET")
 
 	config := fmt.Sprintf(`{
@@ -121,7 +126,7 @@ func TestIntegrationAuthFromConfigAudience(t *testing.T) {
     "maximumLoadBalancerRuleCount": 250,
     "providerKeyName": "k8s",
     "providerKeyVersion": ""
-}`, tenantId, subscriptionId, clientId, clientSecret)
+}`, tenantID, subscriptionID, clientID, clientSecret)
 
 	r := strings.NewReader(config)
 
@@ -130,12 +135,12 @@ func TestIntegrationAuthFromConfigAudience(t *testing.T) {
 		t.Error(err)
 	}
 
-	creds, err := conf.GetCredentials()
+	creds, err := conf.GetAzureKeyVaultCredentials()
 	if err != nil {
 		t.Error(err)
 	}
 
-	token := creds.(*credentials).Token
+	token := creds.Token
 	err = token.Refresh()
 	if err != nil {
 		t.Error(err)

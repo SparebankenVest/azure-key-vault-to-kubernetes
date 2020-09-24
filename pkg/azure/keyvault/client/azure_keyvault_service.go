@@ -40,11 +40,11 @@ type Service interface {
 }
 
 type azureKeyVaultService struct {
-	credentials credentialprovider.Credentials
+	credentials *credentialprovider.AzureKeyVaultCredentials
 }
 
 // NewService creates a new AzureKeyVaultService
-func NewService(credentials credentialprovider.Credentials) Service {
+func NewService(credentials *credentialprovider.AzureKeyVaultCredentials) Service {
 	return &azureKeyVaultService{
 		credentials: credentials,
 	}

@@ -83,7 +83,7 @@ func TestIntegrationGetSecret(t *testing.T) {
 		t.Error(err)
 	}
 
-	creds, err := provider.GetCredentials()
+	creds, err := provider.GetAzureKeyVaultCredentials()
 	if err != nil {
 		t.Error(err)
 	}
@@ -105,7 +105,12 @@ func TestIntegrationGetSecret(t *testing.T) {
 func TestIntegrationEnvironmentGetSecret(t *testing.T) {
 	akv2k8sTesting.EnsureIntegrationEnvironment(t)
 
-	creds, err := auth.NewFromEnvironment()
+	provider, err := auth.NewFromEnvironment()
+	if err != nil {
+		t.Error(err)
+	}
+
+	creds, err := provider.GetAzureKeyVaultCredentials()
 	if err != nil {
 		t.Error(err)
 	}
