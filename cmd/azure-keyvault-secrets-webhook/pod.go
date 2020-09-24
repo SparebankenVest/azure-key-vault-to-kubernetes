@@ -73,8 +73,7 @@ func getVolumes(useAuthService bool) []corev1.Volume {
 	return volumes
 }
 
-func mutateContainers(containers []corev1.Container, creds map[string]types.DockerAuthConfig) (bool, bool, error) {
-
+func mutateContainers(containers []corev1.Container, imagePullSecrets map[string]*types.DockerAuthConfig) (bool, bool, error) {
 	mutated := false
 	anyUseAuthService := config.useAuthService
 
@@ -115,13 +114,14 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 			registryName = imgParts[0]
 		}
 
-		regCred, ok := creds[registryName]
+		var regCred *types.DockerAuthConfig
+		regCred, ok := imagePullSecrets[registryName]
 
 		if ok {
 			log.Infof("found imagePullSecrets credentials to use with registry '%s'", registryName)
 		} else if config.runningInsideAzureAks && config.useAksCredentialsWithAcs {
 			log.Info("we are running inside azure aks, trying to get acr credentials")
-			regCred, ok = getAcrCredentials(registryName, container.Image)
+			regCred = getAcrCredentials(registryName, container.Image)
 		} else {
 			log.Debugf("not trying to get acr credentials, as we are not on aks or configured to not use aks credentials with acr")
 		}

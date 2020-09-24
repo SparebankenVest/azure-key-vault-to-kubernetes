@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
-
 	"github.com/containers/image/v5/transports/alltransports"
 	"github.com/containers/image/v5/types"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -37,15 +36,19 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func getContainerCmd(container corev1.Container, creds types.DockerAuthConfig) ([]string, error) {
+func getContainerCmd(container corev1.Container, creds *types.DockerAuthConfig) ([]string, error) {
 	cmd := container.Command
 
 	// If container.Command is set it will override both image.Entrypoint AND image.Cmd
 	// https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
 	if len(cmd) == 0 {
+		log.Debugf("no cmd override in kubernetes for container %s, checking docker image configuration for entrypoint and cmd for %s", container.Name, container.Image)
+		if creds == nil {
+			log.Warnf("no credentials provided/found to access remote docker image configuration for %s - going anonymous", container.Image)
+		}
 		opts := imageOptions{
 			image:       container.Image,
-			credentials: creds,
+			credentials: *creds,
 		}
 
 		config, err := opts.getConfigFromManifest()
@@ -58,6 +61,8 @@ func getContainerCmd(container corev1.Container, creds types.DockerAuthConfig) (
 		if len(container.Args) == 0 {
 			cmd = append(cmd, config.Config.Cmd...)
 		}
+	} else {
+		log.Debugf("found cmd override in kubernetes for container %s, no need to inspect docker image configuration for %s", container.Name, container.Image)
 	}
 
 	cmd = append(cmd, container.Args...)
@@ -115,8 +120,8 @@ func (opts *imageOptions) getConfigFromManifest() (*v1.Image, error) {
 	return dockerConfig, nil
 }
 
-func getRegistryCredsFromImagePullSecrets(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (map[string]types.DockerAuthConfig, error) {
-	creds := make(map[string]types.DockerAuthConfig)
+func getRegistryCredsFromImagePullSecrets(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (map[string]*types.DockerAuthConfig, error) {
+	creds := make(map[string]*types.DockerAuthConfig)
 
 	var conf struct {
 		Auths map[string]struct {
@@ -166,7 +171,7 @@ func getRegistryCredsFromImagePullSecrets(clientset kubernetes.Clientset, podSpe
 					return creds, fmt.Errorf("decoded credential has wrong number of fields (expected 2, got %d)", len(authParts))
 				}
 
-				creds[host] = types.DockerAuthConfig{
+				creds[host] = &types.DockerAuthConfig{
 					Username: authParts[0],
 					Password: authParts[1],
 				}
@@ -176,54 +181,44 @@ func getRegistryCredsFromImagePullSecrets(clientset kubernetes.Clientset, podSpe
 	return creds, nil
 }
 
-func getAcrCredentials(host string, image string) (types.DockerAuthConfig, bool) {
-	isAcr, wildcardHost := hostIsAzureContainerRegistry(host)
+func getAcrCredentials(host string, image string) *types.DockerAuthConfig {
+	// isAcr, wildcardHost := hostIsAzureContainerRegistry(host)
 
-	if !isAcr {
-		log.Debugf("docker container registry is not a azure container registry")
-		return types.DockerAuthConfig{}, false
-	}
+	// if !isAcr {
+	// 	log.Debugf("docker container registry is not a azure container registry")
+	// 	return types.DockerAuthConfig{}, false
+	// }
 
 	//Check if cloud config file exists
 	_, err := os.Stat(config.cloudConfigHostPath)
 	if err != nil {
 		log.Debugf("did not find cloud config - most likely because we're not in Azure/AKS")
-		return types.DockerAuthConfig{}, false
+		return &types.DockerAuthConfig{}
 	}
 
 	f, err := os.Open(config.cloudConfigHostPath)
 	if err != nil {
 		log.Errorf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
-		return types.DockerAuthConfig{}, false
+		return &types.DockerAuthConfig{}
 	}
 	defer f.Close()
 
 	cloudCnfProvider, err := credentialprovider.NewAcrCredentialsFromCloudConfig(f)
 	if err != nil {
 		log.Errorf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
-		return types.DockerAuthConfig{}, false
+		return &types.DockerAuthConfig{}
 	}
 
-	dockerConfList, err := cloudCnfProvider.GetAcrCredentials(image)
-	if err != nil {
-		log.Errorf("failed getting azure acr credentials, error: %+v", err)
-		return types.DockerAuthConfig{}, false
-	}
+	if cloudCnfProvider.IsAcrRegistry(image) {
+		cred, err := cloudCnfProvider.GetAcrCredentials(image)
+		if err != nil {
+			log.Errorf("failed getting azure acr credentials, error: %+v", err)
+			return &types.DockerAuthConfig{}
+		}
 
-	if len(dockerConfList) > 0 {
-		dockerConf := dockerConfList[wildcardHost]
-		return dockerConf, true
+		return cred
 	}
 
 	log.Warnf("no acr credentials found for %s", host)
-	return types.DockerAuthConfig{}, false
-}
-
-func hostIsAzureContainerRegistry(host string) (bool, string) {
-	for _, v := range []string{".azurecr.io", ".azurecr.cn", ".azurecr.de", ".azurecr.us"} {
-		if strings.HasSuffix(host, v) {
-			return true, fmt.Sprintf("*%s", v)
-		}
-	}
-	return false, ""
+	return &types.DockerAuthConfig{}
 }

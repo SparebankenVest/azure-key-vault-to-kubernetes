@@ -81,12 +81,17 @@ type crendentialsToken struct {
 
 // NewFromCloudConfig parses the specified configFile and returns a DockerConfigProvider
 func NewFromCloudConfig(configReader io.Reader) (*CloudConfigProvider, error) {
-	authSettings, err := azureAuth.GetSettingsFromEnvironment()
+	config, err := ParseConfig(configReader)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
+		return nil, fmt.Errorf("failed reading cloud config, error: %+v", err)
 	}
 
-	token, config, err := getServicePrincipalTokenFromCloudConfig(configReader, authSettings.Environment, authSettings.Environment.ResourceIdentifiers.KeyVault)
+	env, err := auth.ParseAzureEnvironment(config.Cloud)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse environment from cloud config, error: %+v", err)
+	}
+
+	token, err := getServicePrincipalTokenFromCloudConfig(config, env, env.ResourceIdentifiers.KeyVault)
 
 	if err != nil {
 		return nil, err
@@ -94,7 +99,7 @@ func NewFromCloudConfig(configReader io.Reader) (*CloudConfigProvider, error) {
 
 	return &CloudConfigProvider{
 		config:                config,
-		environment:           &authSettings.Environment,
+		environment:           env,
 		servicePrincipalToken: token,
 	}, nil
 }
@@ -243,17 +248,12 @@ func (c OAuthCredentials) Endpoint(keyVaultName string) string {
 	return fmt.Sprintf(c.EndpointPartial, keyVaultName)
 }
 
-func getServicePrincipalTokenFromCloudConfig(configReader io.Reader, env azure.Environment, resource string) (*adal.ServicePrincipalToken, *auth.AzureAuthConfig, error) {
-	config, err := ParseConfig(configReader)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed reading cloud config, error: %+v", err)
-	}
-
+func getServicePrincipalTokenFromCloudConfig(config *auth.AzureAuthConfig, env *azure.Environment, resource string) (*adal.ServicePrincipalToken, error) {
 	if config.UseManagedIdentityExtension {
 		log.Debug("azure: using managed identity extension to retrieve access token")
 		msiEndpoint, err := adal.GetMSIVMEndpoint()
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed getting the managed service identity endpoint: %+v", err)
+			return nil, fmt.Errorf("failed getting the managed service identity endpoint: %+v", err)
 		}
 
 		if len(config.UserAssignedIdentityID) > 0 {
@@ -262,19 +262,19 @@ func getServicePrincipalTokenFromCloudConfig(configReader io.Reader, env azure.E
 				resource,
 				config.UserAssignedIdentityID)
 
-			return token, config, err
+			return token, err
 		}
 		log.Debug("azure: using System Assigned MSI to retrieve access token")
 		token, err := adal.NewServicePrincipalTokenFromMSI(
 			msiEndpoint,
 			resource)
 
-		return token, config, err
+		return token, err
 	}
 
 	oauthConfig, err := adal.NewOAuthConfig(env.ActiveDirectoryEndpoint, config.TenantID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating the OAuth config: %v", err)
+		return nil, fmt.Errorf("creating the OAuth config: %v", err)
 	}
 
 	if len(config.AADClientSecret) > 0 {
@@ -285,18 +285,18 @@ func getServicePrincipalTokenFromCloudConfig(configReader io.Reader, env azure.E
 			config.AADClientSecret,
 			resource)
 
-		return token, config, err
+		return token, err
 	}
 
 	if len(config.AADClientCertPath) > 0 && len(config.AADClientCertPassword) > 0 {
 		log.Debug("azure: using jwt client_assertion (client_cert+client_private_key) to retrieve access token")
 		certData, err := ioutil.ReadFile(config.AADClientCertPath)
 		if err != nil {
-			return nil, nil, fmt.Errorf("reading the client certificate from file %s: %v", config.AADClientCertPath, err)
+			return nil, fmt.Errorf("reading the client certificate from file %s: %v", config.AADClientCertPath, err)
 		}
 		certificate, privateKey, err := decodePkcs12(certData, config.AADClientCertPassword)
 		if err != nil {
-			return nil, nil, fmt.Errorf("decoding the client certificate: %v", err)
+			return nil, fmt.Errorf("decoding the client certificate: %v", err)
 		}
 		token, err := adal.NewServicePrincipalTokenFromCertificate(
 			*oauthConfig,
@@ -304,10 +304,10 @@ func getServicePrincipalTokenFromCloudConfig(configReader io.Reader, env azure.E
 			certificate,
 			privateKey,
 			resource)
-		return token, config, err
+		return token, err
 	}
 
-	return nil, nil, fmt.Errorf("No credentials provided for AAD application %s", config.AADClientID)
+	return nil, fmt.Errorf("No credentials provided for AAD application %s", config.AADClientID)
 }
 
 func createAuthorizerFromServicePrincipalToken(token *adal.ServicePrincipalToken) (autorest.Authorizer, error) {

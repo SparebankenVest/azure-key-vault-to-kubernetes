@@ -25,7 +25,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	docker "github.com/containers/image/v5/types"
 
-	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/legacy-cloud-providers/azure/auth"
 )
@@ -34,9 +33,6 @@ var (
 	containerRegistryUrls = []string{"*.azurecr.io", "*.azurecr.cn", "*.azurecr.de", "*.azurecr.us"}
 	acrRE                 = regexp.MustCompile(`.*\.azurecr\.io|.*\.azurecr\.cn|.*\.azurecr\.de|.*\.azurecr\.us`)
 )
-
-// DockerConfig contains credentials used to access Docker regestries
-type DockerConfig map[string]docker.DockerAuthConfig
 
 // AcrCloudConfigProvider provides credentials for Azure
 type AcrCloudConfigProvider struct {
@@ -47,12 +43,17 @@ type AcrCloudConfigProvider struct {
 
 // NewAcrCredentialsFromCloudConfig parses the specified configFile and returns a DockerConfigProvider
 func NewAcrCredentialsFromCloudConfig(configReader io.Reader) (*AcrCloudConfigProvider, error) {
-	authSettings, err := azureAuth.GetSettingsFromEnvironment()
+	config, err := ParseConfig(configReader)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
+		return nil, fmt.Errorf("failed reading cloud config, error: %+v", err)
 	}
 
-	token, config, err := getServicePrincipalTokenFromCloudConfig(configReader, authSettings.Environment, authSettings.Environment.ServiceManagementEndpoint)
+	env, err := auth.ParseAzureEnvironment(config.Cloud)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse environment from cloud config, error: %+v", err)
+	}
+
+	token, err := getServicePrincipalTokenFromCloudConfig(config, env, env.ServiceManagementEndpoint)
 
 	if err != nil {
 		return nil, err
@@ -60,63 +61,43 @@ func NewAcrCredentialsFromCloudConfig(configReader io.Reader) (*AcrCloudConfigPr
 
 	return &AcrCloudConfigProvider{
 		config:                config,
-		environment:           &authSettings.Environment,
+		environment:           env,
 		servicePrincipalToken: token,
 	}, nil
 }
 
 // GetAcrCredentials will get Docker credentials for Azure Container Registry
-func (c AcrCloudConfigProvider) GetAcrCredentials(image string) (DockerConfig, error) {
-	cfg := DockerConfig{}
+// It will either get a exact match to the login server for the image (eg xxx.azureacr.io) or
+// get credentials for a wildcard match (eg *.azureacr.io* or *.azureacr.cn*)
+func (c AcrCloudConfigProvider) GetAcrCredentials(image string) (*docker.DockerAuthConfig, error) {
+	cred := &docker.DockerAuthConfig{
+		Username: "",
+		Password: "",
+	}
 
 	if c.config.UseManagedIdentityExtension {
 		log.Debug("using managed identity for acr credentials")
 		if loginServer := parseACRLoginServerFromImage(image, c.environment); loginServer == "" {
 			log.Debugf("image(%s) is not from ACR, skip MSI authentication", image)
 		} else {
-			if cred, err := getACRDockerEntryFromARMToken(c.config, *c.environment, c.servicePrincipalToken, loginServer); err == nil {
+			if managedCred, err := getACRDockerEntryFromARMToken(c.config, *c.environment, c.servicePrincipalToken, loginServer); err == nil {
 				log.Debugf("found acr gredentials for %s", loginServer)
-				cfg[loginServer] = *cred
+				return managedCred, nil
 			}
 		}
 	} else {
-		// Add our entry for each of the supported container registry URLs
-		for _, url := range containerRegistryUrls {
-			cred := &docker.DockerAuthConfig{
-				Username: c.config.AADClientID,
-				Password: c.config.AADClientSecret,
-			}
-			cfg[url] = *cred
-		}
-
-		// Handle the custom cloud case
-		// In clouds where ACR is not yet deployed, the string will be empty
-		if c.environment != nil && strings.Contains(c.environment.ContainerRegistryDNSSuffix, ".azurecr.") {
-			customAcrSuffix := "*" + c.environment.ContainerRegistryDNSSuffix
-			hasBeenAdded := false
-			for _, url := range containerRegistryUrls {
-				if strings.EqualFold(url, customAcrSuffix) {
-					hasBeenAdded = true
-					break
-				}
-			}
-
-			if !hasBeenAdded {
-				cred := &docker.DockerAuthConfig{
-					Username: c.config.AADClientID,
-					Password: c.config.AADClientSecret,
-				}
-				cfg[customAcrSuffix] = *cred
-			}
-		}
+		return &docker.DockerAuthConfig{
+			Username: c.config.AADClientID,
+			Password: c.config.AADClientSecret,
+		}, nil
 	}
 
-	// add ACR anonymous repo support: use empty username and password for anonymous access
-	cfg["*.azurecr.*"] = docker.DockerAuthConfig{
-		Username: "",
-		Password: "",
-	}
-	return cfg, nil
+	return cred, nil
+}
+
+// IsAcrRegistry checks if an image blongs to a ACR registry
+func (c AcrCloudConfigProvider) IsAcrRegistry(image string) bool {
+	return parseACRLoginServerFromImage(image, c.environment) != ""
 }
 
 func getACRDockerEntryFromARMToken(config *auth.AzureAuthConfig, env azure.Environment, token *adal.ServicePrincipalToken, loginServer string) (*docker.DockerAuthConfig, error) {
