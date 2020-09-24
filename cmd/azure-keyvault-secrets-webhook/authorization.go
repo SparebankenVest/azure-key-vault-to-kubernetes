@@ -15,7 +15,7 @@ type podData struct {
 	token         string
 }
 
-func authorize(clientset *kubernetes.Clientset, podData podData) error {
+func authorize(clientset kubernetes.Interface, podData podData) error {
 	ns, err := clientset.CoreV1().Namespaces().Get(podData.namespace, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get namespace '%s', error: %+v", podData.namespace, err)
@@ -37,7 +37,7 @@ func authorize(clientset *kubernetes.Clientset, podData podData) error {
 
 	containerHasInjectorCmd := false
 	for _, container := range pod.Spec.Containers {
-		if container.Command[0] == "/azure-keyvault/azure-keyvault-env" {
+		if len(container.Command) > 0 && container.Command[0] == "/azure-keyvault/azure-keyvault-env" {
 			containerHasInjectorCmd = true
 			break
 		}
