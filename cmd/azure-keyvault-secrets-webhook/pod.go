@@ -126,10 +126,6 @@ func mutateContainers(containers []corev1.Container, imagePullSecrets map[string
 			log.Debugf("not trying to get acr credentials, as we are not on aks or configured to not use aks credentials with acr")
 		}
 
-		if !ok {
-			log.Debugf("did not find credentials to use with registry during docker image inspection '%s' - skipping credentials", registryName)
-		}
-
 		autoArgs, err := getContainerCmd(container, regCred)
 		if err != nil {
 			return false, false, fmt.Errorf("failed to get auto cmd, error: %+v", err)

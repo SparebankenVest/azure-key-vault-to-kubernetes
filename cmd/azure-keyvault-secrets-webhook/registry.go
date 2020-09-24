@@ -182,13 +182,6 @@ func getRegistryCredsFromImagePullSecrets(clientset kubernetes.Clientset, podSpe
 }
 
 func getAcrCredentials(host string, image string) *types.DockerAuthConfig {
-	// isAcr, wildcardHost := hostIsAzureContainerRegistry(host)
-
-	// if !isAcr {
-	// 	log.Debugf("docker container registry is not a azure container registry")
-	// 	return types.DockerAuthConfig{}, false
-	// }
-
 	//Check if cloud config file exists
 	_, err := os.Stat(config.cloudConfigHostPath)
 	if err != nil {
@@ -203,7 +196,7 @@ func getAcrCredentials(host string, image string) *types.DockerAuthConfig {
 	}
 	defer f.Close()
 
-	cloudCnfProvider, err := credentialprovider.NewAcrCredentialsFromCloudConfig(f)
+	cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
 	if err != nil {
 		log.Errorf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
 		return &types.DockerAuthConfig{}

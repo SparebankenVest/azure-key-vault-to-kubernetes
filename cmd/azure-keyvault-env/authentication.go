@@ -51,7 +51,7 @@ func createHTTPClientWithTrustedCA(caCert []byte) (*http.Client, error) {
 	return tlsClient, nil
 }
 
-func getCredentials(useAuthService bool, authServiceAddress, caCert string) (credentialprovider.Credentials, error) {
+func getCredentials(useAuthService bool, authServiceAddress, caCert string) (*credentialprovider.AzureKeyVaultCredentials, error) {
 	if useAuthService {
 		client, err := createHTTPClientWithTrustedCA([]byte(caCert))
 		if err != nil {
@@ -71,7 +71,7 @@ func getCredentials(useAuthService bool, authServiceAddress, caCert string) (cre
 			return nil, fmt.Errorf("failed to get credentials, %s", res.Status)
 		}
 
-		var creds credentialprovider.OAuthCredentials
+		var creds *credentialprovider.AzureKeyVaultCredentials
 		err = json.NewDecoder(res.Body).Decode(&creds)
 
 		if err != nil {
@@ -82,7 +82,12 @@ func getCredentials(useAuthService bool, authServiceAddress, caCert string) (cre
 		return creds, nil
 	}
 
-	creds, err := credentialprovider.NewFromEnvironment()
+	provider, err := credentialprovider.NewFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create credentials provider for azure key vault, error %+v", err)
+	}
+
+	creds, err := provider.GetAzureKeyVaultCredentials()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get credentials for azure key vault, error %+v", err)
 	}

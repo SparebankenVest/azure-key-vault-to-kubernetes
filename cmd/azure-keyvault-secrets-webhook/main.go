@@ -278,9 +278,14 @@ func main() {
 
 	var err error
 	if !config.runningInsideAzureAks || config.customAuth {
-		config.credentials, err = credentialprovider.NewFromEnvironment()
+		cProvider, err := credentialprovider.NewFromEnvironment()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(fmt.Errorf("failed to create credentials provider for azure key vault, error %+v", err))
+		}
+
+		config.credentials, err = cProvider.GetAzureKeyVaultCredentials()
+		if err != nil {
+			log.Fatal(fmt.Errorf("failed to get credentials for azure key vault, error %+v", err))
 		}
 	} else {
 		f, err := os.Open(config.cloudConfigHostPath)
@@ -294,7 +299,7 @@ func main() {
 			log.Fatalf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
 		}
 
-		config.credentials, err = cloudCnfProvider.GetCredentials()
+		config.credentials, err = cloudCnfProvider.GetAzureKeyVaultCredentials()
 		if err != nil {
 			log.Fatal(err)
 		}

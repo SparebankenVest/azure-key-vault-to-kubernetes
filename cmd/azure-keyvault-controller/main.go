@@ -118,10 +118,15 @@ func main() {
 	eventBroadcaster.StartLogging(log.Tracef)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
-	var vaultAuth credentialprovider.Credentials
+	var vaultAuth *credentialprovider.AzureKeyVaultCredentials
 	if customAuth {
-		if vaultAuth, err = credentialprovider.NewFromEnvironment(); err != nil {
-			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
+		provider, err := credentialprovider.NewFromEnvironment()
+		if err != nil {
+			log.Fatalf("failed to create azure credentials provider, error: %+v", err.Error())
+		}
+
+		if vaultAuth, err = provider.GetAzureKeyVaultCredentials(); err != nil {
+			log.Fatalf("failed to get azure key vault credentials, error: %+v", err.Error())
 		}
 	} else {
 		f, err := os.Open(cloudconfig)
@@ -135,7 +140,7 @@ func main() {
 			log.Fatalf("Failed reading azure config from %s, error: %+v", cloudconfig, err)
 		}
 
-		if vaultAuth, err = cloudCnfProvider.GetCredentials(); err != nil {
+		if vaultAuth, err = cloudCnfProvider.GetAzureKeyVaultCredentials(); err != nil {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
 		}
 	}
