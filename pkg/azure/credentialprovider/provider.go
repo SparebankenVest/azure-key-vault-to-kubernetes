@@ -27,6 +27,7 @@ import (
 	"io"
 	"io/ioutil"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/pkcs12"
 
@@ -35,9 +36,9 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/spf13/pflag"
 
+	aadProvider "github.com/Azure/aad-pod-identity/pkg/cloudprovider"
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/legacy-cloud-providers/azure/auth"
 	"sigs.k8s.io/yaml"
 )
 
@@ -49,9 +50,17 @@ const (
 )
 
 // CloudConfigCredentialProvider provides credentials for Azure using the cloud config file
-type CloudConfigCredentialProvider struct {
-	config      *auth.AzureAuthConfig
+type UserAssignedManagedIdentityProvider struct {
+	config      *AzureCloudConfig
 	environment *azure.Environment
+	aadClient   *aadProvider.Client
+}
+
+// CloudConfigCredentialProvider provides credentials for Azure using the cloud config file
+type CloudConfigCredentialProvider struct {
+	config      *AzureCloudConfig
+	environment *azure.Environment
+	aadClient   *aadProvider.Client
 }
 
 // EnvironmentCredentialProvider provides credentials for Azure using environment vars
@@ -70,14 +79,25 @@ type credentials struct {
 	EndpointPartial string
 }
 
-// NewFromCloudConfig parses the specified configFile and returns a DockerConfigProvider
+func NewUserAssignedManagedIdentityProvider(azureConfigFile string) (*UserAssignedManagedIdentityProvider, error) {
+	aadClient, err := aadProvider.NewCloudProvider(azureConfigFile, 2, time.Second*30)
+	if err != nil {
+		return nil, fmt.Errorf("failed creating aad cloud provider, error: %+v", err)
+	}
+
+	return &UserAssignedManagedIdentityProvider{
+		aadClient: aadClient,
+	}, nil
+}
+
+// NewFromCloudConfig parses the specified configFile and returns a CloudConfigCredentialProvider
 func NewFromCloudConfig(configReader io.Reader) (*CloudConfigCredentialProvider, error) {
 	config, err := ParseConfig(configReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed reading cloud config, error: %+v", err)
 	}
 
-	env, err := auth.ParseAzureEnvironment(config.Cloud)
+	env, err := parseAzureEnvironment(config.Cloud)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse environment from cloud config, error: %+v", err)
 	}
@@ -130,28 +150,38 @@ func (c credentials) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func getServicePrincipalTokenFromCloudConfig(config *auth.AzureAuthConfig, env *azure.Environment, resource string) (*adal.ServicePrincipalToken, error) {
-	if config.UseManagedIdentityExtension {
-		log.Debug("azure: using managed identity extension to retrieve access token")
-		msiEndpoint, err := adal.GetMSIVMEndpoint()
+func getServicePrincipalTokenFromMSI(userAssignedIdentityID string, resource string) (*adal.ServicePrincipalToken, error) {
+	// err := adal.AddToUserAgent(akv2k8s.)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to add MIC to user agent, error: %+v", err)
+	// }
+
+	log.Debug("azure: using managed identity extension to retrieve access token")
+	msiEndpoint, err := adal.GetMSIVMEndpoint()
+	if err != nil {
+		return nil, fmt.Errorf("failed getting the managed service identity endpoint: %+v", err)
+	}
+
+	if len(userAssignedIdentityID) > 0 {
+		log.Debug("azure: using User Assigned MSI ID to retrieve access token")
+		token, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(msiEndpoint, resource, userAssignedIdentityID)
 		if err != nil {
-			return nil, fmt.Errorf("failed getting the managed service identity endpoint: %+v", err)
+			return nil, fmt.Errorf("failed getting user assigned msi token from endpoint '%s': %+v", msiEndpoint, err)
 		}
-
-		if len(config.UserAssignedIdentityID) > 0 {
-			log.Debug("azure: using User Assigned MSI ID to retrieve access token")
-			token, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(msiEndpoint,
-				resource,
-				config.UserAssignedIdentityID)
-
-			return token, err
-		}
-		log.Debug("azure: using System Assigned MSI to retrieve access token")
-		token, err := adal.NewServicePrincipalTokenFromMSI(
-			msiEndpoint,
-			resource)
-
 		return token, err
+	}
+	log.Debug("azure: using System Assigned MSI to retrieve access token")
+	token, err := adal.NewServicePrincipalTokenFromMSI(msiEndpoint, resource)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting system assigned msi token from endpoint '%s': %+v", msiEndpoint, err)
+	}
+
+	return token, err
+
+}
+func getServicePrincipalTokenFromCloudConfig(config *AzureCloudConfig, env *azure.Environment, resource string) (*adal.ServicePrincipalToken, error) {
+	if config.UseManagedIdentityExtension {
+		return getServicePrincipalTokenFromMSI(config.UserAssignedIdentityID, resource)
 	}
 
 	oauthConfig, err := adal.NewOAuthConfig(env.ActiveDirectoryEndpoint, config.TenantID)
@@ -205,9 +235,34 @@ func createAuthorizerFromOAuthToken(token string) (autorest.Authorizer, error) {
 	return autorest.NewBearerAuthorizer(tokenProvider), nil
 }
 
+// AzureCloudConfig holds azure configuration
+type AzureCloudConfig struct {
+	// The cloud environment identifier. Takes values from https://github.com/Azure/go-autorest/blob/ec5f4903f77ed9927ac95b19ab8e44ada64c1356/autorest/azure/environments.go#L13
+	Cloud string `json:"cloud,omitempty" yaml:"cloud,omitempty"`
+	// The AAD Tenant ID for the Subscription that the cluster is deployed in
+	TenantID string `json:"tenantId,omitempty" yaml:"tenantId,omitempty"`
+	// The ClientID for an AAD application with RBAC access to talk to Azure RM APIs
+	AADClientID string `json:"aadClientId,omitempty" yaml:"aadClientId,omitempty"`
+	// The ClientSecret for an AAD application with RBAC access to talk to Azure RM APIs
+	AADClientSecret string `json:"aadClientSecret,omitempty" yaml:"aadClientSecret,omitempty"`
+	// The path of a client certificate for an AAD application with RBAC access to talk to Azure RM APIs
+	AADClientCertPath string `json:"aadClientCertPath,omitempty" yaml:"aadClientCertPath,omitempty"`
+	// The password of the client certificate for an AAD application with RBAC access to talk to Azure RM APIs
+	AADClientCertPassword string `json:"aadClientCertPassword,omitempty" yaml:"aadClientCertPassword,omitempty"`
+	// Use managed service identity for the virtual machine to access Azure ARM APIs
+	UseManagedIdentityExtension bool `json:"useManagedIdentityExtension,omitempty" yaml:"useManagedIdentityExtension,omitempty"`
+	// UserAssignedIdentityID contains the Client ID of the user assigned MSI which is assigned to the underlying VMs. If empty the user assigned identity is not used.
+	// More details of the user assigned identity can be found at: https://docs.microsoft.com/en-us/azure/active-directory/managed-service-identity/overview
+	// For the user assigned identity specified here to be used, the UseManagedIdentityExtension has to be set to true.
+	UserAssignedIdentityID string `json:"userAssignedIdentityID,omitempty" yaml:"userAssignedIdentityID,omitempty"`
+	// The location of the resource group that the cluster is deployed in
+	Location string `json:"location,omitempty" yaml:"location,omitempty"`
+	VMType   string `json:"vmType,omitempty" yaml:"vmType,omitempty"`
+}
+
 // ParseConfig returns a parsed configuration for an Azure cloudprovider config file
-func ParseConfig(configReader io.Reader) (*auth.AzureAuthConfig, error) {
-	var config auth.AzureAuthConfig
+func ParseConfig(configReader io.Reader) (*AzureCloudConfig, error) {
+	var config AzureCloudConfig
 
 	if configReader == nil {
 		return &config, nil
@@ -240,4 +295,15 @@ func decodePkcs12(pkcs []byte, password string) (*x509.Certificate, *rsa.Private
 	}
 
 	return certificate, rsaPrivateKey, nil
+}
+
+func parseAzureEnvironment(cloudName string) (*azure.Environment, error) {
+	var env azure.Environment
+	var err error
+	if cloudName == "" {
+		env = azure.PublicCloud
+	} else {
+		env, err = azure.EnvironmentFromName(cloudName)
+	}
+	return &env, err
 }

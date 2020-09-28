@@ -58,7 +58,7 @@ func getInitContainers() []corev1.Container {
 	return []corev1.Container{container}
 }
 
-func getVolumes(useAuthService bool) []corev1.Volume {
+func getVolumes() []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
 			Name: "azure-keyvault-env",
@@ -73,14 +73,11 @@ func getVolumes(useAuthService bool) []corev1.Volume {
 	return volumes
 }
 
-func mutateContainers(containers []corev1.Container, imagePullSecrets map[string]*types.DockerAuthConfig) (bool, bool, error) {
+func mutateContainers(containers []corev1.Container, imagePullSecrets map[string]*types.DockerAuthConfig) (bool, error) {
 	mutated := false
-	anyUseAuthService := config.useAuthService
 
 	for i, container := range containers {
-		containerOverrideAuthService := false
-		containerUseAuthService := config.useAuthService
-
+		useAuthService := config.useAuthService
 		log.Infof("found container '%s' to mutate", container.Name)
 
 		var envVars []corev1.EnvVar
@@ -91,14 +88,14 @@ func mutateContainers(containers []corev1.Container, imagePullSecrets map[string
 				envVars = append(envVars, env)
 			}
 
-			if strings.ToUpper(env.Name) == "ENV_INJECTOR_USE_AUTH_SERVICE" {
-				containerOverrideAuthService = true
-				containerUseAuthService, err := strconv.ParseBool(env.Value)
+			if strings.ToUpper(env.Name) == "ENV_INJECTOR_DISABLE_AUTH_SERVICE" {
+				containerDisabledAuthService, err := strconv.ParseBool(env.Value)
 				if err != nil {
-					return false, false, fmt.Errorf("failed to parse container env var override for auth service, error: %+v", err)
+					return false, fmt.Errorf("failed to parse container env var override for auth service, error: %+v", err)
 				}
-				if containerUseAuthService {
-					anyUseAuthService = true
+				if containerDisabledAuthService {
+					log.Infof("container %s has disabled auth service", container.Name)
+					useAuthService = false
 				}
 			}
 		}
@@ -128,7 +125,7 @@ func mutateContainers(containers []corev1.Container, imagePullSecrets map[string
 
 		autoArgs, err := getContainerCmd(container, regCred)
 		if err != nil {
-			return false, false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
+			return false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
 		}
 
 		autoArgsStr := strings.Join(autoArgs, " ")
@@ -136,18 +133,18 @@ func mutateContainers(containers []corev1.Container, imagePullSecrets map[string
 
 		privKey, pubKey, err := newKeyPair()
 		if err != nil {
-			return false, false, fmt.Errorf("failed to create signing key pair, error: %+v", err)
+			return false, fmt.Errorf("failed to create signing key pair, error: %+v", err)
 		}
 
 		signature, err := signPKCS(autoArgsStr, *privKey)
 		if err != nil {
-			return false, false, fmt.Errorf("failed to sign command args, error: %+v", err)
+			return false, fmt.Errorf("failed to sign command args, error: %+v", err)
 		}
 		log.Debug("signed arguments to prevent override")
 
 		publicSigningKey, err := exportRsaPublicKey(pubKey)
 		if err != nil {
-			return false, false, fmt.Errorf("failed to export public rsa key to pem, error: %+v", err)
+			return false, fmt.Errorf("failed to export public rsa key to pem, error: %+v", err)
 		}
 
 		log.Debugf("public signing key for argument verification: \n%s", publicSigningKey)
@@ -188,18 +185,15 @@ func mutateContainers(containers []corev1.Container, imagePullSecrets map[string
 			},
 		}...)
 
-		// Do not add env var for using auth service if already exists
-		if config.useAuthService && !containerOverrideAuthService {
-			log.Debug("configure init-container to use auth service")
-			container.Env = append(container.Env, []corev1.EnvVar{
-				{
-					Name:  "ENV_INJECTOR_USE_AUTH_SERVICE",
-					Value: "true",
-				},
-			}...)
-		}
+		log.Debugf("setting ENV_INJECTOR_USE_AUTH_SERVICE=%t for container %s", useAuthService, container.Name)
+		container.Env = append(container.Env, []corev1.EnvVar{
+			{
+				Name:  "ENV_INJECTOR_USE_AUTH_SERVICE",
+				Value: strconv.FormatBool(useAuthService),
+			},
+		}...)
 
-		if containerUseAuthService {
+		if useAuthService {
 			container.Env = append(container.Env, []corev1.EnvVar{
 				{
 					Name:  "ENV_INJECTOR_AUTH_SERVICE",
@@ -222,7 +216,7 @@ func mutateContainers(containers []corev1.Container, imagePullSecrets map[string
 		containers[i] = container
 	}
 
-	return mutated, anyUseAuthService, nil
+	return mutated, nil
 }
 
 func mutatePodSpec(pod *corev1.Pod) error {
@@ -243,22 +237,19 @@ func mutatePodSpec(pod *corev1.Pod) error {
 		return err
 	}
 
-	var initContainersUseAuthService bool
-	var containersUseAuthService bool
-
-	initContainersMutated, initContainersUseAuthService, err := mutateContainers(podSpec.InitContainers, regCred)
+	initContainersMutated, err := mutateContainers(podSpec.InitContainers, regCred)
 	if err != nil {
 		return err
 	}
 
-	containersMutated, containersUseAuthService, err := mutateContainers(podSpec.Containers, regCred)
+	containersMutated, err := mutateContainers(podSpec.Containers, regCred)
 	if err != nil {
 		return err
 	}
 
 	if initContainersMutated || containersMutated {
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
-		podSpec.Volumes = append(podSpec.Volumes, getVolumes(initContainersUseAuthService || containersUseAuthService)...)
+		podSpec.Volumes = append(podSpec.Volumes, getVolumes()...)
 		log.Info("containers mutated and pod updated with init-container and volumes")
 		podsMutatedCounter.Inc()
 	} else {

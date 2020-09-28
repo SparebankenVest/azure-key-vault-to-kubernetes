@@ -42,6 +42,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 )
 
@@ -54,6 +55,9 @@ const (
 	// ErrResourceExists is used as part of the Event 'reason' when a AzureKeyVaultSecret fails
 	// to sync due to a Secret of the same name already existing.
 	ErrResourceExists = "ErrResourceExists"
+
+	// ErrConfigMap is used as part of the Event 'reason' when a Secret sync fails
+	ErrConfigMap = "ErrConfigMap"
 
 	// MessageResourceExists is the message used for Events when a resource
 	// fails to sync due to a Deployment already existing
@@ -80,6 +84,9 @@ type Controller struct {
 	// time, and makes it easy to ensure we are never processing the same item
 	// simultaneously in two different workers.
 	kubeclientset kubernetes.Interface
+	// recorder is an event recorder for recording Event resources to the
+	// Kubernetes API.
+	recorder record.EventRecorder
 
 	secretWorkqueue           workqueue.RateLimitingInterface
 	newNamespaceWorkqueue     workqueue.RateLimitingInterface
@@ -99,7 +106,7 @@ type Controller struct {
 }
 
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(kubeclientset kubernetes.Interface, secretInformer coreinformers.SecretInformer, namespaceInformer coreinformers.NamespaceInformer, configMapInformer coreinformers.ConfigMapInformer, labelName string, caBundleSecretNamespaceName string, caBundleSecretName string, caBundleConfigMapName string) *Controller {
+func NewController(kubeclientset kubernetes.Interface, recorder record.EventRecorder, secretInformer coreinformers.SecretInformer, namespaceInformer coreinformers.NamespaceInformer, configMapInformer coreinformers.ConfigMapInformer, labelName string, caBundleSecretNamespaceName string, caBundleSecretName string, caBundleConfigMapName string) *Controller {
 	// // Create event broadcaster
 	// // Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// // logged for azure-keyvault-controller types.
@@ -107,6 +114,7 @@ func NewController(kubeclientset kubernetes.Interface, secretInformer coreinform
 
 	controller := &Controller{
 		kubeclientset:               kubeclientset,
+		recorder:                    recorder,
 		secretsSynced:               secretInformer.Informer().HasSynced,
 		namespacesSynced:            namespaceInformer.Informer().HasSynced,
 		secretWorkqueue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "CABundles"),
@@ -161,7 +169,11 @@ func NewController(kubeclientset kubernetes.Interface, secretInformer coreinform
 			controller.enqueueSecret(new)
 		},
 		DeleteFunc: func(obj interface{}) { // When CA Bundle gets deleted in akv2k8s
-			secret := obj.(*corev1.Secret)
+			secret, ok := obj.(*corev1.Secret)
+			if !ok {
+				log.Warningf("received deletion alert of secret, but was not a proper secret")
+				return
+			}
 
 			if secret.Name != caBundleSecretName {
 				return
@@ -393,7 +405,9 @@ func (c *Controller) syncHandlerSecret(key string) error {
 			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 			configMap, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
 			if err != nil {
-				log.Errorf("failed to create configmap '%s' in namespace '%s', error: %+v", newConfigMap.Name, ns.Name, err)
+				msg := fmt.Sprintf("failed to create configmap %s in namespace %s", newConfigMap.Name, ns.Name)
+				c.recorder.Event(newConfigMap, corev1.EventTypeWarning, ErrConfigMap, msg)
+				log.Errorf("%s, error: %+v", msg, err)
 				return err
 			}
 			return nil
@@ -410,16 +424,23 @@ func (c *Controller) syncHandlerSecret(key string) error {
 		// a warning to the event recorder and return error msg.
 		if !metav1.IsControlledBy(configMap, secret) {
 			msg := fmt.Sprintf(MessageResourceExists, configMap.Name)
-			// c.recorder.Event(foo, corev1.EventTypeWarning, ErrResourceExists, msg)
+			c.recorder.Event(secret, corev1.EventTypeWarning, ErrResourceExists, msg)
 			return fmt.Errorf(msg)
 		}
 
 		// If CA cert in ConfigMap resource is not the same as in Secret resource, we
 		// should update the ConfigMap resource.
 		if configMap.Data["caCert"] != secret.StringData["caCert"] {
-			// klog.V(4).Infof("Foo %s replicas: %d, deployment replicas: %d", name, *foo.Spec.Replicas, *deployment.Spec.Replicas)
+			log.Infof("secret %s updated: updating config map: %s", secret.Name, configMap.Name)
 			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 			configMap, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Update(newConfigMap)
+
+			if err != nil {
+				msg := fmt.Sprintf("failed to update configmap %s in namespace %s", newConfigMap.Name, ns.Name)
+				c.recorder.Event(newConfigMap, corev1.EventTypeWarning, ErrConfigMap, msg)
+				log.Errorf("%s, error: %+v", msg, err)
+				return err
+			}
 		}
 
 		// If an error occurs during Update, we'll requeue the item so we can
@@ -428,16 +449,9 @@ func (c *Controller) syncHandlerSecret(key string) error {
 		if err != nil {
 			return err
 		}
-
-		// Finally, we update the status block of the Foo resource to reflect the
-		// current state of the world
-		// err = c.updateSecretStatus(secret, configMap)
-		// if err != nil {
-		// 	return err
-		// }
 	}
 
-	// c.recorder.Event(foo, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	c.recorder.Event(secret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
 
@@ -485,6 +499,7 @@ func (c *Controller) syncHandlerNewNamespace(key string) error {
 		}
 	}
 
+	c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
 

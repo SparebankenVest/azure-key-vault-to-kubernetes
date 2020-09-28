@@ -25,9 +25,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
-	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -153,6 +154,8 @@ func validateConfig(requiredEnvVars map[string]string) error {
 func main() {
 	initConfig()
 
+	akv2k8s.Version = viper.GetString("version")
+
 	var origCommand string
 	var origArgs []string
 	var err error
@@ -161,6 +164,7 @@ func main() {
 	setLogLevel(logLevel)
 	logFormat := viper.GetString("env_injector_log_format")
 	formatLogger(logFormat)
+	akv2k8s.LogVersion()
 
 	logger.Debugf("azure key vault env injector initializing")
 
@@ -262,13 +266,13 @@ func main() {
 			}
 
 			logger.Debugf("getting azurekeyvaultsecret resource '%s' from kubernetes", secretName)
-			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
+			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV2alpha1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
 				logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %s", secretName, err.Error())
 				logger.Infof("will retry getting azurekeyvaultsecret resource up to %d times, waiting %d seconds between retries", config.retryTimes, config.waitTimeBetweenRetries)
 
 				err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
-					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
+					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV2alpha1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
 					if err != nil {
 						logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %+v", secretName, err)
 						return err

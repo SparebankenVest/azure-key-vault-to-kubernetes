@@ -1,4 +1,4 @@
-// Copyright © 2019 Sparebanken Vest
+// Copyright © 2020 Sparebanken Vest
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
 //
 // Note: Code is based on azure_credentials.go in Kubernetes (https://github.com/kubernetes/kubernetes/blob/v1.17.9/pkg/credentialprovider/azure/azure_credentials.go)
 
-// Todo: Needs refactoring
-
 package credentialprovider
 
 import (
@@ -27,9 +25,15 @@ import (
 	"github.com/Azure/go-autorest/autorest/adal"
 )
 
+const (
+	vmTypeVMSS     = "vmss"
+	vmTypeStandard = "standard"
+)
+
 // AzureKeyVaultCredentials has credentials needed to authenticate with azure key vault.
 // These credentials will never expire
 type AzureKeyVaultCredentials struct {
+	ClientID        string
 	Token           *adal.ServicePrincipalToken
 	EndpointPartial string
 }
@@ -56,6 +60,48 @@ func (c AzureKeyVaultCredentials) MarshalJSON() ([]byte, error) {
 		OAuthToken:      c.Token.OAuthToken(),
 		EndpointPartial: c.EndpointPartial,
 	})
+}
+
+// GetAzureKeyVaultCredentials will get Azure credentials
+func (c UserAssignedManagedIdentityProvider) GetAzureKeyVaultCredentials(azureIdentity string, hostname string) (*AzureKeyVaultCredentials, error) {
+	err := c.aadClient.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	resourceSplit := strings.SplitAfterN(c.environment.ResourceIdentifiers.KeyVault, "https://", 2)
+	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
+	msiExists := false
+
+	msis, err := c.aadClient.GetUserMSIs(hostname, c.config.VMType == vmTypeVMSS)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, msi := range msis {
+		if msi == azureIdentity {
+			msiExists = true
+			break
+		}
+	}
+
+	if !msiExists {
+		ids := []string{azureIdentity}
+		err := c.aadClient.UpdateUserMSI(ids, []string{}, hostname, c.config.VMType == vmTypeVMSS)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	token, err := getServicePrincipalTokenFromMSI(azureIdentity, c.environment.ResourceIdentifiers.KeyVault)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AzureKeyVaultCredentials{
+		Token:           token,
+		EndpointPartial: endpoint,
+	}, nil
 }
 
 // GetAzureKeyVaultCredentials will get Azure credentials
@@ -93,6 +139,7 @@ func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (*AzureKeyV
 			return nil, err
 		}
 
+		akvCreds.ClientID = creds.ClientID
 		akvCreds.Token = token
 		return akvCreds, nil
 	}
@@ -106,6 +153,7 @@ func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (*AzureKeyV
 		if err != nil {
 			return nil, err
 		}
+		akvCreds.ClientID = creds.ClientID
 		akvCreds.Token = token
 		return akvCreds, nil
 	}
@@ -119,6 +167,7 @@ func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (*AzureKeyV
 		if err != nil {
 			return nil, err
 		}
+		akvCreds.ClientID = creds.ClientID
 		akvCreds.Token = token
 		return akvCreds, nil
 	}
@@ -135,6 +184,7 @@ func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (*AzureKeyV
 		if err != nil {
 			return nil, err
 		}
+		akvCreds.ClientID = msi.ClientID
 		akvCreds.Token = token
 		return akvCreds, nil
 	}
@@ -144,6 +194,7 @@ func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (*AzureKeyV
 	if err != nil {
 		return nil, err
 	}
+	akvCreds.ClientID = "msi"
 	akvCreds.Token = token
 	return akvCreds, nil
 }

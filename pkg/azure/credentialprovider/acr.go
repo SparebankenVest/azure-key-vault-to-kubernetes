@@ -1,4 +1,4 @@
-// Copyright © 2019 Sparebanken Vest
+// Copyright © 2020 Sparebanken Vest
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	docker "github.com/containers/image/v5/types"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/legacy-cloud-providers/azure/auth"
 )
 
 var (
@@ -47,10 +46,10 @@ func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*docker.
 			log.Debugf("image(%s) is not from ACR, skip MSI authentication", image)
 		} else {
 			token, err := getServicePrincipalTokenFromCloudConfig(c.config, c.environment, c.environment.ServiceManagementEndpoint)
-
 			if err != nil {
 				return nil, err
 			}
+
 			if managedCred, err := getACRDockerEntryFromARMToken(c.config, *c.environment, token, loginServer); err == nil {
 				log.Debugf("found acr gredentials for %s", loginServer)
 				return managedCred, nil
@@ -71,7 +70,7 @@ func (c CloudConfigCredentialProvider) IsAcrRegistry(image string) bool {
 	return parseACRLoginServerFromImage(image, c.environment) != ""
 }
 
-func getACRDockerEntryFromARMToken(config *auth.AzureAuthConfig, env azure.Environment, token *adal.ServicePrincipalToken, loginServer string) (*docker.DockerAuthConfig, error) {
+func getACRDockerEntryFromARMToken(config *AzureCloudConfig, env azure.Environment, token *adal.ServicePrincipalToken, loginServer string) (*docker.DockerAuthConfig, error) {
 	// Run EnsureFresh to make sure the token is valid and does not expire
 	// if err := token.EnsureFresh(); err != nil {
 	// 	return nil, fmt.Errorf("Failed to ensure fresh service principal token: %v", err)

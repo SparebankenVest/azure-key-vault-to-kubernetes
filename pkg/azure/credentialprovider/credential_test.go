@@ -59,6 +59,12 @@ import (
 // 	}
 // }
 
+func TestIntegrationAuthFromUserAssignedManagedIdentity(t *testing.T) {
+	akv2k8sTesting.EnsureIntegrationEnvironment(t)
+
+	// provider, err := NewUserAssignedManagedIdentityProvider()
+}
+
 func TestIntegrationAuthFromEnvironmentAudience(t *testing.T) {
 	akv2k8sTesting.EnsureIntegrationEnvironment(t)
 

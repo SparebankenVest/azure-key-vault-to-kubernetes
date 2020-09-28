@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
@@ -185,12 +186,13 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 
-		log.Infof("served oauth token to '%s/%s' at address '%s'", pod.namespace, pod.name, r.RemoteAddr)
-
 		if err := json.NewEncoder(w).Encode(config.credentials); err != nil {
 			log.Errorf("failed to json encode token, error: %+v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			log.Infof("served oauth token to '%s/%s' at address '%s'", pod.namespace, pod.name, r.RemoteAddr)
 		}
+
 	} else {
 		log.Error("invalid request method")
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -222,15 +224,16 @@ func initConfig() {
 }
 
 func main() {
-	fmt.Fprintln(os.Stdout, "initializing config...")
 	initConfig()
-	fmt.Fprintln(os.Stdout, "config initialized")
+	akv2k8s.Version = viper.GetString("version")
 
 	logLevel := viper.GetString("log_level")
 	setLogLevel(logLevel)
 
 	logFormat := viper.GetString("log_format")
 	setLogFormat(logFormat)
+
+	akv2k8s.LogVersion()
 
 	config = azureKeyVaultConfig{
 		port:                         viper.GetString("port"),
@@ -278,6 +281,7 @@ func main() {
 
 	var err error
 	if !config.runningInsideAzureAks || config.customAuth {
+		log.Debug("using custom auth - looking for azure key vault credentials in envrionment")
 		cProvider, err := credentialprovider.NewFromEnvironment()
 		if err != nil {
 			log.Fatal(fmt.Errorf("failed to create credentials provider for azure key vault, error %+v", err))
@@ -287,6 +291,8 @@ func main() {
 		if err != nil {
 			log.Fatal(fmt.Errorf("failed to get credentials for azure key vault, error %+v", err))
 		}
+
+		log.Debugf("using custom auth")
 	} else {
 		f, err := os.Open(config.cloudConfigHostPath)
 		if err != nil {

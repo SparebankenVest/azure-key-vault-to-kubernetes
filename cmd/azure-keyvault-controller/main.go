@@ -36,6 +36,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-controller/controller"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
@@ -48,6 +49,7 @@ var (
 	kubeconfig  string
 	cloudconfig string
 	logLevel    string
+	version     string
 
 	azureVaultFastRate        time.Duration
 	azureVaultSlowRate        time.Duration
@@ -59,11 +61,13 @@ const controllerAgentName = "azurekeyvaultcontroller"
 
 func main() {
 	flag.Parse()
+	akv2k8s.Version = version
 
 	logFormat := "fmt"
 	logFormat, _ = os.LookupEnv("LOG_FORMAT")
 
 	setLogFormat(logFormat)
+	akv2k8s.LogVersion()
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -107,6 +111,7 @@ func main() {
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	azureKeyVaultSecretInformerFactory := informers.NewSharedInformerFactory(azureKeyVaultSecretClient, time.Second*30)
+
 	azurePollFrequency := controller.AzurePollFrequency{
 		Normal:                       azureVaultFastRate,
 		Slow:                         azureVaultSlowRate,
@@ -147,11 +152,11 @@ func main() {
 
 	vaultService := vault.NewService(vaultAuth)
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
-	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
+	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecretIdentities().Lister(), recorder, vaultService, azurePollFrequency)
 
 	controller := controller.NewController(handler,
 		kubeInformerFactory.Core().V1().Secrets(),
-		azureKeyVaultSecretInformerFactory.Azurekeyvault().V1().AzureKeyVaultSecrets(),
+		azureKeyVaultSecretInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets(),
 		azurePollFrequency)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
@@ -165,6 +170,7 @@ func main() {
 }
 
 func init() {
+	flag.StringVar(&version, "version", "", "Version of this component.")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&logLevel, "log-level", "", "log level")

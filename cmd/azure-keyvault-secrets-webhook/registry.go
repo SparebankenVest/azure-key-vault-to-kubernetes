@@ -37,6 +37,7 @@ import (
 )
 
 func getContainerCmd(container corev1.Container, creds *types.DockerAuthConfig) ([]string, error) {
+	log.Debugf("getting container command for container '%s'", container.Name)
 	cmd := container.Command
 
 	// If container.Command is set it will override both image.Entrypoint AND image.Cmd
@@ -46,6 +47,7 @@ func getContainerCmd(container corev1.Container, creds *types.DockerAuthConfig) 
 		if creds == nil {
 			log.Warnf("no credentials provided/found to access remote docker image configuration for %s - going anonymous", container.Image)
 		}
+
 		opts := imageOptions{
 			image:       container.Image,
 			credentials: *creds,
@@ -209,6 +211,7 @@ func getAcrCredentials(host string, image string) *types.DockerAuthConfig {
 			return &types.DockerAuthConfig{}
 		}
 
+		log.Debugf("found acr credentials to use in cloud config for '%s'", host)
 		return cred
 	}
 
