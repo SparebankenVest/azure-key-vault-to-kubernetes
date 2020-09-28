@@ -14,7 +14,7 @@ func TestVersion(t *testing.T) {
 	Component = "env-injector"
 	expectedUserAgentStr := fmt.Sprintf("akv2k8s/%s/%s/%s/%s", Component, Version, GitCommit, BuildDate)
 	gotUserAgentStr := GetUserAgent()
-	t.Log(gotUserAgentStr)
+
 	if !strings.EqualFold(expectedUserAgentStr, gotUserAgentStr) {
 		t.Fatalf("got unexpected user agent string: %s. Expected: %s.", gotUserAgentStr, expectedUserAgentStr)
 	}
