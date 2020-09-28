@@ -233,7 +233,6 @@ image-webhook:
 
 .PHONY: image-controller
 image-controller:
-	# docker build . -t $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) -f images/controller/Dockerfile --build-arg BUILD_OPTIONS="$(GO_BUILD_OPTIONS)" --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-controller" --build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
 	docker build \
 		--target controller \
 		--build-arg BUILD_SUB_TARGET=-controller \
@@ -245,7 +244,6 @@ image-controller:
 
 .PHONY: image-ca-bundle-controller
 image-ca-bundle-controller:
-	# docker build . -t $(DOCKER_INTERNAL_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) -f images/ca-bundle-controller/Dockerfile --build-arg BUILD_OPTIONS="$(GO_BUILD_OPTIONS)" --build-arg PACKAGE=$(PACKAGE) --build-arg VCS_PROJECT_PATH="./cmd/ca-bundle-controller" --build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
 	docker build \
 		--target ca-bundle-controller \
 		--build-arg BUILD_SUB_TARGET=-ca-bundle-controller \
@@ -257,7 +255,6 @@ image-ca-bundle-controller:
 
 .PHONY: image-vaultenv
 image-vaultenv:
-	# docker build . -t $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) -f images/vault-env/Dockerfile --build-arg PACKAGE=$(PACKAGE) --build-arg BUILD_OPTIONS="$(GO_BUILD_OPTIONS)" --build-arg VCS_PROJECT_PATH="./cmd/azure-keyvault-env" --build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) --build-arg BUILD_DATE=$(BUILD_DATE) --build-arg VCS_URL=$(VCS_URL)
 	docker build \
 		--target vaultenv \
 		--build-arg BUILD_SUB_TARGET=-vaultenv \

@@ -74,7 +74,7 @@ LABEL org.label-schema.author="Jon Arild Tørresdal"
 COPY --from=builder /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes/bin/azure-key-vault-to-kubernetes/ca-bundle-controller /usr/local/bin/
 ENV DEBUG false
 USER 65534
-ENTRYPOINT ["/usr/local/bin/azure-keyvault-secrets-webhook"]
+ENTRYPOINT ["/usr/local/bin/ca-bundle-controller"]
 
 # --------
 # vaultenv
