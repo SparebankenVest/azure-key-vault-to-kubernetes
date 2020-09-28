@@ -34,7 +34,7 @@ jobs:
         AKV2K8S_CLIENT_TENANT_ID: ${{ secrets.INT_TEST_TENANT_ID }}
         AKV2K8S_AZURE_SUBSCRIPTION: ${{ secrets.INT_TEST_SUBSCRIPTION }}
       with:
-        build-make-action: build-controller
+        build-make-action: image-controller
 
     - name: Push
       uses: ./.github/actions/push
