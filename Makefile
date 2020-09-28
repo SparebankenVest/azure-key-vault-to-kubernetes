@@ -159,12 +159,12 @@ codegen:
 .PHONY: test
 test: fmtcheck
 	GOOS=$(TEST_GOOS) \
-	CGO_ENABLED=1 \
+	CGO_ENABLED=0 \
 	AKV2K8S_CLIENT_ID=$(AKV2K8S_CLIENT_ID) \
 	AKV2K8S_CLIENT_SECRET=$(AKV2K8S_CLIENT_SECRET) \
 	AKV2K8S_CLIENT_TENANT_ID=$(AKV2K8S_CLIENT_TENANT_ID) \
 	AKV2K8S_AZURE_SUBSCRIPTION_ID=$(AKV2K8S_AZURE_SUBSCRIPTION_ID) \
-	go test -race -coverprofile=coverage.txt -covermode=atomic -count=1 -v $(shell go list ./... | grep -v /pkg/k8s/)
+	go test -coverprofile=coverage.txt -covermode=atomic -count=1 -v $(shell go list ./... | grep -v /pkg/k8s/)
 
 .PHONY: init-int-test-local
 init-int-test-local:
