@@ -33,7 +33,6 @@ LABEL org.label-schema.author="Jon Arild Tørresdal"
 
 COPY --from=builder /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes/bin/azure-key-vault-to-kubernetes/azure-keyvault-secrets-webhook /usr/local/bin/
 ENV DEBUG false
-USER 65534
 ENTRYPOINT ["/usr/local/bin/azure-keyvault-secrets-webhook"]
 
 # ----------
@@ -54,7 +53,6 @@ LABEL org.label-schema.author="Jon Arild Tørresdal"
 
 COPY --from=builder /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes/bin/azure-key-vault-to-kubernetes/azure-keyvault-controller /usr/local/bin/
 ENV DEBUG false
-USER 65534
 ENTRYPOINT ["/usr/local/bin/azure-keyvault-controller"]
 
 # --------------------
