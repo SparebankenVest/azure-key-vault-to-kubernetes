@@ -7,6 +7,7 @@ on:
     paths:
     - '.github/workflows/ca-bundle-controller-build.yaml'
     - '.github/actions/**'
+    - 'Dockerfile'
     - 'Makefile'
     - 'go.mod'
     - 'go.sum'
