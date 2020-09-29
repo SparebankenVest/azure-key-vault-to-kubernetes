@@ -18,7 +18,7 @@ RUN GIT_TAG=${VCS_REF} make build${BUILD_SUB_TARGET}
 # ------------
 # Env Injector
 # ------------
-FROM $BASEIMAGE AS webhook
+FROM $BASE_ALPINE AS webhook
 ARG VCS_REF
 ARG BUILD_DATE
 ARG VCS_URL
@@ -38,7 +38,7 @@ ENTRYPOINT ["/usr/local/bin/azure-keyvault-secrets-webhook"]
 # ----------
 # Controller
 # ----------
-FROM $BASEIMAGE AS controller
+FROM $BASE_ALPINE AS controller
 ARG VCS_REF
 ARG BUILD_DATE
 ARG VCS_URL
