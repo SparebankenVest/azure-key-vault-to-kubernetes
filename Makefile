@@ -53,7 +53,7 @@ else
 	endif
 endif
 
-GO_BUILD_OPTIONS := --tags "netgo osusergo" -ldflags "-s -X $(COMPONENT_VAR)=$(COMPONENT) -X $(GIT_VAR)=$(DOCKER_INTERNAL_TAG) -X $(BUILD_DATE_VAR)=$(BUILD_DATE) -extldflags '-static'"
+GO_BUILD_OPTIONS := --tags "netgo osusergo" -ldflags "-s -X $(COMPONENT_VAR)=$(COMPONENT) -X $(GIT_VAR)=$(GIT_TAG) -X $(BUILD_DATE_VAR)=$(BUILD_DATE) -extldflags '-static'"
 
 $(TOOLS_DIR)/golangci-lint: $(TOOLS_MOD_DIR)/go.mod $(TOOLS_MOD_DIR)/go.sum $(TOOLS_MOD_DIR)/tools.go
 	cd $(TOOLS_MOD_DIR) && \
@@ -215,16 +215,18 @@ build-ca-bundle-controller: clean-ca-bundle-controller
 	CGO_ENABLED=0 COMPONENT=ca-bundle-controller PKG_NAME=$(PACKAGE)/cmd/$(CA_BUNDLE_CONTROLLER_BINARY_NAME) $(MAKE) bin/$(PROJECT_NAME)/$(CA_BUNDLE_CONTROLLER_BINARY_NAME)
 
 .PHONY: build-vaultenv
-build-vaultenv: clean-ca-bundle-controller
+build-vaultenv: clean-vaultenv
 	CGO_ENABLED=0 COMPONENT=vaultenv PKG_NAME=$(PACKAGE)/cmd/$(KEYVAULT_ENV_BINARY_NAME) $(MAKE) bin/$(PROJECT_NAME)/$(KEYVAULT_ENV_BINARY_NAME)
 
+.PHONY: images
 images: image-webhook image-controller image-ca-bundle-controller image-vaultenv
 
 .PHONY: image-webhook
 image-webhook:
-	docker build \
+	DOCKER_BUILDKIT=1 docker build \
+		--progress=plain \
 		--target webhook \
-		--build-arg BUILD_SUB_TARGET=-webhook \
+		--build-arg BUILD_SUB_TARGET="-webhook" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
@@ -233,9 +235,10 @@ image-webhook:
 
 .PHONY: image-controller
 image-controller:
-	docker build \
+	DOCKER_BUILDKIT=1 docker build \
+		--progress=plain \
 		--target controller \
-		--build-arg BUILD_SUB_TARGET=-controller \
+		--build-arg BUILD_SUB_TARGET="-controller" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
@@ -244,9 +247,10 @@ image-controller:
 
 .PHONY: image-ca-bundle-controller
 image-ca-bundle-controller:
-	docker build \
+	DOCKER_BUILDKIT=1 docker build \
+		--progress=plain \
 		--target ca-bundle-controller \
-		--build-arg BUILD_SUB_TARGET=-ca-bundle-controller \
+		--build-arg BUILD_SUB_TARGET="-ca-bundle-controller" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
@@ -255,9 +259,10 @@ image-ca-bundle-controller:
 
 .PHONY: image-vaultenv
 image-vaultenv:
-	docker build \
+	DOCKER_BUILDKIT=1 docker build \
+		--progress=plain \
 		--target vaultenv \
-		--build-arg BUILD_SUB_TARGET=-vaultenv \
+		--build-arg BUILD_SUB_TARGET="-vaultenv" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
@@ -266,7 +271,10 @@ image-vaultenv:
 
 .PHONY: image-akv2k8s-env-test
 image-akv2k8s-env-test:
-	docker build . -t $(DOCKER_RELEASE_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE) -f images/akv2k8s-test/Dockerfile
+	DOCKER_BUILDKIT=1 docker build \
+		--progress=plain \
+		-t $(DOCKER_RELEASE_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE) \
+		-f images/akv2k8s-test/Dockerfile .
 
 .PHONY: push
 push: push-controller push-ca-bundle-controller push-webhook push-vaultenv

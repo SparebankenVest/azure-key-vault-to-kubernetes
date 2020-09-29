@@ -7,11 +7,13 @@ ARG GO_VERSION=1.13.0
 # -------
 FROM golang:${GO_VERSION} AS builder
 ARG PACKAGE
+ARG VCS_REF=noref
 ARG BUILD_SUB_TARGET
+
 WORKDIR /go/src/${PACKAGE}
 ADD . .
 RUN go mod download
-RUN make build${BUILD_SUB_TARGET}
+RUN GIT_TAG=${VCS_REF} make build${BUILD_SUB_TARGET}
 
 # ------------
 # Env Injector
