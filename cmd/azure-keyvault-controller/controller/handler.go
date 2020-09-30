@@ -116,6 +116,7 @@ func (h *Handler) syncAzureKeyVaultSecret(key string) error {
 		return fmt.Errorf(msg)
 	}
 
+	log.Infof("Successfully synced AzureKeyVaultSecret %s", key)
 	h.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
@@ -203,6 +204,7 @@ func (h *Handler) syncAzureKeyVault(key string) error {
 		return err
 	}
 
+	log.Infof("Successfully synced AzureKeyVaultSecret %s with Azure Key Vault", key)
 	return nil
 }
 

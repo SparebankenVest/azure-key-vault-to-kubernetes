@@ -112,21 +112,12 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 	utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
 
 	controller := &Controller{
-		handler: handler,
-		// secretsSynced:              secretInformer.Informer().HasSynced,
-		// azureKeyVaultSecretsSynced: azureKeyVaultSecretsInformer.Informer().HasSynced,
-
-		//workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "AzureKeyVaultSecrets"),
-		//workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown), "AzureKeyVault"),
-
-		// akvsInformerFactory:   akvInformers.NewFilteredSharedInformerFactory(akvsClient, options.ResyncPeriod, options.AkvsRef.Namespace, nil),
-		// secretInformerFactory: informers.NewFilteredSharedInformerFactory(client, options.ResyncPeriod, options.AkvsRef.Namespace, nil),
+		handler:               handler,
 		akvsInformerFactory:   akvInformerFactory,
 		secretInformerFactory: secretInformerFactory,
 		secretQueue:           queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, handler.syncSecret),
 		akvsCrdQueue:          queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVaultSecret),
 		akvQueue:              NewFastSlowWorker("AzureKeyVault", azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown, options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVault),
-		// akvQueue:              queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVault),
 	}
 
 	log.Info("Setting up event handlers")
@@ -148,8 +139,6 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 				log.Debugf("AzureKeyVaultSecret '%s' added. Adding to queue.", secret.Name)
 				queue.Enqueue(controller.akvsCrdQueue.GetQueue(), obj)
 				queue.Enqueue(controller.akvQueue.GetQueue(), obj)
-				// controller.enqueueAzureKeyVaultSecret(obj)
-				// controller.enqueueAzurePoll(obj)
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
@@ -160,15 +149,12 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 				}
 				if newSecret.ResourceVersion == oldSecret.ResourceVersion {
 					log.Debugf("AzureKeyVaultSecret '%s' added to Azure queue to check if changed in Azure.", newSecret.Name)
-					// Check if secret has changed in Azure
 					queue.Enqueue(controller.akvQueue.GetQueue(), new)
-					// controller.enqueueAzurePoll(new)
 					return
 				}
 
 				log.Debugf("AzureKeyVaultSecret '%s' changed. Adding to queue.", newSecret.Name)
 				queue.Enqueue(controller.akvsCrdQueue.GetQueue(), new)
-				// controller.enqueueAzureKeyVaultSecret(new)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -177,8 +163,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 					return
 				}
 				log.Debugf("AzureKeyVaultSecret '%s' deleted. Adding to delete queue.", secret.Name)
-				queue.Enqueue(controller.akvsCrdQueue.GetQueue(), obj)
-				// controller.enqueueDeleteAzureKeyVaultSecret(obj)
+				controller.enqueueDeleteAzureKeyVaultSecret(obj)
 			}
 		},
 	})
@@ -193,8 +178,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 		AddFunc: func(obj interface{}) {
 			if secret, ok := obj.(*corev1.Secret); ok {
 				log.Debugf("Secret '%s' added. Handling.", secret.Name)
-				queue.Enqueue(controller.secretQueue.GetQueue(), obj)
-				// controller.enqueueObject(obj)
+				controller.enqueueObject(obj)
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
@@ -208,15 +192,13 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 				}
 				secret := new.(*corev1.Secret)
 				log.Debugf("Secret '%s' controlled by AzureKeyVaultSecret changed. Handling.", secret.Name)
-				queue.Enqueue(controller.secretQueue.GetQueue(), new)
-				// controller.enqueueObject(new)
+				controller.enqueueObject(new)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
 			if secret, ok := obj.(*corev1.Secret); ok {
 				log.Debugf("Secret '%s' deleted. Handling.", secret.Name)
-				queue.Enqueue(controller.secretQueue.GetQueue(), obj)
-				// controller.enqueueObject(obj)
+				controller.enqueueObject(obj)
 			}
 		},
 	})
@@ -230,8 +212,6 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 // workers to finish processing their current work items.
 func (c *Controller) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	// defer c.workqueue.ShutDown()
-	// defer c.workqueueAzure.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
 	log.Info("Starting AzureKeyVaultSecret controller")
@@ -256,144 +236,36 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	c.secretQueue.Run(stopCh)
 	c.akvQueue.Run(stopCh)
 
-	// // Wait for the caches to be synced before starting workers
-	// log.Info("Waiting for informer caches to sync")
-	// if ok := cache.WaitForCacheSync(stopCh, c.secretsSynced, c.azureKeyVaultSecretsSynced); !ok {
-	// 	return fmt.Errorf("failed to wait for caches to sync")
-	// }
-
-	// log.Info("Starting workers")
-	// // Launch two workers to process AzureKeyVaultSecret resources
-	// for i := 0; i < threadiness; i++ {
-	// 	go wait.Until(c.runWorker, time.Second, stopCh)
-	// 	go wait.Until(c.runAzureWorker, time.Second, stopCh)
-	// }
-
 	log.Info("Started workers")
 	<-stopCh
 	log.Info("Shutting down workers")
 }
 
-// // runWorker is a long-running function that will continually call the
-// // processNextWorkItem function in order to read and process a message on the
-// // workqueue.
-// func (c *Controller) runWorker() {
-// 	for c.processNextWorkItem(c.workqueue, false) {
-// 	}
-// }
+func (c *Controller) enqueueObject(obj interface{}) {
+	azureKeyVaultSecret, ignore, err := c.handler.handleObject(obj)
 
-// func (c *Controller) runAzureWorker() {
-// 	for c.processNextWorkItem(c.workqueueAzure, true) {
-// 	}
-// }
+	if err != nil {
+		utilruntime.HandleError(err)
+	}
 
-// // processNextWorkItem will read a single work item off the workqueue and
-// // attempt to process it, by calling the syncHandler.
-// func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, syncAzure bool) bool {
-// 	log.Debug("Processing next work item in queue...")
-// 	obj, shutdown := queue.Get()
+	if !ignore {
+		queue.Enqueue(c.akvsCrdQueue.GetQueue(), azureKeyVaultSecret)
+	}
+}
 
-// 	if shutdown {
-// 		return false
-// 	}
+// dequeueAzureKeyVaultSecret takes a AzureKeyVaultSecret resource and converts it into a namespace/name
+// string which is then put onto the work queue for deltion. This method should *not* be
+// passed resources of any type other than AzureKeyVaultSecret.
+func (c *Controller) enqueueDeleteAzureKeyVaultSecret(obj interface{}) {
+	var key string
+	var err error
 
-// 	// We wrap this block in a func so we can defer c.workqueue.Done.
-// 	err := func(obj interface{}) error {
-// 		defer queue.Done(obj)
-// 		var key string
-// 		var ok bool
-// 		var successMsg string
+	queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
 
-// 		if key, ok = obj.(string); !ok {
-// 			queue.Forget(obj)
-// 			utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
-// 			return nil
-// 		}
-
-// 		var err error
-// 		if syncAzure {
-// 			log.Debugf("Handling '%s' in Azure queue...", key)
-// 			successMsg = "Successfully synced AzureKeyVaultSecret '%s' with Azure Key Vault"
-// 			err = c.handler.azureSyncHandler(key)
-// 		} else {
-// 			log.Debugf("Handling '%s' in default queue...", key)
-// 			successMsg = "Successfully synced AzureKeyVaultSecret '%s' with Kubernetes Secret"
-// 			err = c.handler.kubernetesSyncHandler(key)
-// 		}
-
-// 		if err != nil {
-// 			queue.AddRateLimited(key)
-// 			return fmt.Errorf("error syncing '%s': %s, requeuing", key, err.Error())
-// 		}
-
-// 		queue.Forget(obj)
-// 		log.Infof(successMsg, key)
-// 		return nil
-// 	}(obj)
-
-// 	if err != nil {
-// 		log.Error(err)
-// 		return true
-// 	}
-
-// 	return true
-// }
-
-// func (c *Controller) enqueueObject(obj interface{}) {
-// 	azureKeyVaultSecret, ignore, err := c.handler.handleObject(obj)
-
-// 	if err != nil {
-// 		utilruntime.HandleError(err)
-// 	}
-
-// 	if !ignore {
-// 		c.enqueueAzureKeyVaultSecret(azureKeyVaultSecret)
-// 	}
-// }
-
-// // enqueueAzureKeyVaultSecret takes a AzureKeyVaultSecret resource and converts it into a namespace/name
-// // string which is then put onto the work queue. This method should *not* be
-// // passed resources of any type other than AzureKeyVaultSecret.
-// func (c *Controller) enqueueAzureKeyVaultSecret(obj interface{}) {
-// 	var key string
-// 	var err error
-// 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-// 		utilruntime.HandleError(err)
-// 		return
-// 	}
-// 	c.akvsCrdQueue.AddRateLimited(key)
-// }
-
-// // enqueueAzurePoll takes a AzureKeyVaultSecret resource and converts it into a namespace/name
-// // string which is then put onto the work queue. This method should *not* be
-// // passed resources of any type other than AzureKeyVaultSecret.
-// func (c *Controller) enqueueAzurePoll(obj interface{}) {
-// 	var key string
-// 	var err error
-// 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-// 		utilruntime.HandleError(err)
-// 		return
-// 	}
-// 	c.akvQueue.AddRateLimited(key)
-// }
-
-// // dequeueAzureKeyVaultSecret takes a AzureKeyVaultSecret resource and converts it into a namespace/name
-// // string which is then put onto the work queue for deltion. This method should *not* be
-// // passed resources of any type other than AzureKeyVaultSecret.
-// func (c *Controller) enqueueDeleteAzureKeyVaultSecret(obj interface{}) {
-// 	var key string
-// 	var err error
-
-// 	if key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj); err != nil {
-// 		utilruntime.HandleError(err)
-// 		return
-// 	}
-// 	c.akvsCrdQueue.AddRateLimited(key)
-
-// 	// Getting default key to remove from Azure work queue
-// 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-// 		utilruntime.HandleError(err)
-// 		return
-// 	}
-// 	c.akvQueue.Forget(key)
-// }
+	// Getting default key to remove from Azure work queue
+	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+	c.akvQueue.GetQueue().Forget(key)
+}
