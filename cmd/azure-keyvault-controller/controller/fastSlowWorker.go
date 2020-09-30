@@ -24,7 +24,7 @@ import (
 
 	"github.com/appscode/go/runtime"
 	"github.com/appscode/go/wait"
-	"github.com/golang/glog"
+	log "github.com/sirupsen/logrus"
 
 	"k8s.io/client-go/util/workqueue"
 )
@@ -73,11 +73,11 @@ func (w *FastSlowWorker) processNextEntry() bool {
 		w.queue.Forget(key)
 		return true
 	}
-	glog.Errorf("Failed to process key %v. Reason: %s", key, err)
+	log.Errorf("Failed to process key %v. Reason: %s", key, err)
 
 	// This controller retries 5 times if something goes wrong. After that, it stops trying.
 	if w.queue.NumRequeues(key) < w.maxRetries {
-		glog.Infof("Error syncing key %v: %v", key, err)
+		log.Infof("Error syncing key %v: %v", key, err)
 
 		// Re-enqueue the key rate limited. Based on the rate limiter on the
 		// queue and the re-enqueue history, the key will be processed later again.
@@ -88,7 +88,7 @@ func (w *FastSlowWorker) processNextEntry() bool {
 	w.queue.Forget(key)
 	// Report to an external entity that, even after several retries, we could not successfully process this key
 	runtime.HandleError(err)
-	glog.Infof("Dropping key %q out of the queue: %v", key, err)
+	log.Infof("Dropping key %q out of the queue: %v", key, err)
 	return true
 }
 
@@ -104,7 +104,7 @@ func (w *FastSlowWorker) Run(shutdown <-chan struct{}) {
 		<-shutdown
 
 		// Stop accepting messages into the Queue
-		glog.V(1).Infof("Shutting down %s Queue\n", w.name)
+		log.Infof("Shutting down %s Queue\n", w.name)
 		w.queue.ShutDown()
 	}()
 }
