@@ -97,6 +97,7 @@ func (h *Handler) syncAzureKeyVaultSecret(key string) error {
 	var secret *corev1.Secret
 	var err error
 
+	log.Infof("Processing AzureKeyVaultSecret %s", key)
 	if azureKeyVaultSecret, err = h.getAzureKeyVaultSecret(key); err != nil {
 		if exit := handleKeyVaultError(err, key); exit {
 			return nil
@@ -233,6 +234,7 @@ func (h *Handler) getAzureKeyVaultSecret(key string) (*akv.AzureKeyVaultSecret, 
 		return nil, fmt.Errorf("invalid resource key: %s", key)
 	}
 
+	log.Debugf("Getting AzureKeyVaultSecret %s from namespace %s", name, namespace)
 	azureKeyVaultSecret, err := h.azureKeyVaultSecretsLister.AzureKeyVaultSecrets(namespace).Get(name)
 
 	if err != nil {
@@ -247,6 +249,7 @@ func (h *Handler) getSecret(key string) (*corev1.Secret, error) {
 		return nil, fmt.Errorf("invalid resource key: %s", key)
 	}
 
+	log.Debugf("Getting Secret %s from namespace %s", name, namespace)
 	secret, err := h.secretsLister.Secrets(namespace).Get(name)
 
 	if err != nil {
