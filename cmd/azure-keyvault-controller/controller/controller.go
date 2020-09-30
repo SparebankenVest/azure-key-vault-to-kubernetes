@@ -34,8 +34,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"kmodules.xyz/client-go/tools/queue"
 
-	// "k8s.io/client-go/util/workqueue"
-
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
 	akvcs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	keyvaultScheme "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/scheme"
@@ -95,7 +93,7 @@ type Controller struct {
 	akvsInformer cache.SharedIndexInformer
 	akvsCrdQueue *queue.Worker //workqueue.RateLimitingInterface
 
-	akvQueue *queue.Worker //workqueue.RateLimitingInterface
+	akvQueue *FastSlowWorker //workqueue.RateLimitingInterface
 }
 
 // Options contains options for the controller
@@ -125,7 +123,8 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, hand
 		secretInformerFactory: informers.NewFilteredSharedInformerFactory(client, options.ResyncPeriod, options.AkvsRef.Namespace, nil),
 		secretQueue:           queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, handler.syncSecret),
 		akvsCrdQueue:          queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVaultSecret),
-		akvQueue:              queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVault),
+		akvQueue:              NewFastSlowWorker("AzureKeyVault", azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown, options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVault),
+		// akvQueue:              queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVault),
 	}
 
 	log.Info("Setting up event handlers")
