@@ -137,7 +137,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 				}
 				log.Infof("AzureKeyVaultSecret '%s' added. Adding to queue.", secret.Name)
 				queue.Enqueue(controller.akvsCrdQueue.GetQueue(), obj)
-				queue.Enqueue(controller.akvQueue.GetQueue(), obj)
+				// queue.Enqueue(controller.akvQueue.GetQueue(), obj)
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
