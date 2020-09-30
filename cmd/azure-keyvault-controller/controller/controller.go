@@ -87,7 +87,7 @@ type Controller struct {
 	akvsInformerFactory   akvInformers.SharedInformerFactory
 
 	secretInformer cache.SharedIndexInformer
-	secretQueue    *queue.Worker
+	// secretQueue    *queue.Worker
 
 	akvsInformer cache.SharedIndexInformer
 	akvsCrdQueue *queue.Worker //workqueue.RateLimitingInterface
@@ -114,9 +114,9 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 		handler:               handler,
 		akvsInformerFactory:   akvInformerFactory,
 		secretInformerFactory: secretInformerFactory,
-		secretQueue:           queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, handler.syncSecret),
-		akvsCrdQueue:          queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVaultSecret),
-		akvQueue:              NewFastSlowWorker("AzureKeyVault", azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown, options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVault),
+		// secretQueue:           queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, handler.syncSecret),
+		akvsCrdQueue: queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVaultSecret),
+		akvQueue:     NewFastSlowWorker("AzureKeyVault", azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown, options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVault),
 	}
 
 	log.Info("Setting up event handlers")
@@ -232,7 +232,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	}
 
 	c.akvQueue.Run(stopCh)
-	c.secretQueue.Run(stopCh)
+	// c.secretQueue.Run(stopCh)
 	c.akvQueue.Run(stopCh)
 
 	log.Info("Started workers")
