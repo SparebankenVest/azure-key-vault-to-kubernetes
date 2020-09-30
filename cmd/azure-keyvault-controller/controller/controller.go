@@ -129,7 +129,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 	// 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	// 	)
 	// })
-	controller.akvsInformerFactory.Azurekeyvault().V1alpha1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	controller.akvsInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if secret, ok := obj.(*akv.AzureKeyVaultSecret); ok {
 				if secret.Spec.Output.Secret.Name == "" {
