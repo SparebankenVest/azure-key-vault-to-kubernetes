@@ -105,7 +105,7 @@ type Options struct {
 }
 
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, handler *Handler, azureFrequency AzurePollFrequency, options *Options) *Controller {
+func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, secretInformerFactory informers.SharedInformerFactory, handler *Handler, azureFrequency AzurePollFrequency, options *Options) *Controller {
 	// Create event broadcaster
 	// Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// logged for azure-keyvault-controller types.
@@ -119,8 +119,10 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, hand
 		//workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "AzureKeyVaultSecrets"),
 		//workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown), "AzureKeyVault"),
 
-		akvsInformerFactory:   akvInformers.NewFilteredSharedInformerFactory(akvsClient, options.ResyncPeriod, options.AkvsRef.Namespace, nil),
-		secretInformerFactory: informers.NewFilteredSharedInformerFactory(client, options.ResyncPeriod, options.AkvsRef.Namespace, nil),
+		// akvsInformerFactory:   akvInformers.NewFilteredSharedInformerFactory(akvsClient, options.ResyncPeriod, options.AkvsRef.Namespace, nil),
+		// secretInformerFactory: informers.NewFilteredSharedInformerFactory(client, options.ResyncPeriod, options.AkvsRef.Namespace, nil),
+		akvsInformerFactory:   akvInformerFactory,
+		secretInformerFactory: secretInformerFactory,
 		secretQueue:           queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, handler.syncSecret),
 		akvsCrdQueue:          queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVaultSecret),
 		akvQueue:              NewFastSlowWorker("AzureKeyVault", azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown, options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVault),

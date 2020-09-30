@@ -53,8 +53,8 @@ type Handler struct {
 	// azureKeyvaultClientset is a clientset for our own API group
 	azureKeyvaultClientset clientset.Interface
 
-	secretsLister              corelisters.SecretLister
-	azureKeyVaultSecretsLister listers.AzureKeyVaultSecretLister
+	secretsLister             corelisters.SecretLister
+	azureKeyVaultSecretLister listers.AzureKeyVaultSecretLister
 
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
@@ -77,15 +77,15 @@ type AzurePollFrequency struct {
 }
 
 //NewHandler returns a new Handler
-func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretLister corelisters.SecretLister, azureKeyVaultSecretsLister listers.AzureKeyVaultSecretLister, azureKeyVaultSecretIdentitiesLister listers.AzureKeyVaultSecretIdentityLister, recorder record.EventRecorder, vaultService vault.Service, azureFrequency AzurePollFrequency) *Handler {
+func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clientset.Interface, secretLister corelisters.SecretLister, azureKeyVaultSecretLister listers.AzureKeyVaultSecretLister, recorder record.EventRecorder, vaultService vault.Service, azureFrequency AzurePollFrequency) *Handler {
 	return &Handler{
-		kubeclientset:              kubeclientset,
-		azureKeyvaultClientset:     azureKeyvaultClientset,
-		secretsLister:              secretLister,
-		azureKeyVaultSecretsLister: azureKeyVaultSecretsLister,
-		recorder:                   recorder,
-		vaultService:               vaultService,
-		clock:                      &Clock{},
+		kubeclientset:             kubeclientset,
+		azureKeyvaultClientset:    azureKeyvaultClientset,
+		secretsLister:             secretLister,
+		azureKeyVaultSecretLister: azureKeyVaultSecretLister,
+		recorder:                  recorder,
+		vaultService:              vaultService,
+		clock:                     &Clock{},
 	}
 }
 
@@ -142,7 +142,7 @@ func (h *Handler) syncSecret(key string) error {
 			return nil
 		}
 
-		azureKeyVaultSecret, err := h.azureKeyVaultSecretsLister.AzureKeyVaultSecrets(secret.GetNamespace()).Get(ownerRef.Name)
+		azureKeyVaultSecret, err := h.azureKeyVaultSecretLister.AzureKeyVaultSecrets(secret.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
 			log.Infof("ignoring orphaned object '%s' of azureKeyVaultSecret '%s'", secret.GetSelfLink(), ownerRef.Name)
 			return nil
@@ -235,7 +235,7 @@ func (h *Handler) getAzureKeyVaultSecret(key string) (*akv.AzureKeyVaultSecret, 
 	}
 
 	log.Debugf("Getting AzureKeyVaultSecret %s from namespace %s", name, namespace)
-	azureKeyVaultSecret, err := h.azureKeyVaultSecretsLister.AzureKeyVaultSecrets(namespace).Get(name)
+	azureKeyVaultSecret, err := h.azureKeyVaultSecretLister.AzureKeyVaultSecrets(namespace).Get(name)
 
 	if err != nil {
 		return nil, err
@@ -404,7 +404,7 @@ func (h *Handler) handleObject(obj interface{}) (*akv.AzureKeyVaultSecret, bool,
 			return nil, true, nil
 		}
 
-		azureKeyVaultSecret, err := h.azureKeyVaultSecretsLister.AzureKeyVaultSecrets(object.GetNamespace()).Get(ownerRef.Name)
+		azureKeyVaultSecret, err := h.azureKeyVaultSecretLister.AzureKeyVaultSecrets(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
 			log.Infof("ignoring orphaned object '%s' of azureKeyVaultSecret '%s'", object.GetSelfLink(), ownerRef.Name)
 			return nil, true, nil
