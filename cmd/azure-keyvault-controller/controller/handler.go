@@ -92,7 +92,7 @@ func NewHandler(kubeclientset kubernetes.Interface, azureKeyvaultClientset clien
 // kubernetesSyncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the AzureKeyVaultSecret resource
 // with the current status of the resource.
-func (h *Handler) kubernetesSyncHandler(key string) error {
+func (h *Handler) syncAzureKeyVaultSecret(key string) error {
 	var azureKeyVaultSecret *akv.AzureKeyVaultSecret
 	var secret *corev1.Secret
 	var err error
@@ -119,7 +119,48 @@ func (h *Handler) kubernetesSyncHandler(key string) error {
 	return nil
 }
 
-func (h *Handler) azureSyncHandler(key string) error {
+// kubernetesSyncHandler compares the actual state with the desired, and attempts to
+// converge the two. It then updates the Status block of the AzureKeyVaultSecret resource
+// with the current status of the resource.
+func (h *Handler) syncSecret(key string) error {
+	var secret *corev1.Secret
+	var err error
+
+	if secret, err = h.getSecret(key); err != nil {
+		if exit := handleKeyVaultError(err, key); exit {
+			return nil
+		}
+		return err
+	}
+
+	log.Debugf("Processing secret: %s", secret.GetName())
+	if ownerRef := metav1.GetControllerOf(secret); ownerRef != nil {
+		// If this object is not owned by a AzureKeyVaultSecret, we should not do anything more
+		// with it.
+		if ownerRef.Kind != "AzureKeyVaultSecret" {
+			return nil
+		}
+
+		azureKeyVaultSecret, err := h.azureKeyVaultSecretsLister.AzureKeyVaultSecrets(secret.GetNamespace()).Get(ownerRef.Name)
+		if err != nil {
+			log.Infof("ignoring orphaned object '%s' of azureKeyVaultSecret '%s'", secret.GetSelfLink(), ownerRef.Name)
+			return nil
+		}
+
+		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(azureKeyVaultSecret)
+		if err != nil {
+			if exit := handleKeyVaultError(err, key); exit {
+				return nil
+			}
+			return err
+		}
+
+		h.syncAzureKeyVaultSecret(key)
+	}
+	return nil
+}
+
+func (h *Handler) syncAzureKeyVault(key string) error {
 	var azureKeyVaultSecret *akv.AzureKeyVaultSecret
 	var secret *corev1.Secret
 	var secretValue map[string][]byte
@@ -198,6 +239,20 @@ func (h *Handler) getAzureKeyVaultSecret(key string) (*akv.AzureKeyVaultSecret, 
 		return nil, err
 	}
 	return azureKeyVaultSecret, err
+}
+
+func (h *Handler) getSecret(key string) (*corev1.Secret, error) {
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resource key: %s", key)
+	}
+
+	secret, err := h.secretsLister.Secrets(namespace).Get(name)
+
+	if err != nil {
+		return nil, err
+	}
+	return secret, err
 }
 
 func (h *Handler) getOrCreateKubernetesSecret(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (*corev1.Secret, error) {

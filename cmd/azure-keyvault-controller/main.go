@@ -154,19 +154,19 @@ func main() {
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecretIdentities().Lister(), recorder, vaultService, azurePollFrequency)
 
-	controller := controller.NewController(handler,
-		kubeInformerFactory.Core().V1().Secrets(),
-		azureKeyVaultSecretInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets(),
-		azurePollFrequency)
-
-	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
-	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
-	kubeInformerFactory.Start(stopCh)
-	azureKeyVaultSecretInformerFactory.Start(stopCh)
-
-	if err = controller.Run(2, stopCh); err != nil {
-		log.Fatalf("Error running controller: %s", err.Error())
+	options := &controller.Options{
+		MaxNumRequeues: 5,
+		NumThreads:     1,
 	}
+
+	controller := controller.NewController(kubeClient, azureKeyVaultSecretClient, handler, azurePollFrequency, options)
+
+	// // notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
+	// // Start method is non-blocking and runs all registered informers in a dedicated goroutine.
+	// kubeInformerFactory.Start(stopCh)
+	// azureKeyVaultSecretInformerFactory.Start(stopCh)
+
+	controller.Run(stopCh)
 }
 
 func init() {
