@@ -107,11 +107,6 @@ type Controller struct {
 
 // NewController returns a new AzureKeyVaultSecret controller
 func NewController(kubeclientset kubernetes.Interface, recorder record.EventRecorder, secretInformer coreinformers.SecretInformer, namespaceInformer coreinformers.NamespaceInformer, configMapInformer coreinformers.ConfigMapInformer, labelName string, caBundleSecretNamespaceName string, caBundleSecretName string, caBundleConfigMapName string) *Controller {
-	// // Create event broadcaster
-	// // Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
-	// // logged for azure-keyvault-controller types.
-	// utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
-
 	controller := &Controller{
 		kubeclientset:               kubeclientset,
 		recorder:                    recorder,
@@ -139,83 +134,76 @@ func NewController(kubeclientset kubernetes.Interface, recorder record.EventReco
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) { // When CA Bundle gets added to akv2k8s
-			secret := obj.(*corev1.Secret)
-			if secret.Name != caBundleSecretName {
-				return
+			if secret, ok := obj.(*corev1.Secret); ok {
+				if secret.Name != caBundleSecretName {
+					return
+				}
+				log.Infof("Secret '%s' monitored by CA Bundle Injector added. Adding to queue.", secret.Name)
+				controller.enqueueSecret(obj)
 			}
-			// lbl := secret.Labels[controller.labelName]
-			// if lbl == "" {
-			// 	return
-			// }
-
-			log.Infof("Secret '%s' monitored by CA Bundle Injector added. Adding to queue.", secret.Name)
-			controller.enqueueSecret(obj)
 		},
 		UpdateFunc: func(old, new interface{}) { // When CA Bundle gets changed in akv2k8s
-			newSecret := new.(*corev1.Secret)
-			oldSecret := old.(*corev1.Secret)
+			if newSecret, ok := new.(*corev1.Secret); ok {
+				oldSecret := old.(*corev1.Secret)
 
-			if newSecret.Name != caBundleSecretName {
-				return
-			}
+				if newSecret.Name != caBundleSecretName {
+					return
+				}
 
-			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
-				// Periodic resync will send update events for all known Secrets.
-				// Two different versions of the same Secret will always have different RVs.
-				return
+				if newSecret.ResourceVersion == oldSecret.ResourceVersion {
+					// Periodic resync will send update events for all known Secrets.
+					// Two different versions of the same Secret will always have different RVs.
+					return
+				}
+				log.Infof("Secret '%s' monitored by CA Bundle Injector changed. Handling.", newSecret.Name)
+				controller.enqueueSecret(new)
 			}
-			secret := new.(*corev1.Secret)
-			log.Infof("Secret '%s' monitored by CA Bundle Injector changed. Handling.", secret.Name)
-			controller.enqueueSecret(new)
 		},
 		DeleteFunc: func(obj interface{}) { // When CA Bundle gets deleted in akv2k8s
-			secret, ok := obj.(*corev1.Secret)
-			if !ok {
-				log.Warningf("received deletion alert of secret, but was not a proper secret")
-				return
-			}
+			if secret, ok := obj.(*corev1.Secret); ok {
+				if secret.Name != caBundleSecretName {
+					return
+				}
 
-			if secret.Name != caBundleSecretName {
-				return
+				log.Infof("Secret '%s' monitored by CA Bundle Injector deleted. Handling.", secret.Name)
+				controller.enqueueSecret(obj)
 			}
-
-			log.Infof("Secret '%s' monitored by CA Bundle Injector deleted. Handling.", secret.Name)
-			controller.enqueueSecret(obj)
 		},
 	})
 
 	namespaceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) { // When a new namespace gets added, that we should add ConfigMap to
-			ns := obj.(*corev1.Namespace)
-			lbl := ns.Labels[controller.labelName]
-			if lbl == "" {
-				return
-			}
+			if ns, ok := obj.(*corev1.Namespace); ok {
+				lbl := ns.Labels[controller.labelName]
+				if lbl == "" {
+					return
+				}
 
-			log.Infof("Namespace '%s' labeled '%s' will be monitored by CA Bundle Injector. Adding to queue.", ns.Name, lbl)
-			controller.enqueueNewNamespace(obj)
+				log.Infof("Namespace '%s' labeled '%s' will be monitored by CA Bundle Injector. Adding to queue.", ns.Name, lbl)
+				controller.enqueueNewNamespace(obj)
+			}
 		},
 		UpdateFunc: func(old, new interface{}) { // When an existing namespace gets updated, that potentually have akv2k8s label on it
-			newNs := new.(*corev1.Namespace)
-			oldNs := old.(*corev1.Namespace)
+			if newNs, ok := new.(*corev1.Namespace); ok {
+				oldNs := old.(*corev1.Namespace)
 
-			if newNs.ResourceVersion == oldNs.ResourceVersion {
-				// Periodic resync will send update events for all known Secrets.
-				// Two different versions of the same Secret will always have different RVs.
-				return
+				if newNs.ResourceVersion == oldNs.ResourceVersion {
+					// Periodic resync will send update events for all known Secrets.
+					// Two different versions of the same Secret will always have different RVs.
+					return
+				}
+
+				newLbl, newLblExist := newNs.Labels[controller.labelName]
+				oldLbl, oldLblExist := oldNs.Labels[controller.labelName]
+
+				if newLblExist == oldLblExist && newLbl == oldLbl {
+					return // we only care if the namespace label has changed
+				}
+
+				ns := new.(*corev1.Namespace)
+				log.Infof("labels in namespace '%s' changed, handling.", ns.Name)
+				controller.enqueueChangedNamespace(new)
 			}
-
-			newLbl := newNs.Labels[controller.labelName]
-			oldLbl := oldNs.Labels[controller.labelName]
-			diffLabels := newLbl != oldLbl
-
-			if !diffLabels {
-				return // we only care if the namespace label has changed
-			}
-
-			ns := new.(*corev1.Namespace)
-			log.Infof("labels in namespace '%s' changed, handling.", ns.Name)
-			controller.enqueueChangedNamespace(new)
 		},
 		// DeleteFunc: func(obj interface{}) {
 		// 	ns := obj.(*corev1.Namespace)
