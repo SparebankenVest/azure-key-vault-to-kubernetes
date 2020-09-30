@@ -127,7 +127,7 @@ func (h *Handler) syncSecret(key string) error {
 	var err error
 
 	if secret, err = h.getSecret(key); err != nil {
-		if exit := handleKeyVaultError(err, key); exit {
+		if exit := handleSecretError(err, key); exit {
 			return nil
 		}
 		return err
@@ -149,7 +149,7 @@ func (h *Handler) syncSecret(key string) error {
 
 		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(azureKeyVaultSecret)
 		if err != nil {
-			if exit := handleKeyVaultError(err, key); exit {
+			if exit := handleSecretError(err, key); exit {
 				return nil
 			}
 			return err
@@ -352,6 +352,20 @@ func handleKeyVaultError(err error, key string) bool {
 			log.Debugf("Error for '%s' was 'Not Found'", key)
 
 			utilruntime.HandleError(fmt.Errorf("AzureKeyVaultSecret '%s' in work queue no longer exists", key))
+			return true
+		}
+	}
+	return false
+}
+
+func handleSecretError(err error, key string) bool {
+	log.Debugf("Handling error for '%s' in Secret: %s", key, err.Error())
+	if err != nil {
+		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop processing.
+		if errors.IsNotFound(err) {
+			log.Debugf("Error for '%s' was 'Not Found'", key)
+
+			utilruntime.HandleError(fmt.Errorf("Secret '%s' in work queue no longer exists", key))
 			return true
 		}
 	}
