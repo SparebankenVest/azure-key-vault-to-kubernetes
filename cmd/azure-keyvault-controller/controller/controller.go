@@ -232,8 +232,8 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	}
 
 	c.akvQueue.Run(stopCh)
+	c.akvsCrdQueue.Run(stopCh)
 	// c.secretQueue.Run(stopCh)
-	c.akvQueue.Run(stopCh)
 
 	log.Info("Started workers")
 	<-stopCh
