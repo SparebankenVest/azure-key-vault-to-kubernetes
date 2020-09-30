@@ -38,7 +38,6 @@ import (
 	akvcs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	keyvaultScheme "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/scheme"
 	akvInformers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions"
-	akvInformersv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions/azurekeyvault/v2alpha1"
 )
 
 const (
@@ -122,15 +121,15 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 
 	log.Info("Setting up event handlers")
 	// Set up an event handler for when AzureKeyVaultSecret resources change
-	akvsInformer := controller.akvsInformerFactory.InformerFor(&akv.AzureKeyVaultSecret{}, func(client akvcs.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-		return akvInformersv2alpha1.NewAzureKeyVaultSecretInformer(
-			akvsClient,
-			options.AkvsRef.Namespace,
-			resyncPeriod,
-			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
-		)
-	})
-	akvsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	// akvsInformer := controller.akvsInformerFactory.Azurekeyvault().V1alpha1().AzureKeyVaultSecrets().Informer() //.InformerFor(&akv.AzureKeyVaultSecret{}, func(client akvcs.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	// 	return akvInformersv2alpha1.NewAzureKeyVaultSecretInformer(
+	// 		akvsClient,
+	// 		options.AkvsRef.Namespace,
+	// 		resyncPeriod,
+	// 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+	// 	)
+	// })
+	controller.akvsInformerFactory.Azurekeyvault().V1alpha1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if secret, ok := obj.(*akv.AzureKeyVaultSecret); ok {
 				if secret.Spec.Output.Secret.Name == "" {
