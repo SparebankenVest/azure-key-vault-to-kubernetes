@@ -135,7 +135,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 				if secret.Spec.Output.Secret.Name == "" {
 					return
 				}
-				log.Debugf("AzureKeyVaultSecret '%s' added. Adding to queue.", secret.Name)
+				log.Infof("AzureKeyVaultSecret '%s' added. Adding to queue.", secret.Name)
 				queue.Enqueue(controller.akvsCrdQueue.GetQueue(), obj)
 				queue.Enqueue(controller.akvQueue.GetQueue(), obj)
 			}
@@ -152,7 +152,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 					return
 				}
 
-				log.Debugf("AzureKeyVaultSecret '%s' changed. Adding to queue.", newSecret.Name)
+				log.Infof("AzureKeyVaultSecret '%s' changed. Adding to queue.", newSecret.Name)
 				queue.Enqueue(controller.akvsCrdQueue.GetQueue(), new)
 			}
 		},
@@ -161,7 +161,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 				if secret.Spec.Output.Secret.Name == "" {
 					return
 				}
-				log.Debugf("AzureKeyVaultSecret '%s' deleted. Adding to delete queue.", secret.Name)
+				log.Infof("AzureKeyVaultSecret '%s' deleted. Adding to delete queue.", secret.Name)
 				controller.enqueueDeleteAzureKeyVaultSecret(obj)
 			}
 		},
@@ -176,7 +176,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 	controller.secretInformerFactory.Core().V1().Secrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if secret, ok := obj.(*corev1.Secret); ok {
-				log.Debugf("Secret '%s' added. Handling.", secret.Name)
+				log.Infof("Secret '%s' added. Handling.", secret.Name)
 				controller.enqueueObject(obj)
 			}
 		},
@@ -190,13 +190,13 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 					return
 				}
 				secret := new.(*corev1.Secret)
-				log.Debugf("Secret '%s' controlled by AzureKeyVaultSecret changed. Handling.", secret.Name)
+				log.Infof("Secret '%s' controlled by AzureKeyVaultSecret changed. Handling.", secret.Name)
 				controller.enqueueObject(new)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
 			if secret, ok := obj.(*corev1.Secret); ok {
-				log.Debugf("Secret '%s' deleted. Handling.", secret.Name)
+				log.Infof("Secret '%s' deleted. Handling.", secret.Name)
 				controller.enqueueObject(obj)
 			}
 		},
