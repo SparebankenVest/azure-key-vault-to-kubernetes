@@ -42,8 +42,8 @@ func (c *Controller) initSecret() {
 	c.secretInformerFactory.Core().V1().Secrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if secret, ok := obj.(*corev1.Secret); ok {
-				log.Infof("Secret %s/%s controlled by AzureKeyVaultSecret added. Adding to queue.", secret.Namespace, secret.Name)
-				c.enqueueObject(obj)
+				log.Debugf("Secret %s/%s controlled by AzureKeyVaultSecret added. Adding to queue.", secret.Namespace, secret.Name)
+				c.enqueueSecret(obj)
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
@@ -57,20 +57,20 @@ func (c *Controller) initSecret() {
 				}
 				secret := new.(*corev1.Secret)
 				log.Debugf("Secret %s/%s controlled by AzureKeyVaultSecret changed. Handling.", secret.Namespace, secret.Name)
-				c.enqueueObject(new)
+				c.enqueueSecret(new)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
 			if secret, ok := obj.(*corev1.Secret); ok {
 				log.Debugf("Secret %s/%s controlled by AzureKeyVaultSecret deleted. Handling.", secret.Namespace, secret.Name)
-				c.enqueueObject(obj)
+				c.enqueueSecret(obj)
 			}
 		},
 	})
 
 }
 
-func (c *Controller) enqueueObject(obj interface{}) {
+func (c *Controller) enqueueSecret(obj interface{}) {
 	azureKeyVaultSecret, ignore, err := c.getAzureKeyVaultSecretFromSecret(obj)
 
 	if err != nil {
