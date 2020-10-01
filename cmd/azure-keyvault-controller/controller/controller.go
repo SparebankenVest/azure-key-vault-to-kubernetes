@@ -31,13 +31,15 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/cache"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/record"
 	"kmodules.xyz/client-go/tools/queue"
 
-	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
+	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	akvcs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	keyvaultScheme "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/scheme"
 	akvInformers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions"
+	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/listers/azurekeyvault/v2alpha1"
 )
 
 const (
@@ -71,28 +73,21 @@ const (
 
 // Controller is the controller implementation for AzureKeyVaultSecret resources
 type Controller struct {
-	// Handler process work on workqueues
-	handler *Handler
+	kubeclientset kubernetes.Interface
+	akvsClient    akvcs.Interface
+	vaultService  vault.Service
+	recorder      record.EventRecorder
 
-	// secretsSynced              cache.InformerSynced
-	// azureKeyVaultSecretsSynced cache.InformerSynced
-
-	// workqueue is a rate limited work queue. This is used to queue work to be
-	// processed instead of performing it as soon as a change happens. This
-	// means we can ensure we only process a fixed amount of resources at a
-	// time, and makes it easy to ensure we are never processing the same item
-	// simultaneously in two different workers.
+	secretsLister             corelisters.SecretLister
+	azureKeyVaultSecretLister listers.AzureKeyVaultSecretLister
 
 	secretInformerFactory informers.SharedInformerFactory
 	akvsInformerFactory   akvInformers.SharedInformerFactory
 
-	secretInformer cache.SharedIndexInformer
-	// secretQueue    *queue.Worker
+	akvsCrdQueue *queue.Worker   //workqueue.RateLimitingInterface
+	akvQueue     *FastSlowWorker //workqueue.RateLimitingInterface
 
-	akvsInformer cache.SharedIndexInformer
-	akvsCrdQueue *queue.Worker //workqueue.RateLimitingInterface
-
-	akvQueue *FastSlowWorker //workqueue.RateLimitingInterface
+	clock Timer
 }
 
 // Options contains options for the controller
@@ -103,112 +98,51 @@ type Options struct {
 	AkvsRef        corev1.ObjectReference
 }
 
+// AzurePollFrequency controls time durations to wait between polls to Azure Key Vault for changes
+type AzurePollFrequency struct {
+	// Normal is the time duration to wait between polls to Azure Key Vault for changes
+	Normal time.Duration
+
+	// MaxFailuresBeforeSlowingDown controls how many failures are accepted before reducing the frequency to Slow
+	MaxFailuresBeforeSlowingDown int
+
+	// Slow is the time duration to wait between polls to Azure Key Vault for changes, after MaxFailuresBeforeSlowingDown is reached
+	Slow time.Duration
+}
+
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, secretInformerFactory informers.SharedInformerFactory, handler *Handler, azureFrequency AzurePollFrequency, options *Options) *Controller {
+func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, secretInformerFactory informers.SharedInformerFactory, recorder record.EventRecorder, vaultService vault.Service, azureFrequency AzurePollFrequency, options *Options) *Controller {
 	// Create event broadcaster
 	// Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// logged for azure-keyvault-controller types.
 	utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
 
 	controller := &Controller{
-		handler:               handler,
+		kubeclientset: client,
+		akvsClient:    akvsClient,
+		recorder:      recorder,
+		vaultService:  vaultService,
+
 		akvsInformerFactory:   akvInformerFactory,
 		secretInformerFactory: secretInformerFactory,
-		// secretQueue:           queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, handler.syncSecret),
-		akvsCrdQueue: queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVaultSecret),
-		akvQueue:     NewFastSlowWorker("AzureKeyVault", azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown, options.MaxNumRequeues, options.NumThreads, handler.syncAzureKeyVault),
+
+		secretsLister:             secretInformerFactory.Core().V1().Secrets().Lister(),
+		azureKeyVaultSecretLister: akvInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Lister(),
+
+		clock: &Clock{},
 	}
 
+	controller.akvsCrdQueue = queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVaultSecret)
+	controller.akvQueue = NewFastSlowWorker("AzureKeyVault", azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown, options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
+
 	log.Info("Setting up event handlers")
-	// Set up an event handler for when AzureKeyVaultSecret resources change
-	// akvsInformer := controller.akvsInformerFactory.Azurekeyvault().V1alpha1().AzureKeyVaultSecrets().Informer() //.InformerFor(&akv.AzureKeyVaultSecret{}, func(client akvcs.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	// 	return akvInformersv2alpha1.NewAzureKeyVaultSecretInformer(
-	// 		akvsClient,
-	// 		options.AkvsRef.Namespace,
-	// 		resyncPeriod,
-	// 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
-	// 	)
-	// })
-	controller.akvsInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			if secret, ok := obj.(*akv.AzureKeyVaultSecret); ok {
-				if secret.Spec.Output.Secret.Name == "" {
-					return
-				}
-				log.Infof("AzureKeyVaultSecret '%s' added. Adding to queue.", secret.Name)
-				queue.Enqueue(controller.akvsCrdQueue.GetQueue(), obj)
-				// queue.Enqueue(controller.akvQueue.GetQueue(), obj)
-			}
-		},
-		UpdateFunc: func(old, new interface{}) {
-			if newSecret, ok := new.(*akv.AzureKeyVaultSecret); ok {
-				oldSecret := old.(*akv.AzureKeyVaultSecret)
-				if oldSecret.Spec.Output.Secret.Name == "" {
-					return
-				}
-				if newSecret.ResourceVersion == oldSecret.ResourceVersion {
-					log.Debugf("AzureKeyVaultSecret '%s' added to Azure queue to check if changed in Azure.", newSecret.Name)
-					queue.Enqueue(controller.akvQueue.GetQueue(), new)
-					return
-				}
-
-				log.Infof("AzureKeyVaultSecret '%s' changed. Adding to queue.", newSecret.Name)
-				queue.Enqueue(controller.akvsCrdQueue.GetQueue(), new)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			if secret, ok := obj.(*akv.AzureKeyVaultSecret); ok {
-				if secret.Spec.Output.Secret.Name == "" {
-					return
-				}
-				log.Infof("AzureKeyVaultSecret '%s' deleted. Adding to delete queue.", secret.Name)
-				controller.enqueueDeleteAzureKeyVaultSecret(obj)
-			}
-		},
-	})
-
-	// Set up an event handler for when Secret resources change. This
-	// handler will lookup the owner of the given Secret, and if it is
-	// owned by a AzureKeyVaultSecret resource will enqueue that Secret resource for
-	// processing. This way, we don't need to implement custom logic for
-	// handling AzureKeyVaultSecret resources. More info on this pattern:
-	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
-	controller.secretInformerFactory.Core().V1().Secrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			if secret, ok := obj.(*corev1.Secret); ok {
-				log.Infof("Secret '%s' added. Handling.", secret.Name)
-				controller.enqueueObject(obj)
-			}
-		},
-		UpdateFunc: func(old, new interface{}) {
-			if newSecret, ok := new.(*corev1.Secret); ok {
-				oldSecret := old.(*corev1.Secret)
-
-				if newSecret.ResourceVersion == oldSecret.ResourceVersion {
-					// Periodic resync will send update events for all known Secrets.
-					// Two different versions of the same Secret will always have different RVs.
-					return
-				}
-				secret := new.(*corev1.Secret)
-				log.Infof("Secret '%s' controlled by AzureKeyVaultSecret changed. Handling.", secret.Name)
-				controller.enqueueObject(new)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			if secret, ok := obj.(*corev1.Secret); ok {
-				log.Infof("Secret '%s' deleted. Handling.", secret.Name)
-				controller.enqueueObject(obj)
-			}
-		},
-	})
+	controller.initAzureKeyVaultSecret()
+	controller.initSecret()
 
 	return controller
 }
 
-// Run will set up the event handlers for types we are interested in, as well
-// as syncing informer caches and starting workers. It will block until stopCh
-// is closed, at which point it will shutdown the workqueue and wait for
-// workers to finish processing their current work items.
+// Run will start the controller
 func (c *Controller) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 
@@ -231,40 +165,13 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 		}
 	}
 
+	log.Debug("Starting Azure Key Vault queue")
 	c.akvQueue.Run(stopCh)
+
+	log.Debug("Starting Azure Key Vault Secret queue")
 	c.akvsCrdQueue.Run(stopCh)
-	// c.secretQueue.Run(stopCh)
 
 	log.Info("Started workers")
 	<-stopCh
 	log.Info("Shutting down workers")
-}
-
-func (c *Controller) enqueueObject(obj interface{}) {
-	azureKeyVaultSecret, ignore, err := c.handler.handleObject(obj)
-
-	if err != nil {
-		utilruntime.HandleError(err)
-	}
-
-	if !ignore {
-		queue.Enqueue(c.akvsCrdQueue.GetQueue(), azureKeyVaultSecret)
-	}
-}
-
-// dequeueAzureKeyVaultSecret takes a AzureKeyVaultSecret resource and converts it into a namespace/name
-// string which is then put onto the work queue for deltion. This method should *not* be
-// passed resources of any type other than AzureKeyVaultSecret.
-func (c *Controller) enqueueDeleteAzureKeyVaultSecret(obj interface{}) {
-	var key string
-	var err error
-
-	queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
-
-	// Getting default key to remove from Azure work queue
-	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
-	c.akvQueue.GetQueue().Forget(key)
 }

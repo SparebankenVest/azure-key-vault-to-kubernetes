@@ -152,14 +152,22 @@ func main() {
 
 	vaultService := vault.NewService(vaultAuth)
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
-	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
+	// handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
 
 	options := &controller.Options{
 		MaxNumRequeues: 5,
 		NumThreads:     1,
 	}
 
-	controller := controller.NewController(kubeClient, azureKeyVaultSecretClient, azureKeyVaultSecretInformerFactory, kubeInformerFactory, handler, azurePollFrequency, options)
+	controller := controller.NewController(
+		kubeClient,
+		azureKeyVaultSecretClient,
+		azureKeyVaultSecretInformerFactory,
+		kubeInformerFactory,
+		recorder,
+		vaultService,
+		azurePollFrequency,
+		options)
 
 	controller.Run(stopCh)
 }
