@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
 	log "github.com/sirupsen/logrus"
 
@@ -38,41 +39,77 @@ import (
 func (c *Controller) initAzureKeyVaultSecret() {
 	c.akvsInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			if secret, ok := obj.(*akv.AzureKeyVaultSecret); ok {
-				if secret.Spec.Output.Secret.Name == "" {
-					return
-				}
+			secret, err := convertToAzureKeyVaultSecret(obj)
+			if err != nil {
+				log.Errorf("failed to convert to azurekeyvaultsecret: %v", err)
+			}
+
+			if c.akvsHasSecretOutput(secret) {
 				log.Debugf("AzureKeyVaultSecret %s/%s added. Adding to queue.", secret.Namespace, secret.Name)
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
-				queue.Enqueue(c.akvQueue.GetQueue(), obj)
+				queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), obj)
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
-			if newSecret, ok := new.(*akv.AzureKeyVaultSecret); ok {
-				oldSecret := old.(*akv.AzureKeyVaultSecret)
-				if oldSecret.Spec.Output.Secret.Name == "" {
-					return
-				}
-				if newSecret.ResourceVersion == oldSecret.ResourceVersion {
-					log.Debugf("AzureKeyVaultSecret %s/%s changed and diffs in resource version. Adding to Azure Key Vault queue.", newSecret.Namespace, newSecret.Name)
-					queue.Enqueue(c.akvQueue.GetQueue(), new)
-					return
-				}
+			newSecret, err := convertToAzureKeyVaultSecret(new)
+			if err != nil {
+				log.Errorf("failed to convert to azurekeyvaultsecret: %v", err)
+			}
 
+			oldSecret, err := convertToAzureKeyVaultSecret(old)
+			if err != nil {
+				log.Errorf("failed to convert to azurekeyvaultsecret: %v", err)
+			}
+
+			if newSecret.ResourceVersion != oldSecret.ResourceVersion {
+				return
+			}
+			// if newSecret.ResourceVersion == oldSecret.ResourceVersion {
+			// 	log.Debugf("AzureKeyVaultSecret %s/%s changed and diffs in resource version. Adding to Azure Key Vault queue.", newSecret.Namespace, newSecret.Name)
+			// 	queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), new)
+			// 	return
+			// }
+
+			if c.akvsHasSecretOutput(newSecret) || c.akvsHasSecretOutput(oldSecret) {
 				log.Debugf("AzureKeyVaultSecret %s/%s changed. Adding to queue.", newSecret.Namespace, newSecret.Name)
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), new)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			if secret, ok := obj.(*akv.AzureKeyVaultSecret); ok {
-				if secret.Spec.Output.Secret.Name == "" {
+			secret, err := convertToAzureKeyVaultSecret(obj)
+			if err != nil {
+				log.Errorf("failed to convert to azurekeyvaultsecret: %v", err)
+			}
+
+			if c.akvsHasSecretOutput(secret) {
+				log.Debugf("AzureKeyVaultSecret %s/%s deleted. Adding to delete queue.", secret.Namespace, secret.Name)
+				queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
+
+				// Getting default key to remove from Azure work queue
+				key, err := cache.MetaNamespaceKeyFunc(obj)
+				if err != nil {
+					utilruntime.HandleError(err)
 					return
 				}
-				log.Debugf("AzureKeyVaultSecret %s/%s deleted. Adding to delete queue.", secret.Namespace, secret.Name)
-				c.enqueueDeleteAzureKeyVaultSecret(obj)
+				c.azureKeyVaultQueue.GetQueue().Forget(key)
 			}
 		},
 	})
+}
+
+func convertToAzureKeyVaultSecret(obj interface{}) (*v2alpha1.AzureKeyVaultSecret, error) {
+	secret, ok := obj.(*v2alpha1.AzureKeyVaultSecret)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return nil, fmt.Errorf("couldn't get object from tombstone %#v", obj)
+		}
+		secret, ok = tombstone.Obj.(*v2alpha1.AzureKeyVaultSecret)
+		if !ok {
+			return nil, fmt.Errorf("tombstone contained object that is not a AzureKeyVaultSecret %#v", obj)
+		}
+	}
+	return secret, nil
 }
 
 func (c *Controller) syncAzureKeyVaultSecret(key string) error {
@@ -102,6 +139,10 @@ func (c *Controller) syncAzureKeyVaultSecret(key string) error {
 	log.Infof("Successfully synced AzureKeyVaultSecret %s with Kubernetes Secret %s", key, fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
 	c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
+}
+
+func (c *Controller) akvsHasSecretOutput(secret *v2alpha1.AzureKeyVaultSecret) bool {
+	return secret.Spec.Output.Secret.Name != ""
 }
 
 func (c *Controller) syncAzureKeyVault(key string) error {
@@ -148,6 +189,10 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 
 	log.Infof("Successfully synced AzureKeyVaultSecret %s with Azure Key Vault", key)
 	return nil
+}
+
+func (c *Controller) getAzureKeyVaultSecretFromSecret(secret *corev1.Secret, owner *metav1.OwnerReference) (*akv.AzureKeyVaultSecret, error) {
+	return c.azureKeyVaultSecretLister.AzureKeyVaultSecrets(secret.Namespace).Get(owner.Name)
 }
 
 func (c *Controller) getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (map[string][]byte, error) {
@@ -220,20 +265,6 @@ func (c *Controller) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *akv.Az
 	// which is ideal for ensuring nothing other than resource status has been updated.
 	_, err := c.akvsClient.AzurekeyvaultV2alpha1().AzureKeyVaultSecrets(azureKeyVaultSecret.Namespace).UpdateStatus(azureKeyVaultSecretCopy)
 	return err
-}
-
-func (c *Controller) enqueueDeleteAzureKeyVaultSecret(obj interface{}) {
-	var key string
-	var err error
-
-	queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
-
-	// Getting default key to remove from Azure work queue
-	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
-	c.akvQueue.GetQueue().Forget(key)
 }
 
 func handleKeyVaultError(err error, key string) bool {

@@ -41,45 +41,110 @@ import (
 func (c *Controller) initSecret() {
 	c.secretInformerFactory.Core().V1().Secrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			if secret, ok := obj.(*corev1.Secret); ok {
+			secret, err := convertToSecret(obj)
+			if err != nil {
+				log.Errorf("failed to convert to secret: %v", err)
+			}
+
+			if c.isCABundleSecret(secret) {
+				queue.Enqueue(c.caBundleSecretQueue.GetQueue(), secret)
+				return
+			}
+
+			if c.isOwnedByAzureKeyVaultSecret(secret) {
 				log.Debugf("Secret %s/%s controlled by AzureKeyVaultSecret added. Adding to queue.", secret.Namespace, secret.Name)
-				c.enqueueSecret(obj)
+				queue.Enqueue(c.akvsSecretQueue.GetQueue(), secret)
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
-			if newSecret, ok := new.(*corev1.Secret); ok {
-				oldSecret := old.(*corev1.Secret)
+			newSecret, err := convertToSecret(new)
+			if err != nil {
+				log.Errorf("failed to convert to secret: %v", err)
+			}
 
-				if newSecret.ResourceVersion == oldSecret.ResourceVersion {
-					// Periodic resync will send update events for all known Secrets.
-					// Two different versions of the same Secret will always have different RVs.
-					return
-				}
-				secret := new.(*corev1.Secret)
-				log.Debugf("Secret %s/%s controlled by AzureKeyVaultSecret changed. Handling.", secret.Namespace, secret.Name)
-				c.enqueueSecret(new)
+			oldSecret, err := convertToSecret(old)
+			if err != nil {
+				log.Errorf("failed to convert to secret: %v", err)
+			}
+
+			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
+				// Periodic resync will send update events for all known Secrets.
+				// Two different versions of the same Secret will always have different RVs.
+				return
+			}
+
+			if c.isCABundleSecret(newSecret) {
+				queue.Enqueue(c.caBundleSecretQueue.GetQueue(), newSecret)
+				return
+			}
+
+			if c.isOwnedByAzureKeyVaultSecret(newSecret) {
+				log.Debugf("Secret %s/%s controlled by AzureKeyVaultSecret changed. Handling.", newSecret.Namespace, newSecret.Name)
+				queue.Enqueue(c.akvsSecretQueue.GetQueue(), newSecret)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			if secret, ok := obj.(*corev1.Secret); ok {
+			secret, err := convertToSecret(obj)
+			if err != nil {
+				log.Errorf("failed to convert to secret: %v", err)
+			}
+
+			if c.isCABundleSecret(secret) {
+				queue.Enqueue(c.caBundleSecretQueue.GetQueue(), secret)
+				return
+			}
+
+			if c.isOwnedByAzureKeyVaultSecret(secret) {
 				log.Debugf("Secret %s/%s controlled by AzureKeyVaultSecret deleted. Handling.", secret.Namespace, secret.Name)
-				c.enqueueSecret(obj)
+				queue.Enqueue(c.akvsSecretQueue.GetQueue(), secret)
 			}
 		},
 	})
-
 }
 
-func (c *Controller) enqueueSecret(obj interface{}) {
-	azureKeyVaultSecret, ignore, err := c.getAzureKeyVaultSecretFromSecret(obj)
+func convertToSecret(obj interface{}) (*corev1.Secret, error) {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return nil, fmt.Errorf("couldn't get object from tombstone %#v", obj)
+		}
+		secret, ok = tombstone.Obj.(*corev1.Secret)
+		if !ok {
+			return nil, fmt.Errorf("tombstone contained object that is not a Secret %#v", obj)
+		}
+	}
+	return secret, nil
+}
 
+func (c *Controller) syncSecret(key string) error {
+	secret, err := c.getSecret(key)
 	if err != nil {
-		utilruntime.HandleError(err)
+		return err
 	}
 
-	if !ignore {
+	if ownerRef := metav1.GetControllerOf(secret); ownerRef != nil {
+		azureKeyVaultSecret, err := c.getAzureKeyVaultSecretFromSecret(secret, ownerRef)
+		if err != nil {
+			return err
+		}
+
 		queue.Enqueue(c.akvsCrdQueue.GetQueue(), azureKeyVaultSecret)
 	}
+	return nil
+}
+
+func (c *Controller) isCABundleSecret(secret *corev1.Secret) bool {
+	return secret.Namespace == c.caBundleSecretNamespaceName && secret.Name == c.caBundleSecretName
+}
+
+func (c *Controller) isOwnedByAzureKeyVaultSecret(secret *corev1.Secret) bool {
+	if ownerRef := metav1.GetControllerOf(secret); ownerRef != nil {
+		if ownerRef.Kind == "AzureKeyVaultSecret" {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Controller) getSecret(key string) (*corev1.Secret, error) {
@@ -150,41 +215,6 @@ func (c *Controller) getOrCreateKubernetesSecret(azureKeyVaultSecret *akv.AzureK
 	}
 
 	return secret, err
-}
-
-func (c *Controller) getAzureKeyVaultSecretFromSecret(obj interface{}) (*akv.AzureKeyVaultSecret, bool, error) {
-	var object metav1.Object
-	var ok bool
-
-	if object, ok = obj.(metav1.Object); !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			return nil, false, fmt.Errorf("error decoding object, invalid type")
-		}
-		object, ok = tombstone.Obj.(metav1.Object)
-		if !ok {
-			return nil, false, fmt.Errorf("error decoding object tombstone, invalid type")
-		}
-		log.Infof("Recovered deleted object '%s' from tombstone", object.GetName())
-	}
-
-	log.Debugf("Processing object: %s", object.GetName())
-	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
-		// If this object is not owned by a AzureKeyVaultSecret, we should not do anything more
-		// with it.
-		if ownerRef.Kind != "AzureKeyVaultSecret" {
-			return nil, true, nil
-		}
-
-		azureKeyVaultSecret, err := c.azureKeyVaultSecretLister.AzureKeyVaultSecrets(object.GetNamespace()).Get(ownerRef.Name)
-		if err != nil {
-			log.Infof("ignoring orphaned object '%s' of azureKeyVaultSecret '%s'", object.GetSelfLink(), ownerRef.Name)
-			return nil, true, nil
-		}
-
-		return azureKeyVaultSecret, false, nil
-	}
-	return nil, true, nil
 }
 
 // newSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets

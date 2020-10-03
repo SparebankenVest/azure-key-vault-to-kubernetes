@@ -54,6 +54,9 @@ const (
 	// to sync due to a Secret of the same name already existing.
 	ErrAzureVault = "ErrAzureVault"
 
+	// ErrConfigMap is used as part of the Event 'reason' when a Secret sync fails
+	ErrConfigMap = "ErrConfigMap"
+
 	// FailedAzureKeyVault is the message used for Events when a resource
 	// fails to get secret from Azure Key Vault
 	FailedAzureKeyVault = "Failed to get secret for '%s' from Azure Key Vault '%s'"
@@ -78,24 +81,44 @@ type Controller struct {
 	vaultService  vault.Service
 	recorder      record.EventRecorder
 
-	secretsLister             corelisters.SecretLister
-	azureKeyVaultSecretLister listers.AzureKeyVaultSecretLister
-
+	// Secret
+	secretsLister         corelisters.SecretLister
 	secretInformerFactory informers.SharedInformerFactory
-	akvsInformerFactory   akvInformers.SharedInformerFactory
+	akvsSecretQueue       *queue.Worker //workqueue.RateLimitingInterface
 
-	akvsCrdQueue *queue.Worker   //workqueue.RateLimitingInterface
-	akvQueue     *FastSlowWorker //workqueue.RateLimitingInterface
+	// AzureKeyVaultSecret
+	azureKeyVaultSecretLister listers.AzureKeyVaultSecretLister
+	akvsInformerFactory       akvInformers.SharedInformerFactory
+	akvsCrdQueue              *queue.Worker   //workqueue.RateLimitingInterface
+	azureKeyVaultQueue        *FastSlowWorker //workqueue.RateLimitingInterface
 
-	clock Timer
+	// CA Bundle
+	caBundleSecretQueue         *queue.Worker
+	caBundleSecretName          string
+	caBundleSecretNamespaceName string
+	caBundleConfigMapName       string
+
+	// Namespace
+	namespaceLister          corelisters.NamespaceLister
+	namespaceInformerFactory informers.SharedInformerFactory
+	namespaceQueue           *queue.Worker //workqueue.RateLimitingInterface
+
+	// ConfigMap
+	configMapLister          corelisters.ConfigMapLister
+	configMapInformerFactory informers.SharedInformerFactory
+	configMapQueue           *queue.Worker //workqueue.RateLimitingInterface
+
+	options *Options
+	clock   Timer
 }
 
 // Options contains options for the controller
 type Options struct {
-	NumThreads     int
-	MaxNumRequeues int
-	ResyncPeriod   time.Duration
-	AkvsRef        corev1.ObjectReference
+	NumThreads         int
+	MaxNumRequeues     int
+	ResyncPeriod       time.Duration
+	AkvsRef            corev1.ObjectReference
+	NamespaceAkvsLabel string
 }
 
 // AzurePollFrequency controls time durations to wait between polls to Azure Key Vault for changes
@@ -129,11 +152,14 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 		secretsLister:             secretInformerFactory.Core().V1().Secrets().Lister(),
 		azureKeyVaultSecretLister: akvInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Lister(),
 
-		clock: &Clock{},
+		options: options,
+		clock:   &Clock{},
 	}
 
 	controller.akvsCrdQueue = queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVaultSecret)
-	controller.akvQueue = NewFastSlowWorker("AzureKeyVault", azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown, options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
+	controller.akvsSecretQueue = queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, controller.syncSecret)
+	controller.azureKeyVaultQueue = NewFastSlowWorker("AzureKeyVault", azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown, options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
+	controller.caBundleSecretQueue = queue.New("CABundleSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncCABundleSecret)
 
 	log.Info("Setting up event handlers")
 	controller.initAzureKeyVaultSecret()
@@ -166,10 +192,13 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	}
 
 	log.Debug("Starting Azure Key Vault queue")
-	c.akvQueue.Run(stopCh)
+	c.azureKeyVaultQueue.Run(stopCh)
 
 	log.Debug("Starting Azure Key Vault Secret queue")
 	c.akvsCrdQueue.Run(stopCh)
+
+	log.Debug("Starting CA Bundle Secret queue")
+	c.caBundleSecretQueue.Run(stopCh)
 
 	log.Info("Started workers")
 	<-stopCh
