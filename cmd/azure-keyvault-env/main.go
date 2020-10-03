@@ -222,7 +222,19 @@ func main() {
 
 	creds, err := getCredentials(config.useAuthService, config.authServiceAddress, config.caCert)
 	if err != nil {
-		log.Fatalf("failed to get credentials, error: %+v", err)
+		log.Warnf("failed to get credentials, will retry %d times", config.retryTimes)
+		err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
+			creds, err = getCredentials(config.useAuthService, config.authServiceAddress, config.caCert)
+			if err != nil {
+				logger.Warnf("failed to get credentials, error: %+v", err)
+				return err
+			}
+			logger.Info("succeded getting credentials")
+			return nil
+		})
+		if err != nil {
+			logger.Fatalf("failed to get credentials %d times, error: %+v", config.retryTimes, err)
+		}
 	}
 
 	vaultService := vault.NewService(creds)
@@ -268,7 +280,7 @@ func main() {
 			logger.Debugf("getting azurekeyvaultsecret resource '%s' from kubernetes", secretName)
 			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV2alpha1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
-				logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %s", secretName, err.Error())
+				logger.Warnf("failed to get azurekeyvaultsecret resource '%s', error: %s", secretName, err.Error())
 				logger.Infof("will retry getting azurekeyvaultsecret resource up to %d times, waiting %d seconds between retries", config.retryTimes, config.waitTimeBetweenRetries)
 
 				err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {

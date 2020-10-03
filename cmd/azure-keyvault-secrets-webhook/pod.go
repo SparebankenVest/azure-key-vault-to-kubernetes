@@ -26,7 +26,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/containers/image/v5/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
@@ -73,7 +72,7 @@ func getVolumes() []corev1.Volume {
 	return volumes
 }
 
-func mutateContainers(containers []corev1.Container, imagePullSecrets map[string]*types.DockerAuthConfig) (bool, error) {
+func mutateContainers(clientset kubernetes.Interface, ns string, containers []corev1.Container, podSpec *corev1.PodSpec) (bool, error) {
 	mutated := false
 
 	for i, container := range containers {
@@ -105,25 +104,7 @@ func mutateContainers(containers []corev1.Container, imagePullSecrets map[string
 			continue
 		}
 
-		registryName := ""
-		imgParts := strings.Split(container.Image, "/")
-		if len(imgParts) >= 2 {
-			registryName = imgParts[0]
-		}
-
-		var regCred *types.DockerAuthConfig
-		regCred, ok := imagePullSecrets[registryName]
-
-		if ok {
-			log.Infof("found imagePullSecrets credentials to use with registry '%s'", registryName)
-		} else if config.runningInsideAzureAks && config.useAksCredentialsWithAcs {
-			log.Info("we are running inside azure aks, trying to get acr credentials")
-			regCred = getAcrCredentials(registryName, container.Image)
-		} else {
-			log.Debugf("not trying to get acr credentials, as we are not on aks or configured to not use aks credentials with acr")
-		}
-
-		autoArgs, err := getContainerCmd(container, regCred)
+		autoArgs, err := getContainerCmd(clientset, ns, &container, podSpec)
 		if err != nil {
 			return false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
 		}
@@ -232,17 +213,12 @@ func mutatePodSpec(pod *corev1.Pod) error {
 		return err
 	}
 
-	regCred, err := getRegistryCredsFromImagePullSecrets(*clientset, podSpec)
+	initContainersMutated, err := mutateContainers(clientset, pod.Namespace, podSpec.InitContainers, podSpec)
 	if err != nil {
 		return err
 	}
 
-	initContainersMutated, err := mutateContainers(podSpec.InitContainers, regCred)
-	if err != nil {
-		return err
-	}
-
-	containersMutated, err := mutateContainers(podSpec.Containers, regCred)
+	containersMutated, err := mutateContainers(clientset, pod.Namespace, podSpec.Containers, podSpec)
 	if err != nil {
 		return err
 	}

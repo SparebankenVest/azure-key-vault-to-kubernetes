@@ -18,25 +18,13 @@
 package main
 
 import (
-	"context"
-	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"os"
-	"strings"
-	"time"
-
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
-	"github.com/containers/image/v5/transports/alltransports"
-	"github.com/containers/image/v5/types"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/docker/registry"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
-func getContainerCmd(container corev1.Container, creds *types.DockerAuthConfig) ([]string, error) {
+func getContainerCmd(clientset kubernetes.Interface, ns string, container *corev1.Container, podSpec *corev1.PodSpec) ([]string, error) {
 	log.Debugf("getting container command for container '%s'", container.Name)
 	cmd := container.Command
 
@@ -44,24 +32,16 @@ func getContainerCmd(container corev1.Container, creds *types.DockerAuthConfig) 
 	// https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
 	if len(cmd) == 0 {
 		log.Debugf("no cmd override in kubernetes for container %s, checking docker image configuration for entrypoint and cmd for %s", container.Name, container.Image)
-		if creds == nil {
-			log.Warnf("no credentials provided/found to access remote docker image configuration for %s - going anonymous", container.Image)
-		}
 
-		opts := imageOptions{
-			image:       container.Image,
-			credentials: *creds,
-		}
-
-		config, err := opts.getConfigFromManifest()
+		imgConfig, err := registry.GetImageConfig(clientset, ns, container, podSpec, config.cloudConfigHostPath)
 		if err != nil {
 			return nil, err
 		}
 
-		cmd = append(cmd, config.Config.Entrypoint...)
+		cmd = append(cmd, imgConfig.Entrypoint...)
 
 		if len(container.Args) == 0 {
-			cmd = append(cmd, config.Config.Cmd...)
+			cmd = append(cmd, imgConfig.Cmd...)
 		}
 	} else {
 		log.Debugf("found cmd override in kubernetes for container %s, no need to inspect docker image configuration for %s", container.Name, container.Image)
@@ -70,151 +50,4 @@ func getContainerCmd(container corev1.Container, creds *types.DockerAuthConfig) 
 	cmd = append(cmd, container.Args...)
 
 	return cmd, nil
-}
-
-type imageOptions struct {
-	image        string
-	credentials  types.DockerAuthConfig
-	architecture string
-	osChoice     string
-}
-
-func (opts *imageOptions) getConfigFromManifest() (*v1.Image, error) {
-	log.Debugf("docker image inspection timeout: %d seconds", config.dockerImageInspectionTimeout)
-	timeout := time.Duration(config.dockerImageInspectionTimeout) * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	// TODO: what about others like OCI, OpenShift and so on?
-	if !strings.HasPrefix(opts.image, "docker://") {
-		opts.image = "docker://" + opts.image
-	}
-
-	ref, err := alltransports.ParseImageName(opts.image)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse docker image name:  %+v", err)
-	}
-
-	sys := &types.SystemContext{
-		OCISharedBlobDirPath: "/tmp",
-		DockerAuthConfig:     &opts.credentials,
-	}
-
-	if opts.osChoice != "" {
-		sys.OSChoice = opts.osChoice
-	}
-
-	if opts.architecture != "" {
-		sys.ArchitectureChoice = opts.architecture
-	}
-
-	abc, err := ref.NewImage(ctx, sys)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get docker image %q: %+v", opts.image, err)
-	}
-	defer abc.Close()
-
-	dockerConfig, err := abc.OCIConfig(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error reading OCI-formatted configuration data: %+v", err)
-	}
-
-	return dockerConfig, nil
-}
-
-func getRegistryCredsFromImagePullSecrets(clientset kubernetes.Clientset, podSpec *corev1.PodSpec) (map[string]*types.DockerAuthConfig, error) {
-	creds := make(map[string]*types.DockerAuthConfig)
-
-	var conf struct {
-		Auths map[string]struct {
-			Auth string
-		}
-	}
-
-	var decoded []byte
-	var ok bool
-	if podSpec.ImagePullSecrets != nil {
-		for _, secret := range podSpec.ImagePullSecrets {
-			secret, err := clientset.CoreV1().Secrets(config.namespace).Get(secret.Name, metav1.GetOptions{})
-			if err != nil {
-				return creds, err
-			}
-
-			switch secret.Type {
-			case corev1.SecretTypeDockerConfigJson:
-				decoded, ok = secret.Data[corev1.DockerConfigJsonKey]
-			default:
-				return creds, fmt.Errorf("unable to load image pull secret '%s', only type '%s' is supported", secret.Name, secret.Type)
-			}
-
-			if !ok {
-				continue
-			}
-
-			if err := json.Unmarshal(decoded, &conf); err != nil {
-				return creds, err
-			}
-
-			// If it's in k8s format, it won't have the surrounding "Auth". Try that too.
-			if len(conf.Auths) == 0 {
-				if err := json.Unmarshal(decoded, &conf.Auths); err != nil {
-					return creds, err
-				}
-			}
-
-			for host, entry := range conf.Auths {
-				decodedAuth, err := base64.StdEncoding.DecodeString(entry.Auth)
-				if err != nil {
-					return creds, err
-				}
-
-				authParts := strings.SplitN(string(decodedAuth), ":", 2)
-				if len(authParts) != 2 {
-					return creds, fmt.Errorf("decoded credential has wrong number of fields (expected 2, got %d)", len(authParts))
-				}
-
-				creds[host] = &types.DockerAuthConfig{
-					Username: authParts[0],
-					Password: authParts[1],
-				}
-			}
-		}
-	}
-	return creds, nil
-}
-
-func getAcrCredentials(host string, image string) *types.DockerAuthConfig {
-	//Check if cloud config file exists
-	_, err := os.Stat(config.cloudConfigHostPath)
-	if err != nil {
-		log.Debugf("did not find cloud config - most likely because we're not in Azure/AKS")
-		return &types.DockerAuthConfig{}
-	}
-
-	f, err := os.Open(config.cloudConfigHostPath)
-	if err != nil {
-		log.Errorf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
-		return &types.DockerAuthConfig{}
-	}
-	defer f.Close()
-
-	cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
-	if err != nil {
-		log.Errorf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
-		return &types.DockerAuthConfig{}
-	}
-
-	if cloudCnfProvider.IsAcrRegistry(image) {
-		cred, err := cloudCnfProvider.GetAcrCredentials(image)
-		if err != nil {
-			log.Errorf("failed getting azure acr credentials, error: %+v", err)
-			return &types.DockerAuthConfig{}
-		}
-
-		log.Debugf("found acr credentials to use in cloud config for '%s'", host)
-		return cred
-	}
-
-	log.Warnf("no acr credentials found for %s", host)
-	return &types.DockerAuthConfig{}
 }

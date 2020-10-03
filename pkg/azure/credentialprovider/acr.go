@@ -22,7 +22,7 @@ import (
 
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
-	docker "github.com/containers/image/v5/types"
+	dockerTypes "github.com/docker/docker/api/types"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -34,8 +34,8 @@ var (
 // GetAcrCredentials will get Docker credentials for Azure Container Registry
 // It will either get a exact match to the login server for the image (eg xxx.azureacr.io) or
 // get credentials for a wildcard match (eg *.azureacr.io* or *.azureacr.cn*)
-func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*docker.DockerAuthConfig, error) {
-	cred := &docker.DockerAuthConfig{
+func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*dockerTypes.AuthConfig, error) {
+	cred := &dockerTypes.AuthConfig{
 		Username: "",
 		Password: "",
 	}
@@ -56,7 +56,7 @@ func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*docker.
 			}
 		}
 	} else {
-		return &docker.DockerAuthConfig{
+		return &dockerTypes.AuthConfig{
 			Username: c.config.AADClientID,
 			Password: c.config.AADClientSecret,
 		}, nil
@@ -70,7 +70,7 @@ func (c CloudConfigCredentialProvider) IsAcrRegistry(image string) bool {
 	return parseACRLoginServerFromImage(image, c.environment) != ""
 }
 
-func getACRDockerEntryFromARMToken(config *AzureCloudConfig, env azure.Environment, token *adal.ServicePrincipalToken, loginServer string) (*docker.DockerAuthConfig, error) {
+func getACRDockerEntryFromARMToken(config *AzureCloudConfig, env azure.Environment, token *adal.ServicePrincipalToken, loginServer string) (*dockerTypes.AuthConfig, error) {
 	// Run EnsureFresh to make sure the token is valid and does not expire
 	// if err := token.EnsureFresh(); err != nil {
 	// 	return nil, fmt.Errorf("Failed to ensure fresh service principal token: %v", err)
@@ -98,7 +98,7 @@ func getACRDockerEntryFromARMToken(config *AzureCloudConfig, env azure.Environme
 	}
 
 	log.Debugf("adding ACR docker config entry for: %s", loginServer)
-	return &docker.DockerAuthConfig{
+	return &dockerTypes.AuthConfig{
 		Username: dockerTokenLoginUsernameGUID,
 		Password: registryRefreshToken,
 	}, nil
