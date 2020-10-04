@@ -61,7 +61,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 				log.Errorf("failed to convert to azurekeyvaultsecret: %v", err)
 			}
 
-			if newSecret.ResourceVersion != oldSecret.ResourceVersion {
+			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
 				return
 			}
 			// if newSecret.ResourceVersion == oldSecret.ResourceVersion {
