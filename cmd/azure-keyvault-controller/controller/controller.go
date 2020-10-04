@@ -84,13 +84,13 @@ type Controller struct {
 	// Secret
 	secretsLister         corelisters.SecretLister
 	secretInformerFactory informers.SharedInformerFactory
-	akvsSecretQueue       *queue.Worker //workqueue.RateLimitingInterface
+	akvsSecretQueue       *queue.Worker
 
 	// AzureKeyVaultSecret
 	azureKeyVaultSecretLister listers.AzureKeyVaultSecretLister
 	akvsInformerFactory       akvInformers.SharedInformerFactory
-	akvsCrdQueue              *queue.Worker   //workqueue.RateLimitingInterface
-	azureKeyVaultQueue        *FastSlowWorker //workqueue.RateLimitingInterface
+	akvsCrdQueue              *queue.Worker
+	azureKeyVaultQueue        *queue.Worker
 
 	// CA Bundle
 	caBundleSecretQueue         *queue.Worker
@@ -101,12 +101,12 @@ type Controller struct {
 	// Namespace
 	namespaceLister          corelisters.NamespaceLister
 	namespaceInformerFactory informers.SharedInformerFactory
-	namespaceQueue           *queue.Worker //workqueue.RateLimitingInterface
+	namespaceQueue           *queue.Worker
 
 	// ConfigMap
 	configMapLister          corelisters.ConfigMapLister
 	configMapInformerFactory informers.SharedInformerFactory
-	configMapQueue           *queue.Worker //workqueue.RateLimitingInterface
+	configMapQueue           *queue.Worker
 
 	options *Options
 	clock   Timer
@@ -158,7 +158,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 
 	controller.akvsCrdQueue = queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVaultSecret)
 	controller.akvsSecretQueue = queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, controller.syncSecret)
-	controller.azureKeyVaultQueue = NewFastSlowWorker("AzureKeyVault", azureFrequency.Normal, azureFrequency.Slow, azureFrequency.MaxFailuresBeforeSlowingDown, options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
+	controller.azureKeyVaultQueue = queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
 	controller.caBundleSecretQueue = queue.New("CABundleSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncCABundleSecret)
 
 	log.Info("Setting up event handlers")
@@ -191,14 +191,14 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 		}
 	}
 
-	log.Debug("Starting Azure Key Vault queue")
-	c.azureKeyVaultQueue.Run(stopCh)
-
 	log.Debug("Starting Azure Key Vault Secret queue")
 	c.akvsCrdQueue.Run(stopCh)
 
-	log.Debug("Starting CA Bundle Secret queue")
-	c.caBundleSecretQueue.Run(stopCh)
+	log.Debug("Starting Secret queue for Azure Key Vault Secrets")
+	c.akvsSecretQueue.Run(stopCh)
+
+	log.Debug("Starting Azure Key Vault queue")
+	c.azureKeyVaultQueue.Run(stopCh)
 
 	log.Info("Started workers")
 	<-stopCh

@@ -47,7 +47,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			if c.akvsHasSecretOutput(secret) {
 				log.Debugf("AzureKeyVaultSecret %s/%s added. Adding to queue.", secret.Namespace, secret.Name)
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
-				queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), obj)
+				// queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), obj)
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
@@ -61,14 +61,12 @@ func (c *Controller) initAzureKeyVaultSecret() {
 				log.Errorf("failed to convert to azurekeyvaultsecret: %v", err)
 			}
 
+			// If akvs has not changed, add to akv queue to check if secret has changed in akv
 			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
+				log.Debugf("AzureKeyVaultSecret not changed. Adding to Azure Key Vault queue to check if secret has changed in Azure Key Vault.", newSecret.Namespace, newSecret.Name)
+				queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), new)
 				return
 			}
-			// if newSecret.ResourceVersion == oldSecret.ResourceVersion {
-			// 	log.Debugf("AzureKeyVaultSecret %s/%s changed and diffs in resource version. Adding to Azure Key Vault queue.", newSecret.Namespace, newSecret.Name)
-			// 	queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), new)
-			// 	return
-			// }
 
 			if c.akvsHasSecretOutput(newSecret) || c.akvsHasSecretOutput(oldSecret) {
 				log.Debugf("AzureKeyVaultSecret %s/%s changed. Adding to queue.", newSecret.Namespace, newSecret.Name)
@@ -269,14 +267,15 @@ func (c *Controller) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *akv.Az
 
 func handleKeyVaultError(err error, key string) bool {
 	log.Debugf("Handling error for '%s' in AzureKeyVaultSecret: %s", key, err.Error())
+	exit := false
 	if err != nil {
 		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop processing.
 		if errors.IsNotFound(err) {
 			log.Debugf("Error for '%s' was 'Not Found'", key)
 
-			utilruntime.HandleError(fmt.Errorf("AzureKeyVaultSecret '%s' in work queue no longer exists", key))
-			return true
+			log.Errorf("AzureKeyVaultSecret '%s' in work queue no longer exists", key)
+			exit = true
 		}
 	}
-	return false
+	return exit
 }
