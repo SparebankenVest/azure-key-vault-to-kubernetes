@@ -129,7 +129,9 @@ func (c *Controller) syncSecret(key string) error {
 			return err
 		}
 
-		queue.Enqueue(c.akvsCrdQueue.GetQueue(), azureKeyVaultSecret)
+		if c.akvsHasSecretOutput(azureKeyVaultSecret) {
+			queue.Enqueue(c.akvsCrdQueue.GetQueue(), azureKeyVaultSecret)
+		}
 	}
 	return nil
 }
