@@ -63,7 +63,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 
 			// If akvs has not changed, add to akv queue to check if secret has changed in akv
 			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
-				log.Debugf("AzureKeyVaultSecret not changed. Adding to Azure Key Vault queue to check if secret has changed in Azure Key Vault.", newSecret.Namespace, newSecret.Name)
+				log.Debugf("AzureKeyVaultSecret %s/%s not changed. Adding to Azure Key Vault queue to check if secret has changed in Azure Key Vault.", newSecret.Namespace, newSecret.Name)
 				queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), new)
 				return
 			}
