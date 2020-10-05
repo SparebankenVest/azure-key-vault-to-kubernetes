@@ -174,7 +174,7 @@ func (c *Controller) getOrCreateKubernetesSecret(azureKeyVaultSecret *akv.AzureK
 		return nil, fmt.Errorf("output secret name must be specified using spec.output.secret.name")
 	}
 
-	log.Infof("Get or create secret %s in namespace %s", secretName, azureKeyVaultSecret.Namespace)
+	log.Debugf("Get or create secret %s in namespace %s", secretName, azureKeyVaultSecret.Namespace)
 	if secret, err = c.secretsLister.Secrets(azureKeyVaultSecret.Namespace).Get(secretName); err != nil {
 		if errors.IsNotFound(err) {
 			secretValues, err = c.getSecretFromKeyVault(azureKeyVaultSecret)

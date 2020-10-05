@@ -61,8 +61,8 @@ func (c *Controller) initAzureKeyVaultSecret() {
 				log.Errorf("failed to convert to azurekeyvaultsecret: %v", err)
 			}
 
-			// If akvs has not changed, add to akv queue to check if secret has changed in akv
-			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
+			// If akvs has not changed and has secret output, add to akv queue to check if secret has changed in akv
+			if newSecret.ResourceVersion == oldSecret.ResourceVersion && c.akvsHasSecretOutput(newSecret) {
 				log.Debugf("AzureKeyVaultSecret %s/%s not changed. Adding to Azure Key Vault queue to check if secret has changed in Azure Key Vault.", newSecret.Namespace, newSecret.Name)
 				queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), new)
 				return
@@ -115,7 +115,7 @@ func (c *Controller) syncAzureKeyVaultSecret(key string) error {
 	var secret *corev1.Secret
 	var err error
 
-	log.Infof("Processing AzureKeyVaultSecret %s", key)
+	log.Debugf("Processing AzureKeyVaultSecret %s", key)
 	if azureKeyVaultSecret, err = c.getAzureKeyVaultSecret(key); err != nil {
 		if exit := handleKeyVaultError(err, key); exit {
 			return nil
