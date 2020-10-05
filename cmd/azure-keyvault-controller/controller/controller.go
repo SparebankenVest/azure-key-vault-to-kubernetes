@@ -191,14 +191,17 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 		}
 	}
 
-	log.Debug("Starting Azure Key Vault Secret queue")
+	log.Info("Starting Azure Key Vault Secret queue")
 	c.akvsCrdQueue.Run(stopCh)
 
-	log.Debug("Starting Secret queue for Azure Key Vault Secrets")
+	log.Info("Starting Secret queue for Azure Key Vault Secrets")
 	c.akvsSecretQueue.Run(stopCh)
 
-	log.Debug("Starting Azure Key Vault queue")
+	log.Info("Starting Azure Key Vault queue")
 	c.azureKeyVaultQueue.Run(stopCh)
+
+	log.Info("Starting CA Bundle queue")
+	c.caBundleSecretQueue.Run(stopCh)
 
 	log.Info("Started workers")
 	<-stopCh
