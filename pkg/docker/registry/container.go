@@ -157,12 +157,7 @@ func getAcrCredentials(k *ContainerInfo, cloudConfigPath string) (bool, error) {
 }
 
 func (k *ContainerInfo) readDockerSecret(namespace, secretName string) (map[string][]byte, error) {
-	ns := "default"
-	if namespace != "" {
-		ns = namespace
-	}
-
-	secret, err := k.clientset.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
+	secret, err := k.clientset.CoreV1().Secrets(namespace).Get(secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
