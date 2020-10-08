@@ -20,21 +20,24 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"os"
 	"strconv"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
+	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/controller/cabundleinjector"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/signals"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -42,6 +45,7 @@ var (
 	kubeconfig  string
 	cloudconfig string
 	logLevel    string
+	logFormat   string
 
 	azureVaultFastRate        time.Duration
 	azureVaultSlowRate        time.Duration
@@ -51,43 +55,70 @@ var (
 
 const controllerAgentName = "ca-bundle-controller"
 
-func main() {
-	flag.Parse()
+func setLogLevel(logLevel string) {
+	if logLevel == "" {
+		logLevel = log.InfoLevel.String()
+	}
 
-	log.SetFormatter(&log.TextFormatter{
-		DisableColors: true,
-		FullTimestamp: true,
-	})
+	logrusLevel, err := log.ParseLevel(logLevel)
+	if err != nil {
+		log.Fatalf("error setting log level: %s", err.Error())
+	}
+	log.SetLevel(logrusLevel)
+}
+
+func setLogFormat(logFormat string) {
+	switch logFormat {
+	case "fmt":
+		log.SetFormatter(&log.TextFormatter{
+			DisableColors: true,
+			FullTimestamp: true,
+		})
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.Warnf("Log format %s not supported - using default fmt", logFormat)
+	}
+}
+
+func initConfig() {
+	viper.SetDefault("akv_label_name", "azure-key-vault-env-injection")
+	viper.SetDefault("ca_config_map_name", "akv2k8s-ca")
+	viper.SetDefault("cloudconfig", "/etc/kubernetes/azure.json")
+	viper.AutomaticEnv()
+}
+
+func main() {
+	initConfig()
+
+	logLevel := viper.GetString("log_level")
+	setLogLevel(logLevel)
+
+	logFormat := viper.GetString("log_format")
+	setLogFormat(logFormat)
+
+	akv2k8s.Version = viper.GetString("version")
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
-	setLogLevel()
 
-	akvLabelName, err := getEnvStr("AKV_LABEL_NAME", "azure-key-vault-env-injection")
-	if err != nil {
-		log.Fatalf("Error parsing env var AKV_LABEL_NAME: %s", err.Error())
-	}
+	akvLabelName := viper.GetString("akv_label_name")
+	akvNamespace := viper.GetString("akv_namespace")
 
-	akvNamespace, err := getEnvStr("AKV_NAMESPACE", "")
-	if err != nil {
-		log.Fatalf("Error parsing env var AKV_NAMESPACE: %s", err.Error())
-	}
 	if akvNamespace == "" {
 		log.Fatal("Env var AKV_NAMESPACE is required")
 	}
 
-	akvSecretName, err := getEnvStr("AKV_SECRET_NAME", "")
-	if err != nil {
-		log.Fatalf("Error parsing env var AKV_SECRET_NAME: %s", err.Error())
-	}
+	akvSecretName := viper.GetString("akv_secret_name")
 	if akvSecretName == "" {
 		log.Fatal("Env var AKV_SECRET_NAME is required")
 	}
 
-	caConfigMapName, err := getEnvStr("CA_CONFIG_MAP_NAME", "akv2k8s-ca")
-	if err != nil {
-		log.Fatalf("Error parsing env var AZURE_VAULT_NORMAL_POLL_INTERVALS: %s", err.Error())
-	}
+	kubeconfig = viper.GetString("kubeconfig")
+	masterURL = viper.GetString("master")
+	cloudconfig = viper.GetString("cloudconfig")
+
+	caConfigMapName := viper.GetString("ca_config_map_name")
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
@@ -107,9 +138,9 @@ func main() {
 	eventBroadcaster.StartLogging(log.Tracef)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
-	// recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
-	controller := cabundleinjector.NewController(kubeClient, kubeNsInformerFactory.Core().V1().Secrets(), kubeInformerFactory.Core().V1().Namespaces(), kubeInformerFactory.Core().V1().ConfigMaps(), akvLabelName, akvNamespace, akvSecretName, caConfigMapName)
+	controller := cabundleinjector.NewController(kubeClient, recorder, kubeNsInformerFactory.Core().V1().Secrets(), kubeInformerFactory.Core().V1().Namespaces(), kubeInformerFactory.Core().V1().ConfigMaps(), akvLabelName, akvNamespace, akvSecretName, caConfigMapName)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
@@ -119,29 +150,6 @@ func main() {
 	if err = controller.Run(2, stopCh); err != nil {
 		log.Fatalf("Error running controller: %s", err.Error())
 	}
-}
-
-func init() {
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&logLevel, "log-level", "", "log level")
-	flag.StringVar(&cloudconfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
-}
-
-func setLogLevel() {
-	if logLevel == "" {
-		var ok bool
-		if logLevel, ok = os.LookupEnv("LOG_LEVEL"); !ok {
-			logLevel = log.InfoLevel.String()
-		}
-	}
-
-	logrusLevel, err := log.ParseLevel(logLevel)
-	if err != nil {
-		log.Fatalf("Error setting log level: %s", err.Error())
-	}
-	log.SetLevel(logrusLevel)
-	log.Printf("Log level set to '%s'", logrusLevel.String())
 }
 
 func getEnvDuration(key string, fallback time.Duration) (time.Duration, error) {

@@ -6,7 +6,7 @@ description: "Reference of AzureKeyVaultSecret custom resource definition"
 The `AzureKeyVaultSecret` is defined using this schema:
 
 ```yaml
-apiVersion: spv.no/v1alpha1
+apiVersion: spv.no/v1
 kind: AzureKeyVaultSecret
 metadata:
   name: < name for azure key vault secret>

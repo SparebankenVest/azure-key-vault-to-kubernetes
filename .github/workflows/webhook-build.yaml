@@ -7,12 +7,14 @@ on:
     paths:
     - '.github/workflows/webhook-build.yaml'
     - '.github/actions/**'
+    - 'Dockerfile'
     - 'Makefile'
     - 'go.mod'
     - 'go.sum'
     - 'cmd/azure-keyvault-secrets-webhook/**'
     - 'pkg/**'
     - '!docs/**'
+    - '!crds/**'
 
 jobs:
   build-deploy:
@@ -33,7 +35,7 @@ jobs:
         AKV2K8S_CLIENT_TENANT_ID: ${{ secrets.INT_TEST_TENANT_ID }}
         AKV2K8S_AZURE_SUBSCRIPTION: ${{ secrets.INT_TEST_SUBSCRIPTION }}
       with:
-        build-make-action: build-webhook
+        build-make-action: image-webhook
 
     - name: Push
       uses: ./.github/actions/push

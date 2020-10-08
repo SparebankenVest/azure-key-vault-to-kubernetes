@@ -27,6 +27,8 @@ import (
 	fakeazurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1/fake"
 	azurekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
 	fakeazurekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1/fake"
+	azurekeyvaultv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1"
+	fakeazurekeyvaultv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -89,4 +91,9 @@ func (c *Clientset) AzurekeyvaultV1alpha1() azurekeyvaultv1alpha1.AzurekeyvaultV
 // AzurekeyvaultV1 retrieves the AzurekeyvaultV1Client
 func (c *Clientset) AzurekeyvaultV1() azurekeyvaultv1.AzurekeyvaultV1Interface {
 	return &fakeazurekeyvaultv1.FakeAzurekeyvaultV1{Fake: &c.Fake}
+}
+
+// AzurekeyvaultV2alpha1 retrieves the AzurekeyvaultV2alpha1Client
+func (c *Clientset) AzurekeyvaultV2alpha1() azurekeyvaultv2alpha1.AzurekeyvaultV2alpha1Interface {
+	return &fakeazurekeyvaultv2alpha1.FakeAzurekeyvaultV2alpha1{Fake: &c.Fake}
 }

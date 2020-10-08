@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
-	akvs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
+	akvs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
 )
 
 const (
@@ -40,16 +40,17 @@ type Service interface {
 }
 
 type azureKeyVaultService struct {
-	credentials azure.Credentials
+	credentials *credentialprovider.AzureKeyVaultCredentials
 }
 
 // NewService creates a new AzureKeyVaultService
-func NewService(credentials azure.Credentials) Service {
+func NewService(credentials *credentialprovider.AzureKeyVaultCredentials) Service {
 	return &azureKeyVaultService{
 		credentials: credentials,
 	}
 }
 
+// CertificateOptions has options for exporting certificate
 type CertificateOptions struct {
 	ExportPrivateKey  bool
 	EnsureServerFirst bool

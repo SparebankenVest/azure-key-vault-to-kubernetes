@@ -24,7 +24,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -53,24 +54,23 @@ const (
 )
 
 type azureKeyVaultConfig struct {
-	port       string
-	customAuth bool
-	namespace  string
-	// aadPodBindingLabel  string
-	cloudConfigHostPath string
-	serveMetrics        bool
-	httpPort            string
-	certFile            string
-	keyFile             string
-	caFile              string
-	useAuthService      bool
-	// nameLocallyOverrideAuthService string
+	port                         string
+	runningInsideAzureAks        bool
+	customAuth                   bool
+	namespace                    string
+	cloudConfigHostPath          string
+	serveMetrics                 bool
+	httpPort                     string
+	certFile                     string
+	keyFile                      string
+	useAuthService               bool
 	dockerImageInspectionTimeout int
+	useAksCredentialsWithAcs     bool
 	authServiceName              string
 	authServicePort              string
 	caBundleConfigMapName        string
 	kubeClient                   *kubernetes.Clientset
-	credentials                  azure.Credentials
+	credentials                  credentialprovider.Credentials
 }
 
 var config azureKeyVaultConfig
@@ -104,6 +104,20 @@ func setLogLevel(logLevel string) {
 		log.Fatalf("error setting log level: %s", err.Error())
 	}
 	log.SetLevel(logrusLevel)
+}
+
+func setLogFormat(logFormat string) {
+	switch logFormat {
+	case "fmt":
+		log.SetFormatter(&log.TextFormatter{
+			DisableColors: true,
+			FullTimestamp: true,
+		})
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.Warnf("Log format %s not supported - using default fmt", logFormat)
+	}
 }
 
 func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
@@ -172,12 +186,13 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 
-		log.Infof("served oauth token to '%s/%s' at address '%s'", pod.namespace, pod.name, r.RemoteAddr)
-
 		if err := json.NewEncoder(w).Encode(config.credentials); err != nil {
 			log.Errorf("failed to json encode token, error: %+v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			log.Infof("served oauth token to '%s/%s' at address '%s'", pod.namespace, pod.name, r.RemoteAddr)
 		}
+
 	} else {
 		log.Error("invalid request method")
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -193,53 +208,70 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func initConfig() {
+	viper.SetDefault("running_inside_azure_aks", true)
 	viper.SetDefault("ca_config_map_name", "akv2k8s-ca")
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
 	viper.SetDefault("docker_image_inspection_timeout", 20)
+	viper.SetDefault("docker_image_inspection_use_acs_credentials", true)
 	viper.SetDefault("use_auth_service", true)
 	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
 	viper.SetDefault("metrics_enabled", false)
 	viper.SetDefault("port_http", "80")
 	viper.SetDefault("port", "443")
-
+	viper.SetDefault("log_level", "Info")
+	viper.SetDefault("log_format", "fmt")
 	viper.AutomaticEnv()
 }
 
 func main() {
-	fmt.Fprintln(os.Stdout, "initializing config...")
 	initConfig()
-	fmt.Fprintln(os.Stdout, "config initialized")
+	akv2k8s.Version = viper.GetString("version")
 
-	logLevel := viper.GetString("LOG_LEVEL")
+	logLevel := viper.GetString("log_level")
 	setLogLevel(logLevel)
+
+	logFormat := viper.GetString("log_format")
+	setLogFormat(logFormat)
+
+	akv2k8s.LogVersion()
 
 	config = azureKeyVaultConfig{
 		port:                         viper.GetString("port"),
 		httpPort:                     viper.GetString("port_http"),
+		runningInsideAzureAks:        viper.GetBool("running_inside_azure_aks"),
 		customAuth:                   viper.GetBool("custom_auth"),
 		serveMetrics:                 viper.GetBool("metrics_enabled"),
 		certFile:                     viper.GetString("tls_cert_file"),
 		keyFile:                      viper.GetString("tls_private_key_file"),
-		caFile:                       viper.GetString("tls_ca_file"),
 		useAuthService:               viper.GetBool("use_auth_service"),
 		authServiceName:              viper.GetString("webhook_auth_service"),
 		authServicePort:              viper.GetString("webhook_auth_service_port"),
 		caBundleConfigMapName:        viper.GetString("ca_config_map_name"),
 		cloudConfigHostPath:          viper.GetString("cloud_config_host_path"),
 		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
+		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
+	}
+
+	if !config.runningInsideAzureAks {
+		config.useAksCredentialsWithAcs = false
 	}
 
 	log.Info("Active settings:")
-	log.Infof("  Webhook port       : %s", config.port)
-	log.Infof("  Serve metrics      : %t", config.serveMetrics)
-	log.Infof("  Use custom auth    : %t", config.customAuth)
-	log.Infof("  Use auth service   : %t", config.useAuthService)
+	log.Infof("  Running inside Azure AKS  : %t", config.runningInsideAzureAks)
+	log.Infof("  Webhook port              : %s", config.port)
+	log.Infof("  Serve metrics             : %t", config.serveMetrics)
+	log.Infof("  Use custom auth           : %t", config.customAuth)
+	log.Infof("  Use auth service          : %t", config.useAuthService)
 	if config.useAuthService {
-		log.Infof("  Auth service name  : %s", config.authServiceName)
-		log.Infof("  Auth service port  : %s", config.authServicePort)
+		log.Infof("  Auth service name         : %s", config.authServiceName)
+		log.Infof("  Auth service port         : %s", config.authServicePort)
 	}
-	log.Infof("  CA ConfigMap name  : %s", config.caBundleConfigMapName)
-	log.Infof("  Cloud config path  : %s", config.cloudConfigHostPath)
+	if config.runningInsideAzureAks {
+		log.Infof("  Use AKS creds with ACS    : %t", config.useAksCredentialsWithAcs)
+	}
+	log.Infof("  Docker inspection timeout : %d", config.dockerImageInspectionTimeout)
+	log.Infof("  CA ConfigMap name         : %s", config.caBundleConfigMapName)
+	log.Infof("  Cloud config path         : %s", config.cloudConfigHostPath)
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
@@ -248,11 +280,19 @@ func main() {
 	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, metricsRecorder, internalLogger)
 
 	var err error
-	if config.customAuth {
-		config.credentials, err = azure.NewFromEnvironment()
+	if !config.runningInsideAzureAks || config.customAuth {
+		log.Debug("using custom auth - looking for azure key vault credentials in envrionment")
+		cProvider, err := credentialprovider.NewFromEnvironment()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(fmt.Errorf("failed to create credentials provider for azure key vault, error %+v", err))
 		}
+
+		config.credentials, err = cProvider.GetAzureKeyVaultCredentials()
+		if err != nil {
+			log.Fatal(fmt.Errorf("failed to get credentials for azure key vault, error %+v", err))
+		}
+
+		log.Debugf("using custom auth")
 	} else {
 		f, err := os.Open(config.cloudConfigHostPath)
 		if err != nil {
@@ -260,12 +300,12 @@ func main() {
 		}
 		defer f.Close()
 
-		cloudCnfProvider, err := azure.NewFromCloudConfig(f)
+		cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
 		if err != nil {
 			log.Fatalf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
 		}
 
-		config.credentials, err = cloudCnfProvider.GetCredentials()
+		config.credentials, err = cloudCnfProvider.GetAzureKeyVaultCredentials()
 		if err != nil {
 			log.Fatal(err)
 		}

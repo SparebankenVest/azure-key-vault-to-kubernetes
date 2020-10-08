@@ -42,6 +42,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 )
 
@@ -54,6 +55,9 @@ const (
 	// ErrResourceExists is used as part of the Event 'reason' when a AzureKeyVaultSecret fails
 	// to sync due to a Secret of the same name already existing.
 	ErrResourceExists = "ErrResourceExists"
+
+	// ErrConfigMap is used as part of the Event 'reason' when a Secret sync fails
+	ErrConfigMap = "ErrConfigMap"
 
 	// MessageResourceExists is the message used for Events when a resource
 	// fails to sync due to a Deployment already existing
@@ -80,6 +84,9 @@ type Controller struct {
 	// time, and makes it easy to ensure we are never processing the same item
 	// simultaneously in two different workers.
 	kubeclientset kubernetes.Interface
+	// recorder is an event recorder for recording Event resources to the
+	// Kubernetes API.
+	recorder record.EventRecorder
 
 	secretWorkqueue           workqueue.RateLimitingInterface
 	newNamespaceWorkqueue     workqueue.RateLimitingInterface
@@ -99,14 +106,10 @@ type Controller struct {
 }
 
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(kubeclientset kubernetes.Interface, secretInformer coreinformers.SecretInformer, namespaceInformer coreinformers.NamespaceInformer, configMapInformer coreinformers.ConfigMapInformer, labelName string, caBundleSecretNamespaceName string, caBundleSecretName string, caBundleConfigMapName string) *Controller {
-	// // Create event broadcaster
-	// // Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
-	// // logged for azure-keyvault-controller types.
-	// utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
-
+func NewController(kubeclientset kubernetes.Interface, recorder record.EventRecorder, secretInformer coreinformers.SecretInformer, namespaceInformer coreinformers.NamespaceInformer, configMapInformer coreinformers.ConfigMapInformer, labelName string, caBundleSecretNamespaceName string, caBundleSecretName string, caBundleConfigMapName string) *Controller {
 	controller := &Controller{
 		kubeclientset:               kubeclientset,
+		recorder:                    recorder,
 		secretsSynced:               secretInformer.Informer().HasSynced,
 		namespacesSynced:            namespaceInformer.Informer().HasSynced,
 		secretWorkqueue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "CABundles"),
@@ -131,79 +134,76 @@ func NewController(kubeclientset kubernetes.Interface, secretInformer coreinform
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) { // When CA Bundle gets added to akv2k8s
-			secret := obj.(*corev1.Secret)
-			if secret.Name != caBundleSecretName {
-				return
+			if secret, ok := obj.(*corev1.Secret); ok {
+				if secret.Name != caBundleSecretName {
+					return
+				}
+				log.Infof("Secret '%s' monitored by CA Bundle Injector added. Adding to queue.", secret.Name)
+				controller.enqueueSecret(obj)
 			}
-			// lbl := secret.Labels[controller.labelName]
-			// if lbl == "" {
-			// 	return
-			// }
-
-			log.Debugf("Secret '%s' monitored by CA Bundle Injector added. Adding to queue.", secret.Name)
-			controller.enqueueSecret(obj)
 		},
 		UpdateFunc: func(old, new interface{}) { // When CA Bundle gets changed in akv2k8s
-			newSecret := new.(*corev1.Secret)
-			oldSecret := old.(*corev1.Secret)
+			if newSecret, ok := new.(*corev1.Secret); ok {
+				oldSecret := old.(*corev1.Secret)
 
-			if newSecret.Name != caBundleSecretName {
-				return
-			}
+				if newSecret.Name != caBundleSecretName {
+					return
+				}
 
-			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
-				// Periodic resync will send update events for all known Secrets.
-				// Two different versions of the same Secret will always have different RVs.
-				return
+				if newSecret.ResourceVersion == oldSecret.ResourceVersion {
+					// Periodic resync will send update events for all known Secrets.
+					// Two different versions of the same Secret will always have different RVs.
+					return
+				}
+				log.Infof("Secret '%s' monitored by CA Bundle Injector changed. Handling.", newSecret.Name)
+				controller.enqueueSecret(new)
 			}
-			secret := new.(*corev1.Secret)
-			log.Debugf("Secret '%s' monitored by CA Bundle Injector changed. Handling.", secret.Name)
-			controller.enqueueSecret(new)
 		},
 		DeleteFunc: func(obj interface{}) { // When CA Bundle gets deleted in akv2k8s
-			secret := obj.(*corev1.Secret)
+			if secret, ok := obj.(*corev1.Secret); ok {
+				if secret.Name != caBundleSecretName {
+					return
+				}
 
-			if secret.Name != caBundleSecretName {
-				return
+				log.Infof("Secret '%s' monitored by CA Bundle Injector deleted. Handling.", secret.Name)
+				controller.enqueueSecret(obj)
 			}
-
-			log.Debugf("Secret '%s' monitored by CA Bundle Injector deleted. Handling.", secret.Name)
-			controller.enqueueSecret(obj)
 		},
 	})
 
 	namespaceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) { // When a new namespace gets added, that we should add ConfigMap to
-			ns := obj.(*corev1.Namespace)
-			lbl := ns.Labels[controller.labelName]
-			if lbl == "" {
-				return
-			}
+			if ns, ok := obj.(*corev1.Namespace); ok {
+				lbl := ns.Labels[controller.labelName]
+				if lbl == "" {
+					return
+				}
 
-			log.Debugf("Namespace '%s' labeled '%s' will be monitored by CA Bundle Injector. Adding to queue.", ns.Name, lbl)
-			controller.enqueueNewNamespace(obj)
+				log.Infof("Namespace '%s' labeled '%s' will be monitored by CA Bundle Injector. Adding to queue.", ns.Name, lbl)
+				controller.enqueueNewNamespace(obj)
+			}
 		},
 		UpdateFunc: func(old, new interface{}) { // When an existing namespace gets updated, that potentually have akv2k8s label on it
-			newNs := new.(*corev1.Namespace)
-			oldNs := old.(*corev1.Namespace)
+			if newNs, ok := new.(*corev1.Namespace); ok {
+				oldNs := old.(*corev1.Namespace)
 
-			if newNs.ResourceVersion == oldNs.ResourceVersion {
-				// Periodic resync will send update events for all known Secrets.
-				// Two different versions of the same Secret will always have different RVs.
-				return
+				if newNs.ResourceVersion == oldNs.ResourceVersion {
+					// Periodic resync will send update events for all known Secrets.
+					// Two different versions of the same Secret will always have different RVs.
+					return
+				}
+
+				newLbl, newLblExist := newNs.Labels[controller.labelName]
+				oldLbl, oldLblExist := oldNs.Labels[controller.labelName]
+
+				if newLblExist == oldLblExist && newLbl == oldLbl {
+					return // we only care if the namespace label has changed
+				}
+
+				ns := new.(*corev1.Namespace)
+				log.Infof("labels in namespace '%s' changed, handling.", ns.Name)
+				controller.enqueueChangedNamespace(new)
 			}
-
-			newLbl := newNs.Labels[controller.labelName]
-			oldLbl := oldNs.Labels[controller.labelName]
-			diffLabels := newLbl != oldLbl
-
-			if !diffLabels {
-				return // we only care if the namespace label has changed
-			}
-
-			ns := new.(*corev1.Namespace)
-			log.Debugf("labels in namespace '%s' changed, handling.", ns.Name)
-			controller.enqueueChangedNamespace(new)
 		},
 		// DeleteFunc: func(obj interface{}) {
 		// 	ns := obj.(*corev1.Namespace)
@@ -243,7 +243,6 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	}
 
 	log.Info("Starting workers")
-	// Launch two workers to process AzureKeyVaultSecret resources
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runSecretWorker, time.Second, stopCh)
 		go wait.Until(c.runNewNamespaceWorker, time.Second, stopCh)
@@ -306,14 +305,16 @@ func (c *Controller) processNextWorkItem(queue workqueue.RateLimitingInterface, 
 
 		var err error
 		log.Debugf("Handling '%s' in queue...", key)
-		successMsg = "Successfully synced CA Bundle '%s'"
 
 		switch typeOfQueue {
 		case workQueueTypeSecret:
+			successMsg = "Successfully synced CA Bundle from updated secret '%s' to all enabled namespaces"
 			err = c.syncHandlerSecret(key)
 		case workQueueTypeNewNamespace:
+			successMsg = "Successfully synced CA Bundle to new namespace '%s'"
 			err = c.syncHandlerNewNamespace(key)
 		case workQueueTypeChangedNamespace:
+			successMsg = "Successfully synced CA Bundle to changed namespace '%s'"
 			err = c.syncHandlerChangedNamespace(key)
 		}
 
@@ -381,7 +382,7 @@ func (c *Controller) syncHandlerSecret(key string) error {
 		return err
 	}
 
-	log.Debugf("looping all labelled namespaces looking for config map '%s'", c.caBundleConfigMapName)
+	log.Infof("looping all labelled namespaces looking for config map '%s' to update", c.caBundleConfigMapName)
 
 	for _, ns := range labelledNamespaces {
 		configMap, err := c.configMapLister.ConfigMaps(ns.Name).Get(c.caBundleConfigMapName)
@@ -392,7 +393,9 @@ func (c *Controller) syncHandlerSecret(key string) error {
 			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 			configMap, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
 			if err != nil {
-				log.Errorf("failed to create configmap '%s' in namespace '%s', error: %+v", newConfigMap.Name, ns.Name, err)
+				msg := fmt.Sprintf("failed to create configmap %s in namespace %s", newConfigMap.Name, ns.Name)
+				c.recorder.Event(newConfigMap, corev1.EventTypeWarning, ErrConfigMap, msg)
+				log.Errorf("%s, error: %+v", msg, err)
 				return err
 			}
 			return nil
@@ -409,16 +412,23 @@ func (c *Controller) syncHandlerSecret(key string) error {
 		// a warning to the event recorder and return error msg.
 		if !metav1.IsControlledBy(configMap, secret) {
 			msg := fmt.Sprintf(MessageResourceExists, configMap.Name)
-			// c.recorder.Event(foo, corev1.EventTypeWarning, ErrResourceExists, msg)
+			c.recorder.Event(secret, corev1.EventTypeWarning, ErrResourceExists, msg)
 			return fmt.Errorf(msg)
 		}
 
 		// If CA cert in ConfigMap resource is not the same as in Secret resource, we
 		// should update the ConfigMap resource.
 		if configMap.Data["caCert"] != secret.StringData["caCert"] {
-			// klog.V(4).Infof("Foo %s replicas: %d, deployment replicas: %d", name, *foo.Spec.Replicas, *deployment.Spec.Replicas)
+			log.Infof("secret %s updated: updating config map: %s", secret.Name, configMap.Name)
 			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 			configMap, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Update(newConfigMap)
+
+			if err != nil {
+				msg := fmt.Sprintf("failed to update configmap %s in namespace %s", newConfigMap.Name, ns.Name)
+				c.recorder.Event(newConfigMap, corev1.EventTypeWarning, ErrConfigMap, msg)
+				log.Errorf("%s, error: %+v", msg, err)
+				return err
+			}
 		}
 
 		// If an error occurs during Update, we'll requeue the item so we can
@@ -427,16 +437,9 @@ func (c *Controller) syncHandlerSecret(key string) error {
 		if err != nil {
 			return err
 		}
-
-		// Finally, we update the status block of the Foo resource to reflect the
-		// current state of the world
-		// err = c.updateSecretStatus(secret, configMap)
-		// if err != nil {
-		// 	return err
-		// }
 	}
 
-	// c.recorder.Event(foo, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	c.recorder.Event(secret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
 
@@ -448,7 +451,7 @@ func (c *Controller) syncHandlerNewNamespace(key string) error {
 	}
 
 	log.Debugf("Looking for configmap '%s' in labelled namespace '%s'", c.caBundleConfigMapName, key)
-	_, err = c.configMapLister.ConfigMaps(key).Get(c.caBundleConfigMapName)
+	cm, err := c.configMapLister.ConfigMaps(key).Get(c.caBundleConfigMapName)
 
 	if err != nil {
 		if errors.IsNotFound(err) { // if configmap does not exist, create it
@@ -462,7 +465,6 @@ func (c *Controller) syncHandlerNewNamespace(key string) error {
 			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 			_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
 			if err != nil {
-				log.Errorf("failed to create configmap '%s' in namespace '%s', error: %+v", newConfigMap.Name, ns.Name, err)
 				return err
 			}
 			return nil
@@ -471,7 +473,21 @@ func (c *Controller) syncHandlerNewNamespace(key string) error {
 		return err
 	}
 
-	log.Debugf("configmap '%s' found in new labelled namespace '%s' - strange... ignoring", c.caBundleConfigMapName, key)
+	if cm != nil {
+		log.Debugf("configmap '%s' exists in namespace '%s' with old ca bundle - updating", c.caBundleConfigMapName, key)
+		secret, err := c.kubeclientset.CoreV1().Secrets(c.caBundleSecretNamespaceName).Get(c.caBundleSecretName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
+		_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Update(newConfigMap)
+		if err != nil {
+			return err
+		}
+	}
+
+	c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
 
@@ -482,8 +498,8 @@ func (c *Controller) syncHandlerChangedNamespace(key string) error {
 		return err
 	}
 
-	log.Debugf("Looking for configmap '%s' in labelled namespace '%s'", c.caBundleConfigMapName, key)
-	cm, err := c.configMapLister.ConfigMaps(key).Get(c.caBundleConfigMapName)
+	log.Debugf("Looking for configmap '%s' in labelled namespace '%s'", c.caBundleConfigMapName, ns.Name)
+	cm, err := c.configMapLister.ConfigMaps(ns.Name).Get(c.caBundleConfigMapName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Debugf("configmap '%s' not found in updated namespace '%s' - creating", c.caBundleConfigMapName, key)
@@ -495,7 +511,6 @@ func (c *Controller) syncHandlerChangedNamespace(key string) error {
 			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 			_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
 			if err != nil {
-				log.Errorf("failed to create configmap '%s' in namespace '%s', error: %+v", newConfigMap.Name, ns.Name, err)
 				return err
 			}
 			return nil
@@ -525,7 +540,7 @@ func (c *Controller) isNamespacesLabelled(ns *corev1.Namespace) bool {
 }
 
 func newConfigMap(name string, ns string, secret *corev1.Secret) *corev1.ConfigMap {
-	dataByte := secret.Data["caCert"]
+	dataByte := secret.Data["ca.crt"]
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

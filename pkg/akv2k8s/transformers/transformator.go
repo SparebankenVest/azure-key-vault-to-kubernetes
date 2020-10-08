@@ -19,7 +19,7 @@ package transformers
 import (
 	"fmt"
 
-	akvs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
+	akvs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
 )
 
 // CreateTransformator creates a new Transformator ready to run transformation handlers

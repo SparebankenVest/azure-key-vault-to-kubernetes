@@ -42,7 +42,7 @@ SOFTWARE
 
 // Source: https://github.com/Azure/acr-docker-credential-helper/blob/a79b541f3ee761f6cc4511863ed41fb038c19464/src/docker-credential-acr/acr_login.go
 
-package azure
+package credentialprovider
 
 import (
 	"bytes"

@@ -14,6 +14,7 @@ import (
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 )
 
 var (
@@ -55,7 +56,7 @@ func (f *fixture) newController() (*Controller, []kubeinformers.SharedInformerFa
 	k8sInformerConfigMaps := kubeinformers.NewSharedInformerFactory(f.kubeclient, noResyncPeriodFunc())
 
 	// NewController(secretCABundleInformer coreinformers.SecretInformer, namespaceInformer coreinformers.NamespaceInformer, configMapInformer coreinformers.ConfigMapInformer)
-	c := NewController(f.kubeclient, k8sInformerSecrets.Core().V1().Secrets(), k8sInformerNamespaces.Core().V1().Namespaces(), k8sInformerConfigMaps.Core().V1().ConfigMaps(), "azure-key-vault-env-injection", "akv2k8s", "azure-key-vault-env-injector", "akv2k8s-ca")
+	c := NewController(f.kubeclient, record.NewFakeRecorder(100), k8sInformerSecrets.Core().V1().Secrets(), k8sInformerNamespaces.Core().V1().Namespaces(), k8sInformerConfigMaps.Core().V1().ConfigMaps(), "azure-key-vault-env-injection", "akv2k8s", "azure-key-vault-env-injector", "akv2k8s-ca")
 
 	// c.foosSynced = alwaysReady
 	// c.deploymentsSynced = alwaysReady
@@ -248,6 +249,10 @@ func filterInformerActions(actions []core.Action) []core.Action {
 	return ret
 }
 
+func (f *fixture) expectCreateNamespaceAction(namespace *corev1.Namespace) {
+	f.kubeactions = append(f.kubeactions, core.NewCreateAction(schema.GroupVersionResource{Resource: "namespaces"}, namespace.Name, namespace))
+}
+
 func (f *fixture) expectCreateConfigMapAction(cm *corev1.ConfigMap) {
 	f.kubeactions = append(f.kubeactions, core.NewCreateAction(schema.GroupVersionResource{Resource: "configmaps"}, cm.Namespace, cm))
 }
@@ -263,11 +268,13 @@ func TestCreatesConfigMap(t *testing.T) {
 		"caCert": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM5akNDQWQ2Z0F3SUJBZ0lRSmFUeUxENnVPM0lYOERKZlZhZ1NtekFOQmdrcWhraUc5dzBCQVFzRkFEQVYKTVJNd0VRWURWUVFERXdwemRtTXRZMkYwTFdOaE1CNFhEVEl3TURNeE9URTBOREV5T1ZvWERUTXdNRE14TnpFMApOREV5T1Zvd0ZURVRNQkVHQTFVRUF4TUtjM1pqTFdOaGRDMWpZVENDQVNJd0RRWUpLb1pJaHZjTkFRRUJCUUFECmdnRVBBRENDQVFvQ2dnRUJBTVFFdFRZUG5FSnFoMXc4NFI5MWV0Nng1MFB3NEVZNFpjOUhHRW5KRW1UdEVSOVUKTG44MGg3MUwwdnJUOXpUcTVhZFlsOWRhaDB5T2JJUU1aMU5VYmdPanQvczJnUHNRaFU5QVZPbmNqWG1OK0x2eQo5Q0I4NEFiY1A0U0NLV1pSQWd1NVhQdGlsUlNYbG9NTGxLUU52TWZ2QkpDWlhvcS9pVWZXcmxQOWp1dHQ2V0luCjdKUWxXUmRhdENYby9sWDZ0cFgydy8vMU1XZTN1R1lKcWNyUFlVN2c5N1NjdWJEZCtBanE4RSs2S0FqU3AzVnQKUTU5enpKenRFczNJaVBUU0szbXlrSVNXUWdlSEVUZ3F0cFJiaVdHOW0xdDBDc3FVRVBmMjhIayt4VHVVOWFBeQpZclVhbFkrSmxxc2hybUVLdUsxL2NMMU8zZU95aHRXT2R2SndYNThDQXdFQUFhTkNNRUF3RGdZRFZSMFBBUUgvCkJBUURBZ0trTUIwR0ExVWRKUVFXTUJRR0NDc0dBUVVGQndNQkJnZ3JCZ0VGQlFjREFqQVBCZ05WSFJNQkFmOEUKQlRBREFRSC9NQTBHQ1NxR1NJYjNEUUVCQ3dVQUE0SUJBUUF0eHp1alVIa3c1VmJyczFNcWl6Vkd2dk9sdVZSQgpzb1NPb3BuakZVdHkyYjV6OUltcHdDeEMwWmppNFVVdVdrMTJHZGxldlE0dTdvbmV5VytZR25qeDNRY1FGQ2plCmpTeU1uM2xsWnpFcVFyLzNpWDVBRUp4NFZDZ3lmNmtiVmdmbnp2aXVrWm83NjUwTCt0V0xiK2JNWllDZ0h1a3YKVi9SNlBxSGdzZDZiSlV4U1lMWElFamtCK0x5cXlSM2RvZDRDNUhpK2dRd0dsK0EyWVd4R0p0SDZVOExYVldYLwpKSDIvUXVIU09uUm9QeVV4MVduUDV6M1NHYWZyR1ZrbVJwTW56UWk3YjFFeTJMQVlENGhCRlJXZSt0bWR3NjRRCmJMbUYwRU85cVVKQjg2bE1LN2pvVUk2TFc5ajF6SWVUREZRN0ZZOUY2VEJiNmZoNVFNak1YdVhYCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
 	}
 
+	akvNamespace := createNewNamespace("akv2k8s", false)
+	namespace := createNewNamespace("akv2k8s-test", true)
 	fakeSecret := createNewSecret("azure-key-vault-env-injector", "akv2k8s", secretValue)
 
-	namespace := createNewNamespace("akv2k8s-test", true)
-	f.secretLister = append(f.secretLister, fakeSecret)
+	f.namespaceLister = append(f.namespaceLister, akvNamespace)
 	f.namespaceLister = append(f.namespaceLister, namespace)
+	f.secretLister = append(f.secretLister, fakeSecret)
 
 	cm := newConfigMap("akv2k8s-ca", namespace.Name, fakeSecret)
 	f.expectCreateConfigMapAction(cm)
@@ -292,12 +299,13 @@ func TestCreatesConfigMapInNewNamespace(t *testing.T) {
 	f.configMapLister = append(f.configMapLister, existingConfigMap)
 
 	newNamespace := createNewNamespace("akv2k8s-test2", true)
-	f.namespaceLister = append(f.namespaceLister, newNamespace)
+	f.kubeobjects = append(f.kubeobjects, newNamespace)
 
 	cm := newConfigMap("akv2k8s-ca", newNamespace.Name, fakeSecret)
+	// f.expectCreateNamespaceAction(newNamespace)
 	f.expectCreateConfigMapAction(cm)
 
-	f.run(getKey(fakeSecret, t), "")
+	f.run(getKey(fakeSecret, t), getKey(namespace, t))
 }
 
 func TestRemovesConfigMapInNamespaceWithoutLabel(t *testing.T) {
@@ -320,5 +328,5 @@ func TestRemovesConfigMapInNamespaceWithoutLabel(t *testing.T) {
 
 	f.expectRemoveConfigMapAction(existingConfigMap)
 
-	f.run("", getKey(namespace, t))
+	f.run(getKey(fakeSecret, t), getKey(namespace, t))
 }

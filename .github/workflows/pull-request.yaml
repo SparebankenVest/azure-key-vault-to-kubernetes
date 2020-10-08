@@ -10,6 +10,8 @@ on:
     - 'cmd/**'
     - 'pkg/**'
     - '!docs/**'
+    - '!crds/**'
+
 jobs:
   build-deploy:
     runs-on: ubuntu-18.04
