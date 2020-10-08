@@ -25,9 +25,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
-	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -59,11 +60,18 @@ type stop struct {
 	error
 }
 
-func formatLogger() {
-	log.SetFormatter(&log.TextFormatter{
-		DisableColors: true,
-		FullTimestamp: true,
-	})
+func formatLogger(logFormat string) {
+	switch logFormat {
+	case "fmt":
+		log.SetFormatter(&log.TextFormatter{
+			DisableColors: true,
+			FullTimestamp: true,
+		})
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.Warnf("Log format %s not supported - using default fmt", logFormat)
+	}
 
 	logger = log.WithFields(log.Fields{
 		"component":   "akv2k8s",
@@ -117,6 +125,8 @@ func initConfig() {
 	viper.SetDefault("env_injector_custom_auth", false)
 	viper.SetDefault("env_injector_use_auth_service", true)
 	viper.SetDefault("env_injector_skip_args_validation", false)
+	viper.SetDefault("env_injector_log_level", "Info")
+	viper.SetDefault("env_injector_log_format", "fmt")
 	viper.AutomaticEnv()
 }
 
@@ -144,13 +154,17 @@ func validateConfig(requiredEnvVars map[string]string) error {
 func main() {
 	initConfig()
 
+	akv2k8s.Version = viper.GetString("version")
+
 	var origCommand string
 	var origArgs []string
 	var err error
 
 	logLevel := viper.GetString("env_injector_log_level")
 	setLogLevel(logLevel)
-	formatLogger()
+	logFormat := viper.GetString("env_injector_log_format")
+	formatLogger(logFormat)
+	akv2k8s.LogVersion()
 
 	logger.Debugf("azure key vault env injector initializing")
 
@@ -208,7 +222,19 @@ func main() {
 
 	creds, err := getCredentials(config.useAuthService, config.authServiceAddress, config.caCert)
 	if err != nil {
-		log.Fatalf("failed to get credentials, error: %+v", err)
+		log.Warnf("failed to get credentials, will retry %d times", config.retryTimes)
+		err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
+			creds, err = getCredentials(config.useAuthService, config.authServiceAddress, config.caCert)
+			if err != nil {
+				logger.Warnf("failed to get credentials, error: %+v", err)
+				return err
+			}
+			logger.Info("succeded getting credentials")
+			return nil
+		})
+		if err != nil {
+			logger.Fatalf("failed to get credentials %d times, error: %+v", config.retryTimes, err)
+		}
 	}
 
 	vaultService := vault.NewService(creds)
@@ -252,13 +278,13 @@ func main() {
 			}
 
 			logger.Debugf("getting azurekeyvaultsecret resource '%s' from kubernetes", secretName)
-			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
+			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV2alpha1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
-				logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %s", secretName, err.Error())
+				logger.Warnf("failed to get azurekeyvaultsecret resource '%s', error: %s", secretName, err.Error())
 				logger.Infof("will retry getting azurekeyvaultsecret resource up to %d times, waiting %d seconds between retries", config.retryTimes, config.waitTimeBetweenRetries)
 
 				err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
-					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
+					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV2alpha1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
 					if err != nil {
 						logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %+v", secretName, err)
 						return err

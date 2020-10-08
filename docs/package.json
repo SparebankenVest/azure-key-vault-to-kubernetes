@@ -1,17 +1,18 @@
 {
   "scripts": {
     "prestart": "gatsby clean",
-    "start": "gatsby develop",
+    "start": "GATSBY_ALGOLIA_ENABLED=false gatsby develop",
     "build": "gatsby build",
     "serve": "gatsby serve"
   },
   "dependencies": {
-    "algoliasearch": "^4.3.1",
+    "algoliasearch": "^4.4.0",
     "gatsby": "2.24.50",
     "gatsby-plugin-gtag": "^1.0.13",
-    "gatsby-source-graphql": "^2.7.1",
+    "gatsby-source-graphql": "^2.7.2",
     "gatsby-theme-apollo-docs": "4.3.7",
-    "instantsearch.css": "^7.4.3",
+    "instantsearch.css": "^7.4.4",
+    "gatsby-source-git": "1.1.0",
     "react": "16.13.1",
     "react-dom": "16.13.1",
     "react-instantsearch-dom": "^6.7.0"

@@ -36,7 +36,8 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-controller/controller"
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	informers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions"
@@ -48,6 +49,7 @@ var (
 	kubeconfig  string
 	cloudconfig string
 	logLevel    string
+	version     string
 
 	azureVaultFastRate        time.Duration
 	azureVaultSlowRate        time.Duration
@@ -59,11 +61,13 @@ const controllerAgentName = "azurekeyvaultcontroller"
 
 func main() {
 	flag.Parse()
+	akv2k8s.Version = version
 
-	log.SetFormatter(&log.TextFormatter{
-		DisableColors: true,
-		FullTimestamp: true,
-	})
+	logFormat := "fmt"
+	logFormat, _ = os.LookupEnv("LOG_FORMAT")
+
+	setLogFormat(logFormat)
+	akv2k8s.LogVersion()
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -87,7 +91,7 @@ func main() {
 
 	customAuth, err = getEnvBool("CUSTOM_AUTH", false)
 	if err != nil {
-		log.Fatalf("Error parsing env var AZURE_VAULT_MAX_FAILURE_ATTEMPTS: %s", err.Error())
+		log.Fatalf("Error parsing env var CUSTOM_AUTH: %s", err.Error())
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
@@ -107,6 +111,7 @@ func main() {
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	azureKeyVaultSecretInformerFactory := informers.NewSharedInformerFactory(azureKeyVaultSecretClient, time.Second*30)
+
 	azurePollFrequency := controller.AzurePollFrequency{
 		Normal:                       azureVaultFastRate,
 		Slow:                         azureVaultSlowRate,
@@ -118,10 +123,15 @@ func main() {
 	eventBroadcaster.StartLogging(log.Tracef)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
-	var vaultAuth azure.Credentials
+	var vaultAuth *credentialprovider.AzureKeyVaultCredentials
 	if customAuth {
-		if vaultAuth, err = azure.NewFromEnvironment(); err != nil {
-			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
+		provider, err := credentialprovider.NewFromEnvironment()
+		if err != nil {
+			log.Fatalf("failed to create azure credentials provider, error: %+v", err.Error())
+		}
+
+		if vaultAuth, err = provider.GetAzureKeyVaultCredentials(); err != nil {
+			log.Fatalf("failed to get azure key vault credentials, error: %+v", err.Error())
 		}
 	} else {
 		f, err := os.Open(cloudconfig)
@@ -130,40 +140,58 @@ func main() {
 		}
 		defer f.Close()
 
-		cloudCnfProvider, err := azure.NewFromCloudConfig(f)
+		cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
 		if err != nil {
 			log.Fatalf("Failed reading azure config from %s, error: %+v", cloudconfig, err)
 		}
 
-		if vaultAuth, err = cloudCnfProvider.GetCredentials(); err != nil {
+		if vaultAuth, err = cloudCnfProvider.GetAzureKeyVaultCredentials(); err != nil {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
 		}
 	}
 
 	vaultService := vault.NewService(vaultAuth)
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
-	handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
+	// handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
 
-	controller := controller.NewController(handler,
-		kubeInformerFactory.Core().V1().Secrets(),
-		azureKeyVaultSecretInformerFactory.Azurekeyvault().V1().AzureKeyVaultSecrets(),
-		azurePollFrequency)
-
-	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
-	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
-	kubeInformerFactory.Start(stopCh)
-	azureKeyVaultSecretInformerFactory.Start(stopCh)
-
-	if err = controller.Run(2, stopCh); err != nil {
-		log.Fatalf("Error running controller: %s", err.Error())
+	options := &controller.Options{
+		MaxNumRequeues: 5,
+		NumThreads:     1,
 	}
+
+	controller := controller.NewController(
+		kubeClient,
+		azureKeyVaultSecretClient,
+		azureKeyVaultSecretInformerFactory,
+		kubeInformerFactory,
+		recorder,
+		vaultService,
+		azurePollFrequency,
+		options)
+
+	controller.Run(stopCh)
 }
 
 func init() {
+	flag.StringVar(&version, "version", "", "Version of this component.")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&logLevel, "log-level", "", "log level")
 	flag.StringVar(&cloudconfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
+}
+
+func setLogFormat(logFormat string) {
+	switch logFormat {
+	case "fmt":
+		log.SetFormatter(&log.TextFormatter{
+			DisableColors: true,
+			FullTimestamp: true,
+		})
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.Warnf("Log format %s not supported - using default fmt", logFormat)
+	}
 }
 
 func setLogLevel() {

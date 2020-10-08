@@ -2,5 +2,8 @@ bin
 debug.test
 .vscode
 /vendor/
+/tmp/
+/.tools/
 *.tmp
 test.yaml
+coverage.txt

@@ -30,25 +30,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 )
 
 func createHTTPClientWithTrustedCA(caCert []byte) (*http.Client, error) {
-	// caURL := fmt.Sprintf("http://%s/ca", host)
-	// client := &http.Client{
-	// 	Timeout: time.Second * 10,
-	// }
-
-	// res, err := client.Get(caURL)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// defer res.Body.Close()
-	// caCert, err := ioutil.ReadAll(res.Body)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
@@ -66,7 +51,7 @@ func createHTTPClientWithTrustedCA(caCert []byte) (*http.Client, error) {
 	return tlsClient, nil
 }
 
-func getCredentials(useAuthService bool, authServiceAddress, caCert string) (azure.Credentials, error) {
+func getCredentials(useAuthService bool, authServiceAddress, caCert string) (*credentialprovider.AzureKeyVaultCredentials, error) {
 	if useAuthService {
 		client, err := createHTTPClientWithTrustedCA([]byte(caCert))
 		if err != nil {
@@ -86,17 +71,23 @@ func getCredentials(useAuthService bool, authServiceAddress, caCert string) (azu
 			return nil, fmt.Errorf("failed to get credentials, %s", res.Status)
 		}
 
-		var creds azure.OAuthCredentials
+		var creds *credentialprovider.AzureKeyVaultCredentials
 		err = json.NewDecoder(res.Body).Decode(&creds)
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode body, error %+v", err)
 		}
 
+		logger.Info("successfully received oauth token")
 		return creds, nil
 	}
 
-	creds, err := azure.NewFromEnvironment()
+	provider, err := credentialprovider.NewFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create credentials provider for azure key vault, error %+v", err)
+	}
+
+	creds, err := provider.GetAzureKeyVaultCredentials()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get credentials for azure key vault, error %+v", err)
 	}

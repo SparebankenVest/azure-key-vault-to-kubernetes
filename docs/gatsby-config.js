@@ -14,20 +14,17 @@ module.exports = {
         anonymize: false,
       },
     },
-    {
-      resolve: `gatsby-source-git`,
-      options: {
-        name: `default`,
-        remote: `https://github.com/SparebankenVest/public-helm-charts.git`,
-        // Optionally supply a branch. If none supplied, you'll get the default branch.
-        // branch: `develop`,
-        // Tailor which files get imported eg. import the docs folder from a codebase.
-        patterns: [
-          'stable/azure-key-vault-controller/README.md', 
-          'stable/azure-key-vault-env-injector/README.md', 
-          ]
-      }
-    },
+    // {
+    //   resolve: `gatsby-source-git`,
+    //   options: {
+    //     name: `default`,
+    //     remote: `https://github.com/SparebankenVest/public-helm-charts.git`,
+    //     patterns: [
+    //       'stable/azure-key-vault-controller/README.md', 
+    //       'stable/azure-key-vault-env-injector/README.md', 
+    //       ]
+    //   }
+    // },
     // {
     //   resolve: "gatsby-source-graphql",
     //   options: {
@@ -51,7 +48,7 @@ module.exports = {
         baseUrl: 'https://akv2k8s.io',
         baseDir: 'docs',
         logoLink: 'https://akv2k8s.io/',
-        contentDir: 'source/content/',
+        contentDir: 'source/content',
         siteName: '',
         pageTitle: 'akv2k8s docs',
         subtitle: '',
@@ -63,6 +60,10 @@ module.exports = {
         spectrumPath: '',
         spectrumHandle: '',
         twitterHandle: '',
+        defaultVersion: '1.1',
+        versions: {
+          '1.0': 'doc-version-1.0.2',
+        },
         sidebarCategories: {
           null: ['index', 'why-akv2k8s', 'quick-start', 'how-it-works'],
           'Installation': [
@@ -70,7 +71,6 @@ module.exports = {
             'installation/requirements',
             'installation/installing-with-helm',
             'installation/installing-without-helm',
-            'installation/updating-with-helm',
           ],
           Tutorials: [
             'tutorials/index',
@@ -82,7 +82,6 @@ module.exports = {
             'tutorials/env-injection/1-secret',
             'tutorials/env-injection/2-certificate',
             'tutorials/env-injection/3-signing-key',
-            // 'tutorials/env-injection/4-multi-value-secret',
             'tutorials/env-injection/5-pfx-certificate',
           ],
           Security: [
@@ -90,9 +89,6 @@ module.exports = {
             'security/authentication',
             'security/authorization',
             'security/enable-env-injection',
-          ],
-          'Availability': [
-            'getting-started/scaling',
           ],
           Troubleshooting: [
             'troubleshooting/controller-log',
@@ -102,8 +98,6 @@ module.exports = {
           Reference: [
             'reference/index',
             'reference/azure-key-vault-secret',
-            'stable/azure-key-vault-controller/README',
-            'stable/azure-key-vault-env-injector/README',
           ],
         },
         navConfig: {},

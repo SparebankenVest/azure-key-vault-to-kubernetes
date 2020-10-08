@@ -7,12 +7,14 @@ on:
     paths:
     - '.github/workflows/ca-bundle-controller-build.yaml'
     - '.github/actions/**'
+    - 'Dockerfile'
     - 'Makefile'
     - 'go.mod'
     - 'go.sum'
     - 'cmd/ca-bundle-controller/**'
     - 'pkg/**'
     - '!docs/**'
+    - '!crds/**'
 
 jobs:
   build-deploy:
@@ -34,9 +36,9 @@ jobs:
         AKV2K8S_AZURE_SUBSCRIPTION: ${{ secrets.INT_TEST_SUBSCRIPTION }}
 
       with:
-        build-make-action: build-ca-bundle-controller
+        build-make-action: image-ca-bundle-controller
 
-    - name: Push}}
+    - name: Push
       uses: ./.github/actions/push
       with:
         push-make-action: push-ca-bundle-controller

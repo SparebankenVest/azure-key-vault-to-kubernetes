@@ -22,8 +22,11 @@ limitations under the License.
 package versioned
 
 import (
+	"fmt"
+
 	azurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
 	azurekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
+	azurekeyvaultv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -33,6 +36,7 @@ type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	AzurekeyvaultV1alpha1() azurekeyvaultv1alpha1.AzurekeyvaultV1alpha1Interface
 	AzurekeyvaultV1() azurekeyvaultv1.AzurekeyvaultV1Interface
+	AzurekeyvaultV2alpha1() azurekeyvaultv2alpha1.AzurekeyvaultV2alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -41,6 +45,7 @@ type Clientset struct {
 	*discovery.DiscoveryClient
 	azurekeyvaultV1alpha1 *azurekeyvaultv1alpha1.AzurekeyvaultV1alpha1Client
 	azurekeyvaultV1       *azurekeyvaultv1.AzurekeyvaultV1Client
+	azurekeyvaultV2alpha1 *azurekeyvaultv2alpha1.AzurekeyvaultV2alpha1Client
 }
 
 // AzurekeyvaultV1alpha1 retrieves the AzurekeyvaultV1alpha1Client
@@ -53,6 +58,11 @@ func (c *Clientset) AzurekeyvaultV1() azurekeyvaultv1.AzurekeyvaultV1Interface {
 	return c.azurekeyvaultV1
 }
 
+// AzurekeyvaultV2alpha1 retrieves the AzurekeyvaultV2alpha1Client
+func (c *Clientset) AzurekeyvaultV2alpha1() azurekeyvaultv2alpha1.AzurekeyvaultV2alpha1Interface {
+	return c.azurekeyvaultV2alpha1
+}
+
 // Discovery retrieves the DiscoveryClient
 func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	if c == nil {
@@ -62,9 +72,14 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 }
 
 // NewForConfig creates a new Clientset for the given config.
+// If config's RateLimiter is not set and QPS and Burst are acceptable,
+// NewForConfig will generate a rate-limiter in configShallowCopy.
 func NewForConfig(c *rest.Config) (*Clientset, error) {
 	configShallowCopy := *c
 	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
+		if configShallowCopy.Burst <= 0 {
+			return nil, fmt.Errorf("Burst is required to be greater than 0 when RateLimiter is not set and QPS is set to greater than 0")
+		}
 		configShallowCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configShallowCopy.QPS, configShallowCopy.Burst)
 	}
 	var cs Clientset
@@ -74,6 +89,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 		return nil, err
 	}
 	cs.azurekeyvaultV1, err = azurekeyvaultv1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
+	cs.azurekeyvaultV2alpha1, err = azurekeyvaultv2alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +110,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
 	cs.azurekeyvaultV1alpha1 = azurekeyvaultv1alpha1.NewForConfigOrDie(c)
 	cs.azurekeyvaultV1 = azurekeyvaultv1.NewForConfigOrDie(c)
+	cs.azurekeyvaultV2alpha1 = azurekeyvaultv2alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -101,6 +121,7 @@ func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.azurekeyvaultV1alpha1 = azurekeyvaultv1alpha1.New(c)
 	cs.azurekeyvaultV1 = azurekeyvaultv1.New(c)
+	cs.azurekeyvaultV2alpha1 = azurekeyvaultv2alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs
