@@ -39,8 +39,8 @@ import (
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
-	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/azure/clientset/versioned"
-	informers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/azure/informers/externalversions"
+	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
+	informers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/signals"
 )
 

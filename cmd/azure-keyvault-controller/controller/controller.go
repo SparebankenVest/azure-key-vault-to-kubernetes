@@ -36,10 +36,10 @@ import (
 	"kmodules.xyz/client-go/tools/queue"
 
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
-	akvcs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/azure/clientset/versioned"
-	keyvaultScheme "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/azure/clientset/versioned/scheme"
-	akvInformers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/azure/informers/externalversions"
-	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/azure/listers/keyvault/v2alpha1"
+	akvcs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
+	keyvaultScheme "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/scheme"
+	akvInformers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions"
+	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/listers/keyvault/v2alpha1"
 )
 
 const (
