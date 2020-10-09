@@ -80,7 +80,7 @@ helm upgrade -i azure-key-vault-controller spv-charts/azure-key-vault-controller
 helm upgrade -i azure-key-vault-env-injector spv-charts/azure-key-vault-env-injector \
   --namespace akv2k8s \
   --set keyVault.customAuth.enabled=true \
-  --set env.AZURE_TENANT_ID=<tenant-id> \
-  --set env.AZURE_CLIENT_ID=<client-id> \
-  --set env.AZURE_CLIENT_SECRET=<client-secret>
+  --set webhook.env.AZURE_TENANT_ID=<tenant-id> \
+  --set webhook.env.AZURE_CLIENT_ID=<client-id> \
+  --set webhook.env.AZURE_CLIENT_SECRET=<client-secret>
 ```
