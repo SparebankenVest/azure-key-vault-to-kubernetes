@@ -39,13 +39,55 @@ The Env-Injector execute locally inside Pods and needs AKV credentials to downlo
 
 Fore more details, see the [Env Injector Helm Chart](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector/README.md) and which custom AKV authentication options are available below.
 
-## Using custom authentication with AAD Pod Identity
+### Using aad-pod-identity and MSI (System Assigned Managed Identity or User Assigned Managed Identity)
 
-Requires Pod Identity: https://github.com/Azure/aad-pod-identity
+If `aad-pod-identity` is installed in a cluster with MSI and akv2k8s, akv2k8s will not work out of the box, as documented by `aad-pod-identity`:
 
-When deploying Pods, set the `aadpodidbinding` according to the 
-[AAD Pod Identity project docs](https://github.com/Azure/aad-pod-identity/blob/master/README.md) and
-the env-injector will use these credentials when communicating with Azure Key Vault.
+>The authorization request to fetch a Service Principal Token from an MSI endpoint is sent to Azure Instance Metadata Service (IMDS) endpoint (169.254.169.254), which is redirected to the NMI pod. 
+
+This will prevent akv2k8s to do MSI authentication requests directly with the MSI endpoint, because requests gets delayed by 10-60 seconds:
+
+>Identity assignment on VM takes 10-20s and 40-60s in case of VMSS.
+
+Fortunately aad-pod-identity as the concept of application exceptions which will allow akv2k8s to handle MSI authentication requests directly:
+
+```
+apiVersion: "aadpodidentity.k8s.io/v1"
+kind: AzurePodIdentityException
+metadata:
+  name: akv2k8s-exception
+  namespace: akv2k8s # change if akv2k8s is installed in a different ns
+spec:
+  podLabels:
+    foo: bar
+    app: custom
+```
+
+See https://github.com/Azure/aad-pod-identity/blob/master/docs/readmes/README.app-exception.md for more details.
+
+### Using custom authentication with AAD Pod Identity (aad-pod-identity)
+
+First decide on either option 1 or 2 from the [authentication decision tree](#akv-authentication-with-the-env-injector) above.
+
+#### Option 1 - pass aad-pod-identity to the env-injector
+
+When installing the env-injector using the official [`akv2k8s`](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/akv2k8s) Helm chart, set the following values:
+
+```
+--set env_injector.keyVault.customAuth.enabled=true
+--set env_injector.webhook.podLabels.aadpodidbinding=[your aad identity]
+```
+
+...or using the deprecated [azure-key-vault-env-injector](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/azure-key-vault-env-injector)
+
+```
+--set keyVault.customAuth.enabled=true
+--set webhook.podLabels.aadpodidbinding=[your aad identity]
+```
+
+#### Option 2 - pass aad-pod-identity to every application pod
+
+TBD
 
 ## Custom AKV Authentication Options
 
