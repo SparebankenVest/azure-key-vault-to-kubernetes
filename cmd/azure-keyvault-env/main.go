@@ -28,8 +28,8 @@ import (
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
-	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
-	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azure/keyvault/v2alpha1"
+	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/azure/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -278,13 +278,13 @@ func main() {
 			}
 
 			logger.Debugf("getting azurekeyvaultsecret resource '%s' from kubernetes", secretName)
-			keyVaultSecretSpec, err := azureKeyVaultSecretClient.AzurekeyvaultV2alpha1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
+			keyVaultSecretSpec, err := azureKeyVaultSecretClient.KeyvaultV2alpha1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
 			if err != nil {
 				logger.Warnf("failed to get azurekeyvaultsecret resource '%s', error: %s", secretName, err.Error())
 				logger.Infof("will retry getting azurekeyvaultsecret resource up to %d times, waiting %d seconds between retries", config.retryTimes, config.waitTimeBetweenRetries)
 
 				err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
-					keyVaultSecretSpec, err = azureKeyVaultSecretClient.AzurekeyvaultV2alpha1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
+					keyVaultSecretSpec, err = azureKeyVaultSecretClient.KeyvaultV2alpha1().AzureKeyVaultSecrets(config.namespace).Get(secretName, v1.GetOptions{})
 					if err != nil {
 						logger.Errorf("error getting azurekeyvaultsecret resource '%s', error: %+v", secretName, err)
 						return err

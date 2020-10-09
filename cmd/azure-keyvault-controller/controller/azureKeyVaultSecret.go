@@ -23,8 +23,8 @@ import (
 	"fmt"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
-	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azure/keyvault/v2alpha1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azure/keyvault/v2alpha1"
 	log "github.com/sirupsen/logrus"
 
 	corev1 "k8s.io/api/core/v1"
@@ -37,7 +37,7 @@ import (
 )
 
 func (c *Controller) initAzureKeyVaultSecret() {
-	c.akvsInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	c.akvsInformerFactory.Keyvault().V2alpha1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			secret, err := convertToAzureKeyVaultSecret(obj)
 			if err != nil {
@@ -261,7 +261,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatus(azureKeyVaultSecret *akv.Az
 	// we must use Update instead of UpdateStatus to update the Status block of the AzureKeyVaultSecret resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.akvsClient.AzurekeyvaultV2alpha1().AzureKeyVaultSecrets(azureKeyVaultSecret.Namespace).UpdateStatus(azureKeyVaultSecretCopy)
+	_, err := c.akvsClient.KeyvaultV2alpha1().AzureKeyVaultSecrets(azureKeyVaultSecret.Namespace).UpdateStatus(azureKeyVaultSecretCopy)
 	return err
 }
 

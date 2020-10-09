@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"sort"
 
-	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azure/keyvault/v2alpha1"
 	log "github.com/sirupsen/logrus"
 	"kmodules.xyz/client-go/tools/queue"
 
