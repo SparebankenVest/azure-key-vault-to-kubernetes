@@ -43,39 +43,6 @@ type AzureKeyVaultSecretList struct {
 	Items []AzureKeyVaultSecret `json:"items"`
 }
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// AzureKeyVaultSecretIdentity is an optional MSI identity to use when accessing Azure Key Vault
-type AzureKeyVaultSecretIdentity struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec AzureKeyVaultSecretIdentitySpec `json:"spec"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// AzureKeyVaultSecretIdentityList is a list of AzureKeyVaultSecretIdentity resources
-type AzureKeyVaultSecretIdentityList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []AzureKeyVaultSecretIdentity `json:"items"`
-}
-
-type AzureKeyVaultSecretIdentitySpec struct {
-	Name string                          `json:"name"`
-	Type AzureKeyVaultSecretIdentityType `json:"type"`
-}
-
-type AzureKeyVaultSecretIdentityType string
-
-const (
-	// AzureKeyVaultSecretIdentityTypeAzureIdentity - get Secret object type from Azure Key Vault
-	AzureKeyVaultSecretIdentityTypeAzureIdentity AzureKeyVaultSecretIdentityType = "azureIdentity"
-)
-
 // AzureKeyVaultSecretSpec is the spec for a AzureKeyVaultSecret resource
 type AzureKeyVaultSecretSpec struct {
 	Vault  AzureKeyVault       `json:"vault"`
@@ -85,8 +52,9 @@ type AzureKeyVaultSecretSpec struct {
 // AzureKeyVault contains information needed to get the
 // Azure Key Vault secret from Azure Key Vault
 type AzureKeyVault struct {
-	Name   string              `json:"name"`
-	Object AzureKeyVaultObject `json:"object"`
+	Name          string              `json:"name"`
+	Object        AzureKeyVaultObject `json:"object"`
+	AzureIdentity string              `json:"azureIdentity"`
 }
 
 // AzureKeyVaultObject has information about the Azure Key Vault

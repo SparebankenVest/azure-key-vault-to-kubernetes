@@ -23,6 +23,8 @@ package fake
 
 import (
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
+	azureidentityv1beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azureidentity/v1beta1"
+	fakeazureidentityv1beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azureidentity/v1beta1/fake"
 	azurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
 	fakeazurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1/fake"
 	azurekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
@@ -82,6 +84,11 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 }
 
 var _ clientset.Interface = &Clientset{}
+
+// AzureidentityV1beta1 retrieves the AzureidentityV1beta1Client
+func (c *Clientset) AzureidentityV1beta1() azureidentityv1beta1.AzureidentityV1beta1Interface {
+	return &fakeazureidentityv1beta1.FakeAzureidentityV1beta1{Fake: &c.Fake}
+}
 
 // AzurekeyvaultV1alpha1 retrieves the AzurekeyvaultV1alpha1Client
 func (c *Clientset) AzurekeyvaultV1alpha1() azurekeyvaultv1alpha1.AzurekeyvaultV1alpha1Interface {

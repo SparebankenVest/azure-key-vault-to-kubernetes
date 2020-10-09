@@ -24,6 +24,7 @@ package externalversions
 import (
 	"fmt"
 
+	v1beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azureidentity/v1beta1"
 	v1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	v1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
 	v2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
@@ -57,7 +58,11 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=azurekeyvault.spv.no, Version=v1
+	// Group=azureidentity.spv.no, Version=v1beta1
+	case v1beta1.SchemeGroupVersion.WithResource("azuremanagedidentities"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Azureidentity().V1beta1().AzureManagedIdentities().Informer()}, nil
+
+		// Group=azurekeyvault.spv.no, Version=v1
 	case v1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Azurekeyvault().V1().AzureKeyVaultSecrets().Informer()}, nil
 
@@ -68,8 +73,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		// Group=azurekeyvault.spv.no, Version=v2alpha1
 	case v2alpha1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Informer()}, nil
-	case v2alpha1.SchemeGroupVersion.WithResource("azurekeyvaultsecretidentities"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Azurekeyvault().V2alpha1().AzureKeyVaultSecretIdentities().Informer()}, nil
 
 	}
 

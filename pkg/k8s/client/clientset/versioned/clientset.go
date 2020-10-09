@@ -24,6 +24,7 @@ package versioned
 import (
 	"fmt"
 
+	azureidentityv1beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azureidentity/v1beta1"
 	azurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
 	azurekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
 	azurekeyvaultv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1"
@@ -34,6 +35,7 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
+	AzureidentityV1beta1() azureidentityv1beta1.AzureidentityV1beta1Interface
 	AzurekeyvaultV1alpha1() azurekeyvaultv1alpha1.AzurekeyvaultV1alpha1Interface
 	AzurekeyvaultV1() azurekeyvaultv1.AzurekeyvaultV1Interface
 	AzurekeyvaultV2alpha1() azurekeyvaultv2alpha1.AzurekeyvaultV2alpha1Interface
@@ -43,9 +45,15 @@ type Interface interface {
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
+	azureidentityV1beta1  *azureidentityv1beta1.AzureidentityV1beta1Client
 	azurekeyvaultV1alpha1 *azurekeyvaultv1alpha1.AzurekeyvaultV1alpha1Client
 	azurekeyvaultV1       *azurekeyvaultv1.AzurekeyvaultV1Client
 	azurekeyvaultV2alpha1 *azurekeyvaultv2alpha1.AzurekeyvaultV2alpha1Client
+}
+
+// AzureidentityV1beta1 retrieves the AzureidentityV1beta1Client
+func (c *Clientset) AzureidentityV1beta1() azureidentityv1beta1.AzureidentityV1beta1Interface {
+	return c.azureidentityV1beta1
 }
 
 // AzurekeyvaultV1alpha1 retrieves the AzurekeyvaultV1alpha1Client
@@ -84,6 +92,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
+	cs.azureidentityV1beta1, err = azureidentityv1beta1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 	cs.azurekeyvaultV1alpha1, err = azurekeyvaultv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -108,6 +120,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
+	cs.azureidentityV1beta1 = azureidentityv1beta1.NewForConfigOrDie(c)
 	cs.azurekeyvaultV1alpha1 = azurekeyvaultv1alpha1.NewForConfigOrDie(c)
 	cs.azurekeyvaultV1 = azurekeyvaultv1.NewForConfigOrDie(c)
 	cs.azurekeyvaultV2alpha1 = azurekeyvaultv2alpha1.NewForConfigOrDie(c)
@@ -119,6 +132,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
+	cs.azureidentityV1beta1 = azureidentityv1beta1.New(c)
 	cs.azurekeyvaultV1alpha1 = azurekeyvaultv1alpha1.New(c)
 	cs.azurekeyvaultV1 = azurekeyvaultv1.New(c)
 	cs.azurekeyvaultV2alpha1 = azurekeyvaultv2alpha1.New(c)
