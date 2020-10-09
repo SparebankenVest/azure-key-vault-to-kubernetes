@@ -166,6 +166,7 @@ func main() {
 		kubeInformerFactory,
 		recorder,
 		vaultService,
+		"azure-key-vault-env-injection",
 		azurePollFrequency,
 		options)
 

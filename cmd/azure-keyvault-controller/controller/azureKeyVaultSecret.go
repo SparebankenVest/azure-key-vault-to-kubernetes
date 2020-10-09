@@ -134,8 +134,8 @@ func (c *Controller) syncAzureKeyVaultSecret(key string) error {
 		return fmt.Errorf(msg)
 	}
 
-	log.Infof("Successfully synced AzureKeyVaultSecret %s with Kubernetes Secret %s", key, fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
-	c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	log.Debugf("Successfully synced AzureKeyVaultSecret %s with Kubernetes Secret %s", key, fmt.Sprintf("%s/%s", secret.Namespace, secret.Name))
+	c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 	return nil
 }
 
@@ -176,8 +176,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			return err
 		}
 
-		log.Warningf("Secret value will now change for Secret '%s'. Any resources (like Pods) using this Secrets must be restarted to pick up the new value. Details: https://github.com/kubernetes/kubernetes/issues/22368", secret.Name)
-		c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSyncedWithAzure)
+		log.Warningf("Secret value will now change for Secret '%s'. Any resources (like Pods) using this Secret must be restarted to pick up the new value. Details: https://github.com/kubernetes/kubernetes/issues/22368", secret.Name)
 	}
 
 	log.Debugf("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
@@ -185,7 +184,8 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 		return err
 	}
 
-	log.Infof("Successfully synced AzureKeyVaultSecret %s with Azure Key Vault", key)
+	log.Debugf("Successfully synced AzureKeyVaultSecret %s with Azure Key Vault", key)
+	c.recorder.Event(azureKeyVaultSecret, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSyncedWithAzureKeyVault)
 	return nil
 }
 

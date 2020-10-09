@@ -39,7 +39,7 @@ import (
 )
 
 func (c *Controller) initSecret() {
-	c.secretInformerFactory.Core().V1().Secrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	c.kubeInformerFactory.Core().V1().Secrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			secret, err := convertToSecret(obj)
 			if err != nil {

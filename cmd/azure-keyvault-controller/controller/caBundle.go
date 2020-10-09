@@ -62,14 +62,14 @@ func (c *Controller) syncCABundleSecret(key string) error {
 
 	labelledNamespaces, err := c.getAllAkvsLabelledNamespaces()
 
-	log.Infof("looping all labelled namespaces looking for config map '%s' to update", c.caBundleConfigMapName)
+	log.Debugf("looping all labelled namespaces looking for config map '%s' to update", c.caBundleConfigMapName)
 
 	for _, ns := range labelledNamespaces {
 		configMap, err := c.configMapLister.ConfigMaps(ns.Name).Get(c.caBundleConfigMapName)
 
 		// If the resource doesn't exist, we'll create it
 		if errors.IsNotFound(err) {
-			log.Debugf("configmap '%s' not found in labelled namespace '%s' - creating configmap now", c.caBundleConfigMapName, ns.Name)
+			log.Infof("configmap '%s' not found in labelled namespace '%s' - creating configmap now", c.caBundleConfigMapName, ns.Name)
 			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 			configMap, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
 			if err != nil {
@@ -119,119 +119,8 @@ func (c *Controller) syncCABundleSecret(key string) error {
 		}
 	}
 
-	c.recorder.Event(secret, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	c.recorder.Event(secret, corev1.EventTypeNormal, SuccessSynced, "CA Bundle successfully synced to to ConfigMap")
 	return nil
-}
-
-func (c *Controller) getAllAkvsLabelledNamespaces() ([]*corev1.Namespace, error) {
-	labelSelector := &metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			"azure-key-vault-env-injection": "enabled",
-		},
-	}
-
-	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
-	if err != nil {
-		return nil, err
-	}
-
-	return c.namespaceLister.List(selector)
-}
-
-//syncHandler for new labelled namespaces
-func (c *Controller) syncHandlerNewNamespace(key string) error {
-	ns, err := c.namespaceLister.Get(key)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("Looking for configmap '%s' in labelled namespace '%s'", c.caBundleConfigMapName, key)
-	cm, err := c.configMapLister.ConfigMaps(key).Get(c.caBundleConfigMapName)
-
-	if err != nil {
-		if errors.IsNotFound(err) { // if configmap does not exist, create it
-			log.Debugf("configmap '%s' not found in labelled namespace '%s' - creating", c.caBundleConfigMapName, key)
-
-			secret, err := c.kubeclientset.CoreV1().Secrets(c.caBundleSecretNamespaceName).Get(c.caBundleSecretName, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-
-			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
-			_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-
-		return err
-	}
-
-	if cm != nil {
-		log.Debugf("configmap '%s' exists in namespace '%s' with old ca bundle - updating", c.caBundleConfigMapName, key)
-		secret, err := c.kubeclientset.CoreV1().Secrets(c.caBundleSecretNamespaceName).Get(c.caBundleSecretName, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
-		_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Update(newConfigMap)
-		if err != nil {
-			return err
-		}
-	}
-
-	c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
-	return nil
-}
-
-//syncHandler for changed namespaces
-func (c *Controller) syncHandlerChangedNamespace(key string) error {
-	ns, err := c.namespaceLister.Get(key)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("Looking for configmap '%s' in labelled namespace '%s'", c.caBundleConfigMapName, ns.Name)
-	cm, err := c.configMapLister.ConfigMaps(ns.Name).Get(c.caBundleConfigMapName)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Debugf("configmap '%s' not found in updated namespace '%s' - creating", c.caBundleConfigMapName, key)
-			secret, err := c.kubeclientset.CoreV1().Secrets(c.caBundleSecretNamespaceName).Get(c.caBundleSecretName, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-
-			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
-			_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-		return err
-	}
-
-	//If the resource exists in a non-labelled namespace, we delete it
-	if !c.isNamespaceLabelled(ns) && cm != nil {
-		log.Infof("configmap '%s' exists in namespace '%s' which is no longer labelled to keep CA Bundle", c.caBundleConfigMapName, key)
-		err = c.kubeclientset.CoreV1().ConfigMaps(key).Delete(c.caBundleConfigMapName, &metav1.DeleteOptions{})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (c *Controller) isNamespaceLabelled(ns *corev1.Namespace) bool {
-	lbl := ns.Labels[c.options.NamespaceAkvsLabel]
-	if lbl == "enabled" {
-		return true
-	}
-
-	return false
 }
 
 func newConfigMap(name string, ns string, secret *corev1.Secret) *corev1.ConfigMap {

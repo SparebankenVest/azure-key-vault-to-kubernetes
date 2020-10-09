@@ -65,26 +65,27 @@ const (
 	// fails to sync due to a Deployment already existing
 	MessageResourceExists = "Resource '%s' already exists and is not managed by AzureKeyVaultSecret"
 
-	// MessageResourceSynced is the message used for an Event fired when a AzureKeyVaultSecret
+	// MessageAzureKeyVaultSecretSynced is the message used for an Event fired when a AzureKeyVaultSecret
 	// is synced successfully
-	MessageResourceSynced = "AzureKeyVaultSecret synced successfully"
+	MessageAzureKeyVaultSecretSynced = "AzureKeyVaultSecret synced to Kubernetes Secret successfully"
 
-	// MessageResourceSyncedWithAzure is the message used for an Event fired when a AzureKeyVaultSecret
+	// MessageAzureKeyVaultSecretSyncedWithAzureKeyVault is the message used for an Event fired when a AzureKeyVaultSecret
 	// is synced successfully after getting updated secret from Azure Key Vault
-	MessageResourceSyncedWithAzure = "AzureKeyVaultSecret synced successfully with Azure Key Vault"
+	MessageAzureKeyVaultSecretSyncedWithAzureKeyVault = "AzureKeyVaultSecret synced to Kubernetes Secret successfully with change from Azure Key Vault"
 )
 
 // Controller is the controller implementation for AzureKeyVaultSecret resources
 type Controller struct {
-	kubeclientset kubernetes.Interface
-	akvsClient    akvcs.Interface
-	vaultService  vault.Service
-	recorder      record.EventRecorder
+	kubeclientset       kubernetes.Interface
+	akvsClient          akvcs.Interface
+	vaultService        vault.Service
+	recorder            record.EventRecorder
+	kubeInformerFactory informers.SharedInformerFactory
+	namespaceAkvsLabel  string
 
 	// Secret
-	secretsLister         corelisters.SecretLister
-	secretInformerFactory informers.SharedInformerFactory
-	akvsSecretQueue       *queue.Worker
+	secretsLister   corelisters.SecretLister
+	akvsSecretQueue *queue.Worker
 
 	// AzureKeyVaultSecret
 	azureKeyVaultSecretLister listers.AzureKeyVaultSecretLister
@@ -99,14 +100,12 @@ type Controller struct {
 	caBundleConfigMapName       string
 
 	// Namespace
-	namespaceLister          corelisters.NamespaceLister
-	namespaceInformerFactory informers.SharedInformerFactory
-	namespaceQueue           *queue.Worker
+	namespaceLister corelisters.NamespaceLister
+	namespaceQueue  *queue.Worker
 
 	// ConfigMap
-	configMapLister          corelisters.ConfigMapLister
-	configMapInformerFactory informers.SharedInformerFactory
-	configMapQueue           *queue.Worker
+	configMapLister corelisters.ConfigMapLister
+	configMapQueue  *queue.Worker
 
 	options *Options
 	clock   Timer
@@ -114,11 +113,10 @@ type Controller struct {
 
 // Options contains options for the controller
 type Options struct {
-	NumThreads         int
-	MaxNumRequeues     int
-	ResyncPeriod       time.Duration
-	AkvsRef            corev1.ObjectReference
-	NamespaceAkvsLabel string
+	NumThreads     int
+	MaxNumRequeues int
+	ResyncPeriod   time.Duration
+	AkvsRef        corev1.ObjectReference
 }
 
 // AzurePollFrequency controls time durations to wait between polls to Azure Key Vault for changes
@@ -134,23 +132,26 @@ type AzurePollFrequency struct {
 }
 
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, secretInformerFactory informers.SharedInformerFactory, recorder record.EventRecorder, vaultService vault.Service, azureFrequency AzurePollFrequency, options *Options) *Controller {
+func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, recorder record.EventRecorder, vaultService vault.Service, namespaceAkvsLabel string, azureFrequency AzurePollFrequency, options *Options) *Controller {
 	// Create event broadcaster
 	// Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// logged for azure-keyvault-controller types.
 	utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
 
 	controller := &Controller{
-		kubeclientset: client,
-		akvsClient:    akvsClient,
-		recorder:      recorder,
-		vaultService:  vaultService,
+		kubeclientset:      client,
+		akvsClient:         akvsClient,
+		recorder:           recorder,
+		vaultService:       vaultService,
+		namespaceAkvsLabel: namespaceAkvsLabel,
 
-		akvsInformerFactory:   akvInformerFactory,
-		secretInformerFactory: secretInformerFactory,
+		akvsInformerFactory: akvInformerFactory,
+		kubeInformerFactory: kubeInformerFactory,
 
-		secretsLister:             secretInformerFactory.Core().V1().Secrets().Lister(),
+		secretsLister:             kubeInformerFactory.Core().V1().Secrets().Lister(),
 		azureKeyVaultSecretLister: akvInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Lister(),
+		configMapLister:           kubeInformerFactory.Core().V1().ConfigMaps().Lister(),
+		namespaceLister:           kubeInformerFactory.Core().V1().Namespaces().Lister(),
 
 		options: options,
 		clock:   &Clock{},
@@ -160,6 +161,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 	controller.akvsSecretQueue = queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, controller.syncSecret)
 	controller.azureKeyVaultQueue = queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
 	controller.caBundleSecretQueue = queue.New("CABundleSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncCABundleSecret)
+	controller.namespaceQueue = queue.New("Namespaces", options.MaxNumRequeues, options.NumThreads, controller.syncNamespace)
 
 	log.Info("Setting up event handlers")
 	controller.initAzureKeyVaultSecret()
@@ -175,7 +177,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	// Start the informer factories to begin populating the informer caches
 	log.Info("Starting AzureKeyVaultSecret controller")
 	c.akvsInformerFactory.Start(stopCh)
-	c.secretInformerFactory.Start(stopCh)
+	c.kubeInformerFactory.Start(stopCh)
 
 	// Wait for all involved caches to be synced, before processing items from the queue is started
 	for _, v := range c.akvsInformerFactory.WaitForCacheSync(stopCh) {
@@ -184,7 +186,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 			return
 		}
 	}
-	for _, v := range c.secretInformerFactory.WaitForCacheSync(stopCh) {
+	for _, v := range c.kubeInformerFactory.WaitForCacheSync(stopCh) {
 		if !v {
 			runtime.HandleError(errors.Errorf("timed out waiting for caches to sync"))
 			return
@@ -199,6 +201,9 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 
 	log.Info("Starting Azure Key Vault queue")
 	c.azureKeyVaultQueue.Run(stopCh)
+
+	log.Info("Starting Namespace queue")
+	c.namespaceQueue.Run(stopCh)
 
 	log.Info("Starting CA Bundle queue")
 	c.caBundleSecretQueue.Run(stopCh)
