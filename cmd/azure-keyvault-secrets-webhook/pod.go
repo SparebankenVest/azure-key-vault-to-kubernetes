@@ -157,6 +157,14 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 				},
 			},
 			{
+				Name: "ENV_INJECTOR_POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
+			{
 				Name:  "ENV_INJECTOR_ARGS_SIGNATURE",
 				Value: base64.StdEncoding.EncodeToString([]byte(signature)),
 			},
