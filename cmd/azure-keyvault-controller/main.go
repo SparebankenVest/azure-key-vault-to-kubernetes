@@ -22,10 +22,10 @@ package main
 import (
 	"flag"
 	"os"
-	"strconv"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 
 	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -44,55 +44,71 @@ import (
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/signals"
 )
 
-var (
-	masterURL   string
-	kubeconfig  string
-	cloudconfig string
-	logLevel    string
-	version     string
+const controllerAgentName = "azurekeyvaultcontroller"
 
-	azureVaultFastRate        time.Duration
-	azureVaultSlowRate        time.Duration
-	azureVaultMaxFastAttempts int
-	customAuth                bool
+var (
+	version     string
+	kubeconfig  string
+	masterURL   string
+	cloudconfig string
 )
 
-const controllerAgentName = "azurekeyvaultcontroller"
+func initConfig() {
+	viper.SetDefault("version", "dev")
+	viper.SetDefault("log_format", "fmt")
+	viper.SetDefault("akv_label_name", "azure-key-vault-env-injection")
+	viper.SetDefault("ca_config_map_name", "akv2k8s-ca")
+	viper.SetDefault("cloudconfig", "/etc/kubernetes/azure.json")
+	viper.SetDefault("azure_vault_normal_poll_intervals", 1)
+	viper.SetDefault("azure_vault_exception_poll_intervals", 5)
+	viper.SetDefault("azure_vault_max_failure_attempts", 5)
+	viper.SetDefault("custom_auth", false)
+
+	viper.AutomaticEnv()
+}
+
+func init() {
+	flag.StringVar(&version, "version", "", "Version of this component.")
+	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&cloudconfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
+}
 
 func main() {
 	flag.Parse()
-	akv2k8s.Version = version
+	initConfig()
 
-	logFormat := "fmt"
-	logFormat, _ = os.LookupEnv("LOG_FORMAT")
+	akv2k8s.Version = viper.GetString("version")
 
-	setLogFormat(logFormat)
+	setLogLevel(viper.GetString("log_level"))
+	setLogFormat(viper.GetString("log_format"))
+
 	akv2k8s.LogVersion()
+
+	// kubeconfig := viper.GetString("kubeconfig")
+	// masterURL := viper.GetString("master")
+	// cloudconfig := viper.GetString("cloudconfig")
+
+	azureVaultFastRate := time.Duration(viper.GetInt("azure_vault_normal_poll_intervals")) * time.Minute
+	azureVaultSlowRate := time.Duration(viper.GetInt("azure_vault_exception_poll_intervals")) * time.Minute
+	azureVaultMaxFastAttempts := viper.GetInt("azure_vault_max_failure_attempts")
+	customAuth := viper.GetBool("custom_auth")
+
+	caConfigMapName := viper.GetString("ca_config_map_name")
+	akvLabelName := viper.GetString("akv_label_name")
+	akvSecretName := viper.GetString("akv_secret_name")
+	akvNamespace := viper.GetString("akv_namespace")
+
+	if akvSecretName == "" {
+		log.Fatal("Env var AKV_SECRET_NAME required")
+	}
+
+	if akvNamespace == "" {
+		log.Fatal("Env var AKV_NAMESPACE required")
+	}
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
-	setLogLevel()
-
-	var err error
-	azureVaultFastRate, err = getEnvDuration("AZURE_VAULT_NORMAL_POLL_INTERVALS", time.Minute*1)
-	if err != nil {
-		log.Fatalf("Error parsing env var AZURE_VAULT_NORMAL_POLL_INTERVALS: %s", err.Error())
-	}
-
-	azureVaultSlowRate, err = getEnvDuration("AZURE_VAULT_EXCEPTION_POLL_INTERVALS", time.Minute*5)
-	if err != nil {
-		log.Fatalf("Error parsing env var AZURE_VAULT_EXCEPTION_POLL_INTERVALS: %s", err.Error())
-	}
-
-	azureVaultMaxFastAttempts, err = getEnvInt("AZURE_VAULT_MAX_FAILURE_ATTEMPTS", 5)
-	if err != nil {
-		log.Fatalf("Error parsing env var AZURE_VAULT_MAX_FAILURE_ATTEMPTS: %s", err.Error())
-	}
-
-	customAuth, err = getEnvBool("CUSTOM_AUTH", false)
-	if err != nil {
-		log.Fatalf("Error parsing env var CUSTOM_AUTH: %s", err.Error())
-	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
@@ -152,11 +168,11 @@ func main() {
 
 	vaultService := vault.NewService(vaultAuth)
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
-	// handler := controller.NewHandler(kubeClient, azureKeyVaultSecretClient, kubeInformerFactory.Core().V1().Secrets().Lister(), azureKeyVaultSecretInformerFactory.Azurekeyvault().V2alpha1().AzureKeyVaultSecrets().Lister(), recorder, vaultService, azurePollFrequency)
 
 	options := &controller.Options{
-		MaxNumRequeues: 5,
-		NumThreads:     1,
+		MaxNumRequeues:        5,
+		NumThreads:            1,
+		CABundleConfigMapName: caConfigMapName,
 	}
 
 	controller := controller.NewController(
@@ -166,19 +182,13 @@ func main() {
 		kubeInformerFactory,
 		recorder,
 		vaultService,
-		"azure-key-vault-env-injection",
+		akvSecretName,
+		akvNamespace,
+		akvLabelName,
 		azurePollFrequency,
 		options)
 
 	controller.Run(stopCh)
-}
-
-func init() {
-	flag.StringVar(&version, "version", "", "Version of this component.")
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&logLevel, "log-level", "", "log level")
-	flag.StringVar(&cloudconfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
 }
 
 func setLogFormat(logFormat string) {
@@ -195,50 +205,14 @@ func setLogFormat(logFormat string) {
 	}
 }
 
-func setLogLevel() {
+func setLogLevel(logLevel string) {
 	if logLevel == "" {
-		var ok bool
-		if logLevel, ok = os.LookupEnv("LOG_LEVEL"); !ok {
-			logLevel = log.InfoLevel.String()
-		}
+		logLevel = log.InfoLevel.String()
 	}
 
 	logrusLevel, err := log.ParseLevel(logLevel)
 	if err != nil {
-		log.Fatalf("Error setting log level: %s", err.Error())
+		log.Fatalf("error setting log level: %s", err.Error())
 	}
 	log.SetLevel(logrusLevel)
-	log.Printf("Log level set to '%s'", logrusLevel.String())
-}
-
-func getEnvDuration(key string, fallback time.Duration) (time.Duration, error) {
-	if value, ok := os.LookupEnv(key); ok {
-		duration, err := time.ParseDuration(value)
-		return duration, err
-	}
-	return fallback, nil
-}
-
-func getEnvInt(key string, fallback int) (int, error) {
-	if value, ok := os.LookupEnv(key); ok {
-		intVal, err := strconv.Atoi(value)
-		return intVal, err
-	}
-	return fallback, nil
-}
-
-func getEnvStr(key string, fallback string) (string, error) {
-	if value, ok := os.LookupEnv(key); ok {
-		return value, nil
-	}
-	return fallback, nil
-}
-
-func getEnvBool(key string, fallback bool) (bool, error) {
-	if value, ok := os.LookupEnv(key); ok {
-		if booVal, err := strconv.ParseBool(value); ok {
-			return booVal, err
-		}
-	}
-	return fallback, nil
 }

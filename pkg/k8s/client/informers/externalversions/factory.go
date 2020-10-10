@@ -27,8 +27,8 @@ import (
 	time "time"
 
 	versioned "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
+	azurekeyvault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions/azurekeyvault"
 	internalinterfaces "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions/internalinterfaces"
-	keyvault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions/keyvault"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -175,9 +175,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Keyvault() keyvault.Interface
+	Keyvault() azurekeyvault.Interface
 }
 
-func (f *sharedInformerFactory) Keyvault() keyvault.Interface {
-	return keyvault.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Keyvault() azurekeyvault.Interface {
+	return azurekeyvault.New(f, f.namespace, f.tweakListOptions)
 }

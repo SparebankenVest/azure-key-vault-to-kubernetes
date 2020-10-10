@@ -23,8 +23,7 @@ import (
 	"fmt"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azure/keyvault/v2alpha1"
-	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azure/keyvault/v2alpha1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
 	log "github.com/sirupsen/logrus"
 
 	corev1 "k8s.io/api/core/v1"
@@ -95,14 +94,14 @@ func (c *Controller) initAzureKeyVaultSecret() {
 	})
 }
 
-func convertToAzureKeyVaultSecret(obj interface{}) (*v2alpha1.AzureKeyVaultSecret, error) {
-	secret, ok := obj.(*v2alpha1.AzureKeyVaultSecret)
+func convertToAzureKeyVaultSecret(obj interface{}) (*akv.AzureKeyVaultSecret, error) {
+	secret, ok := obj.(*akv.AzureKeyVaultSecret)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			return nil, fmt.Errorf("couldn't get object from tombstone %#v", obj)
 		}
-		secret, ok = tombstone.Obj.(*v2alpha1.AzureKeyVaultSecret)
+		secret, ok = tombstone.Obj.(*akv.AzureKeyVaultSecret)
 		if !ok {
 			return nil, fmt.Errorf("tombstone contained object that is not a AzureKeyVaultSecret %#v", obj)
 		}
@@ -139,7 +138,7 @@ func (c *Controller) syncAzureKeyVaultSecret(key string) error {
 	return nil
 }
 
-func (c *Controller) akvsHasSecretOutput(secret *v2alpha1.AzureKeyVaultSecret) bool {
+func (c *Controller) akvsHasSecretOutput(secret *akv.AzureKeyVaultSecret) bool {
 	return secret.Spec.Output.Secret.Name != ""
 }
 

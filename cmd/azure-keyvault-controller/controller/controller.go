@@ -39,7 +39,7 @@ import (
 	akvcs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	keyvaultScheme "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/scheme"
 	akvInformers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions"
-	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/listers/keyvault/v2alpha1"
+	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/listers/azurekeyvault/v2alpha1"
 )
 
 const (
@@ -109,14 +109,18 @@ type Controller struct {
 
 	options *Options
 	clock   Timer
+
+	akvLogger      *log.Entry
+	caBundleLogger *log.Entry
 }
 
 // Options contains options for the controller
 type Options struct {
-	NumThreads     int
-	MaxNumRequeues int
-	ResyncPeriod   time.Duration
-	AkvsRef        corev1.ObjectReference
+	NumThreads            int
+	MaxNumRequeues        int
+	ResyncPeriod          time.Duration
+	AkvsRef               corev1.ObjectReference
+	CABundleConfigMapName string
 }
 
 // AzurePollFrequency controls time durations to wait between polls to Azure Key Vault for changes
@@ -132,11 +136,19 @@ type AzurePollFrequency struct {
 }
 
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, recorder record.EventRecorder, vaultService vault.Service, namespaceAkvsLabel string, azureFrequency AzurePollFrequency, options *Options) *Controller {
+func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, recorder record.EventRecorder, vaultService vault.Service, caBundleSecretName, caBundleSecretNamespaceName, namespaceAkvsLabel string, azureFrequency AzurePollFrequency, options *Options) *Controller {
 	// Create event broadcaster
 	// Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// logged for azure-keyvault-controller types.
 	utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
+
+	caBundleCMName := "caBundle"
+	if options.CABundleConfigMapName != "" {
+		caBundleCMName = options.CABundleConfigMapName
+	}
+
+	akvLogger := log.WithFields(log.Fields{"component": "akvs"})
+	caBundleLogger := log.WithFields(log.Fields{"component": "caBundle"})
 
 	controller := &Controller{
 		kubeclientset:      client,
@@ -144,6 +156,10 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 		recorder:           recorder,
 		vaultService:       vaultService,
 		namespaceAkvsLabel: namespaceAkvsLabel,
+
+		caBundleConfigMapName:       caBundleCMName,
+		caBundleSecretName:          caBundleSecretName,
+		caBundleSecretNamespaceName: caBundleSecretNamespaceName,
 
 		akvsInformerFactory: akvInformerFactory,
 		kubeInformerFactory: kubeInformerFactory,
@@ -155,6 +171,9 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 
 		options: options,
 		clock:   &Clock{},
+
+		akvLogger:      akvLogger,
+		caBundleLogger: caBundleLogger,
 	}
 
 	controller.akvsCrdQueue = queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVaultSecret)

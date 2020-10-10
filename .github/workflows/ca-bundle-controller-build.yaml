@@ -4,6 +4,7 @@ on:
   push:
     branches:
     - master
+    - '*-patch'
     paths:
     - '.github/workflows/ca-bundle-controller-build.yaml'
     - '.github/actions/**'

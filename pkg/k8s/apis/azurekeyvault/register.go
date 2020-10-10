@@ -1,5 +1,5 @@
 /*
-Copyright Sparebanken Vest
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,25 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package azurekeyvault
 
-import (
-	"testing"
-
-	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
+const (
+	GroupName = "spv.no"
 )
-
-func TestNullLookup(t *testing.T) {
-	secret := akv.AzureKeyVaultSecret{
-		Spec: akv.AzureKeyVaultSecretSpec{
-			Output: akv.AzureKeyVaultOutput{
-				Secret: akv.AzureKeyVaultOutputSecret{
-					// Name: "laskjdflj",
-				},
-			},
-		},
-	}
-	if secret.Spec.Output.Secret.Name != "" {
-		t.Fail()
-	}
-}
