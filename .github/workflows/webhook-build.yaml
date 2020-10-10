@@ -4,6 +4,7 @@ on:
   push:
     branches:
     - master
+    - '*-patch'
     paths:
     - '.github/workflows/webhook-build.yaml'
     - '.github/actions/**'

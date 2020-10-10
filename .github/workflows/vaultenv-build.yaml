@@ -4,6 +4,7 @@ on:
   push:
     branches:
     - master
+    - '*-patch'
     paths:
     - '.github/workflows/vaultenv-build.yaml'
     - '.github/actions/**'
