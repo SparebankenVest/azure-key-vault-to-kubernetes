@@ -37,11 +37,7 @@ type DockerCreds struct {
 
 // GetImageConfig returns entrypoint and command of container
 func GetImageConfig(clientset kubernetes.Interface, namespace string, container *corev1.Container, podSpec *corev1.PodSpec, cloudConfigPath string) (*imagev1.ImageConfig, error) {
-	ns := "default"
-	if namespace != "" {
-		ns = namespace
-	}
-	containerInfo := ContainerInfo{Namespace: ns, clientset: clientset}
+	containerInfo := ContainerInfo{Namespace: namespace, clientset: clientset}
 
 	err := containerInfo.Collect(container, podSpec, cloudConfigPath)
 	if err != nil {

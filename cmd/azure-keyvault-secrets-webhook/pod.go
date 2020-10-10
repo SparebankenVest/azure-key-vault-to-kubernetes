@@ -72,7 +72,7 @@ func getVolumes() []corev1.Volume {
 	return volumes
 }
 
-func mutateContainers(clientset kubernetes.Interface, ns string, containers []corev1.Container, podSpec *corev1.PodSpec) (bool, error) {
+func mutateContainers(clientset kubernetes.Interface, containers []corev1.Container, podSpec *corev1.PodSpec) (bool, error) {
 	mutated := false
 
 	for i, container := range containers {
@@ -104,7 +104,7 @@ func mutateContainers(clientset kubernetes.Interface, ns string, containers []co
 			continue
 		}
 
-		autoArgs, err := getContainerCmd(clientset, ns, &container, podSpec)
+		autoArgs, err := getContainerCmd(clientset, &container, podSpec)
 		if err != nil {
 			return false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
 		}
@@ -213,12 +213,12 @@ func mutatePodSpec(pod *corev1.Pod) error {
 		return err
 	}
 
-	initContainersMutated, err := mutateContainers(clientset, pod.Namespace, podSpec.InitContainers, podSpec)
+	initContainersMutated, err := mutateContainers(clientset, podSpec.InitContainers, podSpec)
 	if err != nil {
 		return err
 	}
 
-	containersMutated, err := mutateContainers(clientset, pod.Namespace, podSpec.Containers, podSpec)
+	containersMutated, err := mutateContainers(clientset, podSpec.Containers, podSpec)
 	if err != nil {
 		return err
 	}
