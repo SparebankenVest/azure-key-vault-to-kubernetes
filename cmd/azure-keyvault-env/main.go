@@ -166,7 +166,7 @@ func main() {
 
 	config = injectorConfig{
 		namespace:              viper.GetString("env_injector_pod_namespace"),
-		podName:                viper.GetString("HOSTNAME"),
+		podName:                viper.GetString("env_injector_pod_name"),
 		retryTimes:             viper.GetInt("env_injector_retries"),
 		waitTimeBetweenRetries: viper.GetInt("env_injector_wait_before_retry"),
 		useAuthService:         viper.GetBool("env_injector_use_auth_service"),

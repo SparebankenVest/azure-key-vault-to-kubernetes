@@ -180,6 +180,14 @@ func mutateContainers(containers []corev1.Container, creds map[string]types.Dock
 				},
 			},
 			{
+				Name: "ENV_INJECTOR_POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
+			{
 				Name:  "ENV_INJECTOR_ARGS_SIGNATURE",
 				Value: base64.StdEncoding.EncodeToString([]byte(signature)),
 			},
