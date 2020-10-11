@@ -106,10 +106,11 @@ func (c *Controller) syncNamespace(key string) error {
 				log.Errorf("failed to create new configmap, error: %+v", err)
 			}
 
-			_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
+			cm, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
 			if err != nil {
 				return err
 			}
+
 			msg := fmt.Sprintf("CA Bundle successfully synced to ConfigMap %s in namespace %s", c.caBundleConfigMapName, key)
 			c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, msg)
 			return nil
