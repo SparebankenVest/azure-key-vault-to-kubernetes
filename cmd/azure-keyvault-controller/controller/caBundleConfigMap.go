@@ -39,28 +39,18 @@ func (c *Controller) initConfigMap() {
 			}
 
 			if c.isCABundleConfigMap(cm) {
-				queue.Enqueue(c.caBundleConigMapQueue.GetQueue(), cm)
-				return
+				if ownerRef := metav1.GetControllerOf(cm); ownerRef != nil {
+					secret, err := c.getSecretFromConfigMap(cm, ownerRef)
+					if err != nil {
+						log.Errorf("failed to get secret owner %s/%s of configmap %s/%s, error: %+v", secret.Namespace, secret.Name, cm.Namespace, cm.Name, err)
+						return
+					}
+
+					queue.Enqueue(c.caBundleSecretQueue.GetQueue(), secret)
+				}
 			}
 		},
 	})
-}
-
-func (c *Controller) syncCABundleConfigMap(key string) error {
-	cm, err := c.getConfigMap(key)
-	if err != nil {
-		return err
-	}
-
-	if ownerRef := metav1.GetControllerOf(cm); ownerRef != nil {
-		secret, err := c.getSecretFromConfigMap(cm, ownerRef)
-		if err != nil {
-			return err
-		}
-
-		queue.Enqueue(c.caBundleSecretQueue.GetQueue(), secret)
-	}
-	return nil
 }
 
 func (c *Controller) getSecretFromConfigMap(cm *corev1.ConfigMap, owner *metav1.OwnerReference) (*corev1.Secret, error) {
