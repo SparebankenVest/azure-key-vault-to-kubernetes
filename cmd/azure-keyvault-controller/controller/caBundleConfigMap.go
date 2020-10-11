@@ -25,7 +25,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"kmodules.xyz/client-go/tools/queue"
 )
@@ -39,22 +38,20 @@ func (c *Controller) initConfigMap() {
 			}
 
 			if c.isCABundleConfigMap(cm) {
-				if ownerRef := metav1.GetControllerOf(cm); ownerRef != nil {
-					secret, err := c.getSecretFromConfigMap(cm, ownerRef)
-					if err != nil {
-						log.Errorf("failed to get secret owner %s/%s of configmap %s/%s, error: %+v", secret.Namespace, secret.Name, cm.Namespace, cm.Name, err)
-						return
-					}
-
-					queue.Enqueue(c.caBundleSecretQueue.GetQueue(), secret)
+				ns, err := c.getCABundleNamespace()
+				if err != nil {
+					log.Errorf("failed to get namespace %s to replace deleted configmap %s/%s, error: %+v", c.caBundleSecretNamespaceName, cm.Namespace, cm.Name, err)
+					return
 				}
+
+				queue.Enqueue(c.namespaceQueue.GetQueue(), ns)
 			}
 		},
 	})
 }
 
-func (c *Controller) getSecretFromConfigMap(cm *corev1.ConfigMap, owner *metav1.OwnerReference) (*corev1.Secret, error) {
-	return c.secretsLister.Secrets(c.caBundleSecretNamespaceName).Get(owner.Name)
+func (c *Controller) getCABundleNamespace() (*corev1.Namespace, error) {
+	return c.namespaceLister.Get(c.caBundleSecretNamespaceName)
 }
 
 func (c *Controller) isCABundleConfigMap(cm *corev1.ConfigMap) bool {
