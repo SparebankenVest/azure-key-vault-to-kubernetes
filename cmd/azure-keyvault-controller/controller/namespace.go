@@ -94,11 +94,13 @@ func (c *Controller) syncNamespace(key string) error {
 		if errors.IsNotFound(err) { // if configmap does not exist, create it
 			log.Infof("configmap '%s' not found in labelled namespace '%s' - creating now", c.caBundleConfigMapName, key)
 
+			log.Debugf("getting secret %s with ca bundle in namespace %s", c.caBundleSecretName, c.caBundleSecretNamespaceName)
 			secret, err := c.kubeclientset.CoreV1().Secrets(c.caBundleSecretNamespaceName).Get(c.caBundleSecretName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
 
+			log.Debugf("creating new configmap %s with ca bundle in namespace %s", c.caBundleConfigMapName, c.caBundleSecretNamespaceName)
 			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 			_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
 			if err != nil {
