@@ -106,8 +106,7 @@ type Controller struct {
 	namespaceQueue  *queue.Worker
 
 	// ConfigMap
-	configMapLister       corelisters.ConfigMapLister
-	caBundleConigMapQueue *queue.Worker
+	configMapLister corelisters.ConfigMapLister
 
 	options *Options
 	clock   Timer
@@ -183,7 +182,6 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 	controller.azureKeyVaultQueue = queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
 	controller.caBundleSecretQueue = queue.New("CABundleSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncCABundleSecret)
 	controller.namespaceQueue = queue.New("Namespaces", options.MaxNumRequeues, options.NumThreads, controller.syncCABundleInNamespace)
-	controller.caBundleConigMapQueue = queue.New("CABundleConfigs", options.MaxNumRequeues, options.NumThreads, controller.syncCABundleConfigMap)
 
 	log.Info("Setting up event handlers")
 	controller.initAzureKeyVaultSecret()
@@ -231,9 +229,6 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 
 	log.Info("starting ca bundle namespace queue")
 	c.namespaceQueue.Run(stopCh)
-
-	log.Info("starting ca bundle configmap queue")
-	c.caBundleConigMapQueue.Run(stopCh)
 
 	log.Info("started workers")
 	<-stopCh
