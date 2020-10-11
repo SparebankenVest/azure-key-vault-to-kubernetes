@@ -59,9 +59,6 @@ func initConfig() {
 	viper.SetDefault("akv_label_name", "azure-key-vault-env-injection")
 	viper.SetDefault("ca_config_map_name", "akv2k8s-ca")
 	viper.SetDefault("cloudconfig", "/etc/kubernetes/azure.json")
-	viper.SetDefault("azure_vault_normal_poll_intervals", 1)
-	viper.SetDefault("azure_vault_exception_poll_intervals", 5)
-	viper.SetDefault("azure_vault_max_failure_attempts", 5)
 	viper.SetDefault("custom_auth", false)
 
 	viper.AutomaticEnv()
@@ -89,9 +86,6 @@ func main() {
 	// masterURL := viper.GetString("master")
 	// cloudconfig := viper.GetString("cloudconfig")
 
-	azureVaultFastRate := time.Duration(viper.GetInt("azure_vault_normal_poll_intervals")) * time.Minute
-	azureVaultSlowRate := time.Duration(viper.GetInt("azure_vault_exception_poll_intervals")) * time.Minute
-	azureVaultMaxFastAttempts := viper.GetInt("azure_vault_max_failure_attempts")
 	customAuth := viper.GetBool("custom_auth")
 
 	caConfigMapName := viper.GetString("ca_config_map_name")
@@ -127,12 +121,6 @@ func main() {
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	azureKeyVaultSecretInformerFactory := informers.NewSharedInformerFactory(azureKeyVaultSecretClient, time.Second*30)
-
-	azurePollFrequency := controller.AzurePollFrequency{
-		Normal:                       azureVaultFastRate,
-		Slow:                         azureVaultSlowRate,
-		MaxFailuresBeforeSlowingDown: azureVaultMaxFastAttempts,
-	}
 
 	log.Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
@@ -185,7 +173,6 @@ func main() {
 		akvSecretName,
 		akvNamespace,
 		akvLabelName,
-		azurePollFrequency,
 		options)
 
 	controller.Run(stopCh)

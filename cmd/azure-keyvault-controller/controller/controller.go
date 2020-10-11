@@ -124,20 +124,8 @@ type Options struct {
 	CABundleConfigMapName string
 }
 
-// AzurePollFrequency controls time durations to wait between polls to Azure Key Vault for changes
-type AzurePollFrequency struct {
-	// Normal is the time duration to wait between polls to Azure Key Vault for changes
-	Normal time.Duration
-
-	// MaxFailuresBeforeSlowingDown controls how many failures are accepted before reducing the frequency to Slow
-	MaxFailuresBeforeSlowingDown int
-
-	// Slow is the time duration to wait between polls to Azure Key Vault for changes, after MaxFailuresBeforeSlowingDown is reached
-	Slow time.Duration
-}
-
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, recorder record.EventRecorder, vaultService vault.Service, caBundleSecretName, caBundleSecretNamespaceName, namespaceAkvsLabel string, azureFrequency AzurePollFrequency, options *Options) *Controller {
+func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, recorder record.EventRecorder, vaultService vault.Service, caBundleSecretName, caBundleSecretNamespaceName, namespaceAkvsLabel string, options *Options) *Controller {
 	// Create event broadcaster
 	// Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// logged for azure-keyvault-controller types.
