@@ -185,6 +185,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 	log.Info("Setting up event handlers")
 	controller.initAzureKeyVaultSecret()
 	controller.initSecret()
+	controller.initNamespace()
 
 	return controller
 }
