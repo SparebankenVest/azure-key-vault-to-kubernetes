@@ -70,7 +70,11 @@ func (c *Controller) syncCABundleSecret(key string) error {
 		// If the resource doesn't exist, we'll create it
 		if errors.IsNotFound(err) {
 			log.Infof("configmap '%s' not found in labelled namespace '%s' - creating configmap now", c.caBundleConfigMapName, ns.Name)
-			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
+			newConfigMap, err := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
+			if err != nil {
+				log.Errorf("failed to create new configmap, error: %+v", err)
+			}
+
 			configMap, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
 			if err != nil {
 				msg := fmt.Sprintf("failed to create configmap %s in namespace %s", newConfigMap.Name, ns.Name)
@@ -100,7 +104,11 @@ func (c *Controller) syncCABundleSecret(key string) error {
 		// should update the ConfigMap resource.
 		if configMap.Data["caCert"] != secret.StringData["caCert"] {
 			log.Infof("secret %s updated: updating config map: %s", secret.Name, configMap.Name)
-			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
+			newConfigMap, err := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
+			if err != nil {
+				log.Errorf("failed to create new configmap, error: %+v", err)
+			}
+
 			configMap, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Update(newConfigMap)
 
 			if err != nil {
@@ -123,8 +131,12 @@ func (c *Controller) syncCABundleSecret(key string) error {
 	return nil
 }
 
-func newConfigMap(name string, ns string, secret *corev1.Secret) *corev1.ConfigMap {
-	dataByte := secret.Data["ca.crt"]
+func newConfigMap(name string, ns string, secret *corev1.Secret) (*corev1.ConfigMap, error) {
+	dataByte, found := secret.Data["ca.crt"]
+	if !found {
+		return nil, fmt.Errorf("key ca.crt not found in secret %s/%s", secret.Namespace, secret.Name)
+	}
+
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -140,5 +152,5 @@ func newConfigMap(name string, ns string, secret *corev1.Secret) *corev1.ConfigM
 		Data: map[string]string{
 			"caCert": string(dataByte),
 		},
-	}
+	}, nil
 }

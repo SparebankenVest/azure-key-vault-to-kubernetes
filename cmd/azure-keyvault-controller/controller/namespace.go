@@ -100,8 +100,12 @@ func (c *Controller) syncNamespace(key string) error {
 				return err
 			}
 
-			log.Debugf("creating new configmap %s with ca bundle in namespace %s", c.caBundleConfigMapName, c.caBundleSecretNamespaceName)
-			newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
+			log.Debugf("creating new configmap %s with ca bundle in namespace %s", c.caBundleConfigMapName, ns.Name)
+			newConfigMap, err := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
+			if err != nil {
+				log.Errorf("failed to create new configmap, error: %+v", err)
+			}
+
 			_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Create(newConfigMap)
 			if err != nil {
 				return err
@@ -127,7 +131,11 @@ func (c *Controller) syncNamespace(key string) error {
 	if found && secretCaBundle != cmCaBundle {
 		log.Infof("configmap '%s' exists in namespace '%s' with old ca bundle - updating now", c.caBundleConfigMapName, key)
 
-		newConfigMap := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
+		newConfigMap, err := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
+		if err != nil {
+			log.Errorf("failed to create new configmap, error: %+v", err)
+		}
+
 		_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Update(newConfigMap)
 		if err != nil {
 			return err
