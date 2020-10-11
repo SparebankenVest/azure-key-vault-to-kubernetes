@@ -38,9 +38,9 @@ func (c *Controller) initConfigMap() {
 			}
 
 			if c.isCABundleConfigMap(cm) {
-				ns, err := c.getCABundleNamespace()
+				ns, err := c.getNamespaceFromConfigMap(cm)
 				if err != nil {
-					log.Errorf("failed to get namespace %s to replace deleted configmap %s/%s, error: %+v", c.caBundleSecretNamespaceName, cm.Namespace, cm.Name, err)
+					log.Errorf("failed to get namespace %s to replace deleted configmap %s/%s, error: %+v", cm.Namespace, cm.Namespace, cm.Name, err)
 					return
 				}
 
@@ -50,8 +50,8 @@ func (c *Controller) initConfigMap() {
 	})
 }
 
-func (c *Controller) getCABundleNamespace() (*corev1.Namespace, error) {
-	return c.namespaceLister.Get(c.caBundleSecretNamespaceName)
+func (c *Controller) getNamespaceFromConfigMap(cm *corev1.ConfigMap) (*corev1.Namespace, error) {
+	return c.namespaceLister.Get(cm.Namespace)
 }
 
 func (c *Controller) isCABundleConfigMap(cm *corev1.ConfigMap) bool {

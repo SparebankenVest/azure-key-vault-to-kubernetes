@@ -75,11 +75,16 @@ func (c *Controller) syncCABundleInNamespace(key string) error {
 		return err
 	}
 
-	log.Debugf("Looking for configmap '%s' in labelled namespace '%s'", c.caBundleConfigMapName, ns.Name)
-	cm, err := c.configMapLister.ConfigMaps(ns.Name).Get(c.caBundleConfigMapName)
+	isLabelled := c.isInjectorEnabledForNamespace(ns)
 
-	//If this is a non-labelled namespace, we delete ca bundle config map
-	if !c.isInjectorEnabledForNamespace(ns) && cm != nil {
+	if !isLabelled {
+		log.Debugf("Looking for configmap '%s' in non labelled namespace '%s'", c.caBundleConfigMapName, ns.Name)
+		cm, err := c.configMapLister.ConfigMaps(ns.Name).Get(c.caBundleConfigMapName)
+
+		if err != nil {
+			return nil // ignore if not found in non-labelled namespace
+		}
+
 		log.Infof("configmap '%s' exists in namespace '%s', but is no longer labelled to keep CA Bundle - deleting now", c.caBundleConfigMapName, key)
 		err = c.kubeclientset.CoreV1().ConfigMaps(key).Delete(c.caBundleConfigMapName, &metav1.DeleteOptions{})
 		if err != nil {
@@ -92,6 +97,9 @@ func (c *Controller) syncCABundleInNamespace(key string) error {
 		c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, msg)
 		return nil
 	}
+
+	log.Debugf("Looking for configmap '%s' in labelled namespace '%s'", c.caBundleConfigMapName, ns.Name)
+	cm, err := c.configMapLister.ConfigMaps(ns.Name).Get(c.caBundleConfigMapName)
 
 	if err != nil {
 		if errors.IsNotFound(err) { // if configmap does not exist, create it
