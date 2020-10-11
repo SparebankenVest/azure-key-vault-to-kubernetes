@@ -11,14 +11,12 @@ KUBERNETES_DEP_VERSION=v0.17.2
 
 WEBHOOK_BINARY_NAME=azure-keyvault-secrets-webhook
 CONTROLLER_BINARY_NAME=azure-keyvault-controller
-CA_BUNDLE_CONTROLLER_BINARY_NAME=ca-bundle-controller
 KEYVAULT_ENV_BINARY_NAME=azure-keyvault-env
 
 DOCKER_INTERNAL_REG=dokken.azurecr.io
 DOCKER_RELEASE_REG=spvest
 
 DOCKER_CONTROLLER_IMAGE=azure-keyvault-controller
-DOCKER_CA_BUNDLE_CONTROLLER_IMAGE=ca-bundle-controller
 DOCKER_WEBHOOK_IMAGE=azure-keyvault-webhook
 DOCKER_AUTH_SERVICE_IMAGE=azure-keyvault-auth-service
 DOCKER_VAULTENV_IMAGE=azure-keyvault-env
@@ -29,7 +27,6 @@ DOCKER_RELEASE_TAG := $(shell git describe --tags)
 DOCKER_RELEASE_TAG_WEBHOOK := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"webhook-"/""/g)
 DOCKER_RELEASE_TAG_CONTROLLER := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"controller-"/""/g)
 DOCKER_RELEASE_TAG_VAULTENV := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"vaultenv-"/""/g)
-DOCKER_RELEASE_TAG_CA_BUNDLE_CONTROLLER := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"ca-bundle-controller-"/""/g)
 
 TAG=
 GOOS ?= linux
@@ -92,12 +89,8 @@ print-v-controller:
 print-v-vaultenv:
 	@echo $(DOCKER_RELEASE_TAG_VAULTENV) 
 
-.PHONY: print-v-ca-bundle-controller
-print-v-ca-bundle-controller:
-	@echo $(DOCKER_RELEASE_TAG_CA_BUNDLE_CONTROLLER) 
-
 .PHONY: tag-all
-tag-all: tag-webhook tag-controller tag-ca-bundle-controller tag-vaultenv
+tag-all: tag-webhook tag-controller tag-vaultenv
 
 .PHONY: tag-crd
 tag-crd: check-tag
@@ -112,11 +105,6 @@ tag-webhook: check-tag
 .PHONY: tag-controller
 tag-controller: check-tag
 	git tag -a controller-$(TAG) -m "Controller version $(TAG)"
-	git push --tags
-
-.PHONY: tag-ca-bundle-controller
-tag-ca-bundle-controller: check-tag
-	git tag -a ca-bundle-controller-$(TAG) -m "CA Bundle Controller version $(TAG)"
 	git push --tags
 
 .PHONY: tag-vaultenv
@@ -190,17 +178,13 @@ clean-webhook:
 clean-controller:
 	rm -rf bin/$(PROJECT_NAME)/$(CONTROLLER_BINARY_NAME)
 
-.PHONY: ca-bundle-controller
-clean-ca-bundle-controller:
-	rm -rf bin/$(PROJECT_NAME)/$(CA_BUNDLE_CONTROLLER_BINARY_NAME)
-
 .PHONY: clean-vaultenv
 clean-vaultenv:
 	rm -rf bin/$(PROJECT_NAME)/$(KEYVAULT_ENV_BINARY_NAME)
 
 # build: build-controller build-ca-bundle-controller build-webhook build-vaultenv
 .PHONY: build
-build: clean build-webhook build-controller build-vaultenv build-ca-bundle-controller
+build: clean build-webhook build-controller build-vaultenv
 
 .PHONY: build-webhook
 build-webhook: clean-webhook
@@ -209,10 +193,6 @@ build-webhook: clean-webhook
 .PHONY: build-controller
 build-controller: clean-controller
 	CGO_ENABLED=0 COMPONENT=controller PKG_NAME=$(PACKAGE)/cmd/$(CONTROLLER_BINARY_NAME) $(MAKE) bin/$(PROJECT_NAME)/$(CONTROLLER_BINARY_NAME)
-
-.PHONY: build-ca-bundle-controller
-build-ca-bundle-controller: clean-ca-bundle-controller
-	CGO_ENABLED=0 COMPONENT=ca-bundle-controller PKG_NAME=$(PACKAGE)/cmd/$(CA_BUNDLE_CONTROLLER_BINARY_NAME) $(MAKE) bin/$(PROJECT_NAME)/$(CA_BUNDLE_CONTROLLER_BINARY_NAME)
 
 .PHONY: build-vaultenv
 build-vaultenv: clean-vaultenv
@@ -245,18 +225,6 @@ image-controller:
 		--build-arg VCS_URL=$(VCS_URL) \
 		-t $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) .
 
-.PHONY: image-ca-bundle-controller
-image-ca-bundle-controller:
-	DOCKER_BUILDKIT=1 docker build \
-		--progress=plain \
-		--target ca-bundle-controller \
-		--build-arg BUILD_SUB_TARGET="-ca-bundle-controller" \
-		--build-arg PACKAGE=$(PACKAGE) \
-		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
-		--build-arg BUILD_DATE=$(BUILD_DATE) \
-		--build-arg VCS_URL=$(VCS_URL) \
-		-t $(DOCKER_INTERNAL_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) .
-
 .PHONY: image-vaultenv
 image-vaultenv:
 	DOCKER_BUILDKIT=1 docker build \
@@ -277,15 +245,11 @@ image-akv2k8s-env-test:
 		-f images/akv2k8s-test/Dockerfile .
 
 .PHONY: push
-push: push-controller push-ca-bundle-controller push-webhook push-vaultenv
+push: push-controller push-webhook push-vaultenv
 
 .PHONY: push-controller
 push-controller:
 	docker push $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG)
-
-.PHONY: push-ca-bundle-controller
-push-ca-bundle-controller:
-	docker push $(DOCKER_INTERNAL_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG)
 
 .PHONY: push-webhook
 push-webhook:
@@ -300,7 +264,7 @@ push-akv2k8s-env-test:
 	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE)
 
 .PHONY: pull-all
-pull-all: pull-webhook pull-controller pull-ca-bundle-controller pull-vaultenv
+pull-all: pull-webhook pull-controller pull-vaultenv
 
 .PHONY: pull-webhook
 pull-webhook:
@@ -310,16 +274,12 @@ pull-webhook:
 pull-controller:
 	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) 
 
-.PHONY: pull-ca-bundle-controller
-pull-ca-bundle-controller:
-	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) 
-
 .PHONY: pull-vaultenv
 pull-vaultenv:
 	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) 
 
 .PHONY: release
-release: release-controller release-ca-bundle-controller release-webhook release-vaultenv
+release: release-controller release-webhook release-vaultenv
 
 .PHONY: release-controller
 release-controller:
@@ -328,14 +288,6 @@ release-controller:
 
 	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_RELEASE_TAG_CONTROLLER)
 	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_CONTROLLER_IMAGE):latest
-
-.PHONY: release-ca-bundle-controller
-release-ca-bundle-controller:
-	docker tag $(DOCKER_INTERNAL_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_RELEASE_TAG_CA_BUNDLE_CONTROLLER)
-	docker tag $(DOCKER_INTERNAL_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):latest
-
-	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):$(DOCKER_RELEASE_TAG_CA_BUNDLE_CONTROLLER)
-	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_CA_BUNDLE_CONTROLLER_IMAGE):latest
 
 .PHONY: release-webhook
 release-webhook:
