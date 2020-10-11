@@ -137,6 +137,10 @@ func newConfigMap(name string, ns string, secret *corev1.Secret) (*corev1.Config
 		return nil, fmt.Errorf("key ca.crt not found in secret %s/%s", secret.Namespace, secret.Name)
 	}
 
+	if len(dataByte) == 0 {
+		return nil, fmt.Errorf("key ca.crt exists in secret %s/%s, but it's empty", secret.Namespace, secret.Name)
+	}
+
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
