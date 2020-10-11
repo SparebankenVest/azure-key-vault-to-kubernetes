@@ -72,6 +72,8 @@ const (
 	// MessageAzureKeyVaultSecretSyncedWithAzureKeyVault is the message used for an Event fired when a AzureKeyVaultSecret
 	// is synced successfully after getting updated secret from Azure Key Vault
 	MessageAzureKeyVaultSecretSyncedWithAzureKeyVault = "AzureKeyVaultSecret synced to Kubernetes Secret successfully with change from Azure Key Vault"
+
+	ControllerName = "Akv2k8s controller"
 )
 
 // Controller is the controller implementation for AzureKeyVaultSecret resources
@@ -104,8 +106,8 @@ type Controller struct {
 	namespaceQueue  *queue.Worker
 
 	// ConfigMap
-	configMapLister corelisters.ConfigMapLister
-	configMapQueue  *queue.Worker
+	configMapLister       corelisters.ConfigMapLister
+	caBundleConigMapQueue *queue.Worker
 
 	options *Options
 	clock   Timer
@@ -180,12 +182,14 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 	controller.akvsSecretQueue = queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, controller.syncSecret)
 	controller.azureKeyVaultQueue = queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
 	controller.caBundleSecretQueue = queue.New("CABundleSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncCABundleSecret)
-	controller.namespaceQueue = queue.New("Namespaces", options.MaxNumRequeues, options.NumThreads, controller.syncNamespace)
+	controller.namespaceQueue = queue.New("Namespaces", options.MaxNumRequeues, options.NumThreads, controller.syncCABundleInNamespace)
+	controller.caBundleConigMapQueue = queue.New("CABundleConfigs", options.MaxNumRequeues, options.NumThreads, controller.syncCABundleConfigMap)
 
 	log.Info("Setting up event handlers")
 	controller.initAzureKeyVaultSecret()
 	controller.initSecret()
 	controller.initNamespace()
+	controller.initConfigMap()
 
 	return controller
 }
@@ -213,22 +217,25 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 		}
 	}
 
-	log.Info("Starting Azure Key Vault Secret queue")
+	log.Info("starting azure key vault secret queue")
 	c.akvsCrdQueue.Run(stopCh)
 
-	log.Info("Starting Secret queue for Azure Key Vault Secrets")
+	log.Info("starting secret queue for azure key vault secrets")
 	c.akvsSecretQueue.Run(stopCh)
 
-	log.Info("Starting Azure Key Vault queue")
+	log.Info("starting azure key vault queue")
 	c.azureKeyVaultQueue.Run(stopCh)
 
-	log.Info("Starting Namespace queue")
-	c.namespaceQueue.Run(stopCh)
-
-	log.Info("Starting CA Bundle queue")
+	log.Info("starting ca bundle secret queue")
 	c.caBundleSecretQueue.Run(stopCh)
 
-	log.Info("Started workers")
+	log.Info("starting ca bundle namespace queue")
+	c.namespaceQueue.Run(stopCh)
+
+	log.Info("starting ca bundle configmap queue")
+	c.caBundleConigMapQueue.Run(stopCh)
+
+	log.Info("started workers")
 	<-stopCh
 	log.Info("Shutting down workers")
 }

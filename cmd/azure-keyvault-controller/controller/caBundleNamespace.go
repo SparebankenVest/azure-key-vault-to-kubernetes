@@ -69,7 +69,7 @@ func (c *Controller) initNamespace() {
 	})
 }
 
-func (c *Controller) syncNamespace(key string) error {
+func (c *Controller) syncCABundleInNamespace(key string) error {
 	ns, err := c.namespaceLister.Get(key)
 	if err != nil {
 		return err
@@ -80,19 +80,22 @@ func (c *Controller) syncNamespace(key string) error {
 
 	//If this is a non-labelled namespace, we delete ca bundle config map
 	if !c.isInjectorEnabledForNamespace(ns) && cm != nil {
-		log.Infof("configmap '%s' exists in namespace '%s' which is no longer labelled to keep CA Bundle - deleting now", c.caBundleConfigMapName, key)
+		log.Infof("configmap '%s' exists in namespace '%s', but is no longer labelled to keep CA Bundle - deleting now", c.caBundleConfigMapName, key)
 		err = c.kubeclientset.CoreV1().ConfigMaps(key).Delete(c.caBundleConfigMapName, &metav1.DeleteOptions{})
 		if err != nil {
 			return err
 		}
-		msg := fmt.Sprintf("CA Bundle successfully deleted ConfigMap %s in namespace %s", c.caBundleConfigMapName, key)
+
+		log.Infof("successfully deleted configmap %s with ca bundle in namespace %s", c.caBundleConfigMapName, key)
+
+		msg := fmt.Sprintf("%s successfully deleted ConfigMap %s with CA Bundle", ControllerName, c.caBundleConfigMapName)
 		c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, msg)
 		return nil
 	}
 
 	if err != nil {
 		if errors.IsNotFound(err) { // if configmap does not exist, create it
-			log.Infof("configmap '%s' not found in labelled namespace '%s' - creating now", c.caBundleConfigMapName, key)
+			log.Infof("configmap '%s' with ca bundle not found in labelled namespace '%s' - creating now", c.caBundleConfigMapName, key)
 
 			log.Debugf("getting secret %s with ca bundle in namespace %s", c.caBundleSecretName, c.caBundleSecretNamespaceName)
 			secret, err := c.kubeclientset.CoreV1().Secrets(c.caBundleSecretNamespaceName).Get(c.caBundleSecretName, metav1.GetOptions{})
@@ -111,7 +114,9 @@ func (c *Controller) syncNamespace(key string) error {
 				return err
 			}
 
-			msg := fmt.Sprintf("CA Bundle successfully synced to ConfigMap %s in namespace %s", c.caBundleConfigMapName, key)
+			log.Infof("ca bundle successfully synced to configmap '%s' in namespace '%s'", c.caBundleConfigMapName, key)
+
+			msg := fmt.Sprintf("%s successfully synced CA Bundle to ConfigMap %s ", ControllerName, c.caBundleConfigMapName)
 			c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, msg)
 			return nil
 		}
@@ -125,23 +130,29 @@ func (c *Controller) syncNamespace(key string) error {
 		return err
 	}
 
-	dataByte := secret.Data["ca.crt"]
-	secretCaBundle := string(dataByte)
-	cmCaBundle, found := cm.Data["ca.crt"]
+	secretCABundle, err := getCABundleFromSecret(secret)
+	if err != nil {
+		return err
+	}
 
-	if found && secretCaBundle != cmCaBundle {
-		log.Infof("configmap '%s' exists in namespace '%s' with old ca bundle - updating now", c.caBundleConfigMapName, key)
+	cmCABundle := getCABundleFromConfigMap(cm)
+
+	if secretCABundle != cmCABundle {
+		log.Infof("configmap '%s' with ca bundle exists in namespace '%s' with old ca bundle - updating now", c.caBundleConfigMapName, key)
 
 		newConfigMap, err := newConfigMap(c.caBundleConfigMapName, ns.Name, secret)
 		if err != nil {
 			log.Errorf("failed to create new configmap, error: %+v", err)
 		}
 
-		_, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Update(newConfigMap)
+		cm, err = c.kubeclientset.CoreV1().ConfigMaps(ns.Name).Update(newConfigMap)
 		if err != nil {
 			return err
 		}
-		msg := fmt.Sprintf("CA Bundle successfully synced to ConfigMap %s in namespace %s", c.caBundleConfigMapName, key)
+
+		log.Infof("ca bundle successfully synced to configmap '%s' in namespace '%s'", c.caBundleConfigMapName, key)
+
+		msg := fmt.Sprintf("%s successfully synced CA Bundle to ConfigMap %s", ControllerName, c.caBundleConfigMapName)
 		c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, msg)
 	}
 
