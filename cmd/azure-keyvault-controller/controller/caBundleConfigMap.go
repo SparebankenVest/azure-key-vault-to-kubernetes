@@ -31,7 +31,7 @@ import (
 )
 
 func (c *Controller) initConfigMap() {
-	c.kubeInformerFactory.Core().V1().Namespaces().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	c.kubeInformerFactory.Core().V1().ConfigMaps().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		DeleteFunc: func(obj interface{}) {
 			cm, err := convertToConfigMap(obj)
 			if err != nil {
