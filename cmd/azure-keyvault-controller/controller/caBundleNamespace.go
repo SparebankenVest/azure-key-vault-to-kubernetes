@@ -168,9 +168,10 @@ func (c *Controller) syncCABundleInNamespace(key string) error {
 }
 
 func (c *Controller) getAllAkvsLabelledNamespaces() ([]*corev1.Namespace, error) {
+	log.Debugf("getting all namespaces labelled %s=%s", c.namespaceAkvsLabel, "enabled")
 	labelSelector := &metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			c.caBundleSecretNamespaceName: "enabled",
+			c.namespaceAkvsLabel: "enabled",
 		},
 	}
 
