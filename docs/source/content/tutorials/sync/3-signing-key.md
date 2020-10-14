@@ -8,7 +8,7 @@ description: "Sync signing key from Azure Key Vault into a Kubernetes Secret"
 We start by creating a definition for the Azure Key Vault signing-key we want to sync:
 
 ```yaml:title=akvs-signing-key-sync.yaml
-apiVersion: spv.no/v1alpha1
+apiVersion: spv.no/v1
 kind: AzureKeyVaultSecret
 metadata:
   name: signing-key-sync 

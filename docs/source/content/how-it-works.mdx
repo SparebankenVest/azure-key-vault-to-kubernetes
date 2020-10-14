@@ -9,7 +9,7 @@ import {
   ExpansionPanelListItem
 } from 'gatsby-theme-apollo-docs';
 
-Akv2k8s consist of three main components to integrate with Azure Key Vault:
+Akv2k8s consist of three main components:
 
 * a Custom Resource Definition called `AzureKeyVaultSecret`
 * Controller
@@ -17,19 +17,19 @@ Akv2k8s consist of three main components to integrate with Azure Key Vault:
 
 ## The AzureKeyVaultSecret CRD
 
-The `AzureKeyVaultSecret` Custom Resource Definition (CRD) contains metadata used by the Controller and Env Injector to access objects in Azure Key Vault. For each secret, certificate or key in AzureKeyVault you want to make available in Kubernetes, you create a `AzureKeyVaultSecret` and provide the following information:
+The `AzureKeyVaultSecret` Custom Resource Definition (CRD) contains metadata used by the Controller and Env Injector to access objects in Azure Key Vault. For each secret, certificate or key in AzureKeyVault that you want available in Kubernetes, you create a `AzureKeyVaultSecret` and provide:
 
 * The Kubernetes namespace where the Azure Key Vault secret should be available
 * The name of the Azure Key Vault
 * The name, type and version (optional) of the Azure Key Vault object
-* Optionally which Kubernetes `Secret` name and data-key to create 
+* Optionally a Kubernetes `Secret` name and data-key to sync to 
 
 An example `AzureKeyVaultSecret` looks like this:
 
 ```yaml
 # secret-sync.yaml
 
-apiVersion: spv.no/v1alpha1
+apiVersion: spv.no/v1
 kind: AzureKeyVaultSecret
 metadata:
   name: secret-sync 
@@ -48,13 +48,12 @@ spec:
 
 ## The Controller
 
-The Controller is responsible for syncing Azure Key Vault objects into Kubernetes `Secret`'s, for all `AzureKeyVaultSecret`'s having `spec.output.secret` defined (like in the example above).
+The Controller is responsible for:
 
-Periodically the Controller will poll Azure Key Vault for version changes of the secret and apply any changes to the Kubernetes `Secret`.
+* syncing Azure Key Vault objects into Kubernetes `Secret`'s, where the `AzureKeyVaultSecret` has `spec.output.secret` defined (like in the example above)
+* periodically poll Azure Key Vault for changes and apply to the Kubernetes `Secret`
 
 > **Note-1: Pods in Kubernetes currently do not get notifications when Secret resources change, and Pods will have to be re-created or use something like the Wave controller (https://github.com/pusher/wave) to get the changes**
-
-> **Note-2: By default the Controller auto sync secrets every 10 minutes (configurable) and depending on how many secrets are synchronized can cause extra usage costs of Azure Key Vault.**
 
 ## The Env Injector
 
@@ -63,18 +62,16 @@ The Env Injector is a bit more complex than the Controller and consists of:
 * a Mutating Admission Webhook (see [Kubernetes docs](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#mutatingadmissionwebhook))
 * a Docker image (spvest/azure-keyvault-env) containing the `azure-keyvault-env` executable
 
-Below is an outline of the steps that gets executed when a Pod is scheduled to start, in a namespace enabled for Env-Injector.
+Below are the steps that gets executed for a Pod using env-injection.
   
 <ExpansionPanelList>
 <ExpansionPanelListItem number="1">
 
 ### The Mutating Admission Webhook triggers
 
-The Env Injector webhook gets triggered just before every Pod gets created and inspects the Pod definition for environment variables with values containing `@azurekeyvault` (see example below). If it does not find any, the Pod starts as normal. If it does find environment variables with values containing `@azurekeyvault`, it mutates (changes) the Pod with:
+The Env Injector webhook gets triggered just before every Pod gets created and inspects the Pod definition for environment variables containing `@azurekeyvault` (see example below). If it does not find any, the Pod starts as normal. If it does, it mutates (changes) the Pod with:
 
-* A init-container (image: spvest/azure-keyvault-env) with these volumes:
-  * A in-memory volume at `/azure-keyvault/`
-  * A host volume at `/etc/kubernetes/azure.json` (only for default auth)
+* A init-container (image: spvest/azure-keyvault-env) with a in-memory volume at `/azure-keyvault/`
 * Changes the executable for the Pod container (more on that later)
 
 Example where environment variable has value containing `@azurekeyvault`:
@@ -92,34 +89,29 @@ As mentioned, the Pod container gets mutated to use a different executable. It d
 
 ### The Pod starts the init-container
 
-When the Env Injector webhook is finished, Kubernetes will start the Pod with its new changes. This will trigger the following sequence:
+When the Env Injector webhook is finished, Kubernetes will start the Pod with the mutated changes. This will trigger the following sequence:
 
 1. The init-container will start
 2. The init-container copies the `azure-keyvault-env` executable into `/azure-keyvault/`
-3. If default authentication is used, the `/etc/kubernetes/azure.json` located on the node, containing Azure AKS default credentials is copied to `/azure-keyvault/`
 
-The volume `/azure-keyvault/` is a shared in-memory volume accessible to both the init-container and the original container. This is how the init-container can "give" the original container access to files.
-
-> Note: All files located in the volume `/azure-keyvault/` will be deleted as soon as the original container starts up. It would be a security issue to have these files available to the container after startup.
+The volume `/azure-keyvault/` in the Pod is shared between its containers (the init-container and the original container) and is how the init-container can "give" the original container its executable.
 
 </ExpansionPanelListItem>
 <ExpansionPanelListItem number="3">
 
 ### The Pod starts the original container
 
-When the original container starts it will execute the `azure-keyvault-env` command, which will:
+When the original container starts, it will execute the `azure-keyvault-env` command, which will:
 
-1. Connect to Azure Key Vault, using credentials found in `/azure-keyvault/azure.json` (when default auth is used) - or use custom credentials
-2. Download any Azure Key Vault secrets, identified by the environment placeholders
-3. Delete all content from the shared volume `/azure-keyvault/`:
-    1. Delete itself (`azure-keyvault-env`)
-    2. Delete `/azure-keyvault/azure.json` - default credentials
+1. Get a OAuth token from the Env-Injector auth service for authenticating with Azure Key Vault (default - other options exists - see [Authentication](security/authentication) for details)
+2. Connect to Azure Key Vault, using credentials from previous step
+3. Download any Azure Key Vault objects, identified by the environment placeholders
 4. Execute the original command and params, pass on the updated environment variables with real secret values
 
 </ExpansionPanelListItem>
 <ExpansionPanelListItem number="check">
 
-**✨The end result is that all secrets gets injected transparently in-memory during container startup. It will not reveal any secret content in the container spec, disk or logs. The only component that can read the secrets, are the program running inside the container. ✨**
+**✨The end result is secrets injected transparently in-memory during container startup. It will not reveal any of the actual secrets in the container spec, disk or logs. The only component containing the actual secrets is the application process.✨**
 
 </ExpansionPanelListItem>
 </ExpansionPanelList>

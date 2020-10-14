@@ -8,7 +8,7 @@ description: "Inject an Azure Key Vault certificate key pair directly into a con
 We start by creating a definition for the Azure Key Vault secret pointing to the certificate we want to sync:
 
 ```yaml:title=akvs-certificate-inject.yaml
-apiVersion: spv.no/v1alpha1
+apiVersion: spv.no/v1
 kind: AzureKeyVaultSecret
 metadata:
   name: certificate-inject 

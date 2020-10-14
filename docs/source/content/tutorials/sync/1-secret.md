@@ -9,7 +9,7 @@ We start by creating a definition for the Azure Key Vault secret
 we want to sync:
 
 ```yaml:title=akvs-secret-sync.yaml
-apiVersion: spv.no/v1alpha1
+apiVersion: spv.no/v1
 kind: AzureKeyVaultSecret
 metadata:
   name: secret-sync 

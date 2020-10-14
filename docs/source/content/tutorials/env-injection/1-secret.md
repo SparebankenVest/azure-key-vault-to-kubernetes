@@ -8,7 +8,7 @@ description: "Inject an Azure Key Vault secret directly into a container applica
 We start by creating a definition for the Azure Key Vault secret we want to inject:
 
 ```yaml:title=akvs-secret-inject.yaml
-apiVersion: spv.no/v1alpha1
+apiVersion: spv.no/v1
 kind: AzureKeyVaultSecret
 metadata:
   name: secret-inject 

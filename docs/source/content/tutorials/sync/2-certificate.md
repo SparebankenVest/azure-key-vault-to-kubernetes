@@ -8,7 +8,7 @@ description: "Sync a certificate from Azure Key Vault into a Kubernetes Secret."
 We start by creating a definition for the Azure Key Vault secret pointing to the certificate we want to sync:
 
 ```yaml:title=akvs-certificate-sync.yaml
-apiVersion: spv.no/v1alpha1
+apiVersion: spv.no/v1
 kind: AzureKeyVaultSecret
 metadata:
   name: certificate-sync 

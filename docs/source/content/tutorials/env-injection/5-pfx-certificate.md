@@ -13,7 +13,7 @@ This tutorial is EXACTLY like the [Inject Certificate](2-certificate) tutorial, 
 last line below:
 
 ```yaml{11}:title=akvs-certificate-inject.yaml
-apiVersion: spv.no/v1alpha1
+apiVersion: spv.no/v1
 kind: AzureKeyVaultSecret
 metadata:
   name: certificate-inject

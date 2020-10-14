@@ -8,7 +8,7 @@ description: "Inject a signing key from Azure Key Vault as environment variable 
 We start by creating a definition for the Azure Key Vault signing key we want to inject:
 
 ```yaml:title=akvs-signing-key-inject.yaml
-apiVersion: spv.no/v1alpha1
+apiVersion: spv.no/v1
 kind: AzureKeyVaultSecret
 metadata:
   name: signing-key-inject 

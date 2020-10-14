@@ -65,7 +65,7 @@ module.exports = {
           '1.0': 'doc-version-1.0.2',
         },
         sidebarCategories: {
-          null: ['index', 'why-akv2k8s', 'quick-start', 'how-it-works'],
+          null: ['index', 'why-akv2k8s', 'quick-start', 'how-it-works', 'faq'],
           'Installation': [
             'installation/index',
             'installation/requirements',
