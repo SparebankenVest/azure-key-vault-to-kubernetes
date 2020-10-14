@@ -198,7 +198,7 @@ func main() {
 	})
 
 	if config.useAuthService {
-		logger.Info("using sentralized akv2k8s auth service for authentiction with azure key vault")
+		logger.Info("using centralized akv2k8s auth service for authentiction with azure key vault")
 	} else {
 		logger.Debug("akv2k8s auth service not enabled - will look for azure key vault credentials locally")
 	}
