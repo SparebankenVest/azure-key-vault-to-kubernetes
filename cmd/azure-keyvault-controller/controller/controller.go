@@ -76,6 +76,17 @@ const (
 	ControllerName = "Akv2k8s controller"
 )
 
+type NamespaceSelectorLabel struct {
+	Name  string
+	Value string
+}
+
+type CABundle struct {
+	ConfigMapName   string
+	SecretNamespace string
+	SecretName      string
+}
+
 // Controller is the controller implementation for AzureKeyVaultSecret resources
 type Controller struct {
 	kubeclientset       kubernetes.Interface
@@ -96,10 +107,8 @@ type Controller struct {
 	azureKeyVaultQueue        *queue.Worker
 
 	// CA Bundle
-	caBundleSecretQueue         *queue.Worker
-	caBundleSecretName          string
-	caBundleSecretNamespaceName string
-	caBundleConfigMapName       string
+	caBundleSecretQueue *queue.Worker
+	caBundle            CABundle
 
 	// Namespace
 	namespaceLister corelisters.NamespaceLister
@@ -125,30 +134,22 @@ type Options struct {
 }
 
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, recorder record.EventRecorder, vaultService vault.Service, caBundleSecretName, caBundleSecretNamespaceName, namespaceAkvsLabel string, options *Options) *Controller {
+func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, recorder record.EventRecorder, vaultService vault.Service, caBundle CABundle, nsSelector NamespaceSelectorLabel, options *Options) *Controller {
 	// Create event broadcaster
 	// Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// logged for azure-keyvault-controller types.
 	utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
 
-	caBundleCMName := "caBundle"
-	if options.CABundleConfigMapName != "" {
-		caBundleCMName = options.CABundleConfigMapName
-	}
-
 	akvLogger := log.WithFields(log.Fields{"component": "akvs"})
 	caBundleLogger := log.WithFields(log.Fields{"component": "caBundle"})
 
 	controller := &Controller{
-		kubeclientset:      client,
-		akvsClient:         akvsClient,
-		recorder:           recorder,
-		vaultService:       vaultService,
-		namespaceAkvsLabel: namespaceAkvsLabel,
+		kubeclientset: client,
+		akvsClient:    akvsClient,
+		recorder:      recorder,
+		vaultService:  vaultService,
 
-		caBundleConfigMapName:       caBundleCMName,
-		caBundleSecretName:          caBundleSecretName,
-		caBundleSecretNamespaceName: caBundleSecretNamespaceName,
+		caBundle: caBundle,
 
 		akvsInformerFactory: akvInformerFactory,
 		kubeInformerFactory: kubeInformerFactory,

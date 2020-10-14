@@ -56,8 +56,9 @@ var (
 func initConfig() {
 	viper.SetDefault("version", "dev")
 	viper.SetDefault("log_format", "fmt")
-	viper.SetDefault("akv_label_name", "azure-key-vault-env-injection")
-	viper.SetDefault("ca_config_map_name", "akv2k8s-ca")
+	viper.SetDefault("namespace_label_selector_name", "azure-key-vault-env-injection")
+	viper.SetDefault("namespace_label_selector_value", "enabled")
+	viper.SetDefault("akv_ca_config_map_name", "akv2k8s-ca")
 	viper.SetDefault("cloudconfig", "/etc/kubernetes/azure.json")
 	viper.SetDefault("custom_auth", false)
 
@@ -88,17 +89,23 @@ func main() {
 
 	customAuth := viper.GetBool("custom_auth")
 
-	caConfigMapName := viper.GetString("ca_config_map_name")
-	akvLabelName := viper.GetString("akv_label_name")
-	akvSecretName := viper.GetString("akv_secret_name")
-	akvNamespace := viper.GetString("akv_namespace")
-
-	if akvSecretName == "" {
-		log.Fatal("Env var AKV_SECRET_NAME required")
+	nsSelector := &controller.NamespaceSelectorLabel{
+		Name:  viper.GetString("namespace_label_selector_name"),
+		Value: viper.GetString("namespace_label_selector_value"),
 	}
 
-	if akvNamespace == "" {
-		log.Fatal("Env var AKV_NAMESPACE required")
+	caBundle := &controller.CABundle{
+		ConfigMapName:   viper.GetString("akv_ca_config_map_name"),
+		SecretName:      viper.GetString("akv_ca_secret_name"),
+		SecretNamespace: viper.GetString("akv_ca_namespace"),
+	}
+
+	if caBundle.SecretName == "" {
+		log.Fatalf("env var AKV_CA_SECRET_NAME required")
+	}
+
+	if caBundle.SecretNamespace == "" {
+		log.Fatalf("env var AKV_CA_NAMESPACE required")
 	}
 
 	// set up signals so we handle the first shutdown signal gracefully
@@ -170,9 +177,8 @@ func main() {
 		kubeInformerFactory,
 		recorder,
 		vaultService,
-		akvSecretName,
-		akvNamespace,
-		akvLabelName,
+		caBundle,
+		nsSelector,
 		options)
 
 	controller.Run(stopCh)

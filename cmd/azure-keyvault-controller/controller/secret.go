@@ -137,7 +137,7 @@ func (c *Controller) syncSecret(key string) error {
 }
 
 func (c *Controller) isCABundleSecret(secret *corev1.Secret) bool {
-	return secret.Namespace == c.caBundleSecretNamespaceName && secret.Name == c.caBundleSecretName
+	return secret.Namespace == c.caBundle.SecretNamespace && secret.Name == c.caBundle.SecretName
 }
 
 func (c *Controller) isOwnedByAzureKeyVaultSecret(secret *corev1.Secret) bool {

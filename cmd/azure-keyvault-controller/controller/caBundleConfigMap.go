@@ -55,7 +55,7 @@ func (c *Controller) getNamespaceFromConfigMap(cm *corev1.ConfigMap) (*corev1.Na
 }
 
 func (c *Controller) isCABundleConfigMap(cm *corev1.ConfigMap) bool {
-	return cm.Name == c.caBundleConfigMapName
+	return cm.Name == c.caBundle.ConfigMapName
 }
 
 func (c *Controller) getConfigMap(key string) (*corev1.ConfigMap, error) {

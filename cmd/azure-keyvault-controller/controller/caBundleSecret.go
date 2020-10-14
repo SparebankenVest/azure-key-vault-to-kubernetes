@@ -34,7 +34,7 @@ func (c *Controller) syncCABundleSecret(key string) error {
 		return err
 	}
 
-	log.Debugf("looping all labelled namespaces looking for ca bundle configmap '%s' to update", c.caBundleConfigMapName)
+	log.Debugf("looping all labelled namespaces looking for ca bundle configmap '%s' to update", c.caBundle.ConfigMapName)
 
 	for _, ns := range labelledNamespaces {
 		if err := c.syncCABundleInNamespace(ns.Name); err != nil {
