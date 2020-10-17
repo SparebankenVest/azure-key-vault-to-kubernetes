@@ -1,4 +1,7 @@
 {
+  "engines": {
+    "node": ">=10.13.0"
+  },
   "scripts": {
     "prestart": "gatsby clean",
     "start": "GATSBY_ALGOLIA_ENABLED=false gatsby develop",
@@ -18,6 +21,6 @@
     "react-instantsearch-dom": "^6.7.0"
   },
   "devDependencies": {
-    "gatsby-cli": "^2.12.88"
+    "gatsby-cli": "^2.12.107"
   }
 }
