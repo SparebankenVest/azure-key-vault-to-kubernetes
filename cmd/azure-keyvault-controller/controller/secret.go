@@ -38,70 +38,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func (c *Controller) initSecret() {
-	c.kubeInformerFactory.Core().V1().Secrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			secret, err := convertToSecret(obj)
-			if err != nil {
-				log.Errorf("failed to convert to secret: %v", err)
-			}
-
-			if c.isCABundleSecret(secret) {
-				queue.Enqueue(c.caBundleSecretQueue.GetQueue(), secret)
-				return
-			}
-
-			if c.isOwnedByAzureKeyVaultSecret(secret) {
-				log.Debugf("Secret %s/%s controlled by AzureKeyVaultSecret added. Adding to queue.", secret.Namespace, secret.Name)
-				queue.Enqueue(c.akvsSecretQueue.GetQueue(), secret)
-			}
-		},
-		UpdateFunc: func(old, new interface{}) {
-			newSecret, err := convertToSecret(new)
-			if err != nil {
-				log.Errorf("failed to convert to secret: %v", err)
-			}
-
-			oldSecret, err := convertToSecret(old)
-			if err != nil {
-				log.Errorf("failed to convert to secret: %v", err)
-			}
-
-			if newSecret.ResourceVersion == oldSecret.ResourceVersion {
-				// Periodic resync will send update events for all known Secrets.
-				// Two different versions of the same Secret will always have different RVs.
-				return
-			}
-
-			if c.isCABundleSecret(newSecret) {
-				queue.Enqueue(c.caBundleSecretQueue.GetQueue(), newSecret)
-				return
-			}
-
-			if c.isOwnedByAzureKeyVaultSecret(newSecret) {
-				log.Debugf("Secret %s/%s controlled by AzureKeyVaultSecret changed. Handling.", newSecret.Namespace, newSecret.Name)
-				queue.Enqueue(c.akvsSecretQueue.GetQueue(), newSecret)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			secret, err := convertToSecret(obj)
-			if err != nil {
-				log.Errorf("failed to convert to secret: %v", err)
-			}
-
-			if c.isCABundleSecret(secret) {
-				queue.Enqueue(c.caBundleSecretQueue.GetQueue(), secret)
-				return
-			}
-
-			if c.isOwnedByAzureKeyVaultSecret(secret) {
-				log.Debugf("Secret %s/%s controlled by AzureKeyVaultSecret deleted. Handling.", secret.Namespace, secret.Name)
-				queue.Enqueue(c.akvsSecretQueue.GetQueue(), secret)
-			}
-		},
-	})
-}
-
 func convertToSecret(obj interface{}) (*corev1.Secret, error) {
 	secret, ok := obj.(*corev1.Secret)
 	if !ok {
@@ -134,10 +70,6 @@ func (c *Controller) syncSecret(key string) error {
 		}
 	}
 	return nil
-}
-
-func (c *Controller) isCABundleSecret(secret *corev1.Secret) bool {
-	return secret.Namespace == c.caBundle.SecretNamespace && secret.Name == c.caBundle.SecretName
 }
 
 func (c *Controller) isOwnedByAzureKeyVaultSecret(secret *corev1.Secret) bool {

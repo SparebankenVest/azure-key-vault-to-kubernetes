@@ -19,10 +19,15 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
@@ -49,26 +54,25 @@ const (
 	oldDockerHubHost        = "docker.io"
 	injectorDir             = "/azure-keyvault/"
 	injectorExecutable      = "azure-keyvault-env"
-	clientCertDir           = "/client-cert/"
+	clientCertDir           = "/var/client-cert/"
 	initContainerVolumeName = "azure-keyvault-env"
 )
 
 type azureKeyVaultConfig struct {
 	port                         string
-	runningInsideAzureAks        bool
-	customAuth                   bool
-	namespace                    string
 	cloudConfigHostPath          string
 	serveMetrics                 bool
 	httpPort                     string
-	certFile                     string
-	keyFile                      string
+	tlsCertFile                  string
+	tlsKeyFile                   string
+	caCert                       []byte
+	caKey                        []byte
+	authType                     string
 	useAuthService               bool
 	dockerImageInspectionTimeout int
 	useAksCredentialsWithAcs     bool
 	authServiceName              string
 	authServicePort              string
-	caBundleConfigMapName        string
 	kubeClient                   *kubernetes.Clientset
 	credentials                  credentialprovider.Credentials
 }
@@ -122,12 +126,11 @@ func setLogFormat(logFormat string) {
 
 func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 	req := whcontext.GetAdmissionRequest(ctx)
-	config.namespace = req.Namespace
 	var pod *corev1.Pod
 
 	switch v := obj.(type) {
 	case *corev1.Pod:
-		log.Infof("found pod to mutate in namespace '%s'", config.namespace)
+		log.Infof("found pod to mutate in namespace '%s'", req.Namespace)
 		pod = v
 	default:
 		return false, nil
@@ -135,7 +138,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 
 	podsInspectedCounter.Inc()
 
-	err := mutatePodSpec(pod)
+	err := mutatePodSpec(pod, req.Namespace)
 	if err != nil {
 		log.Errorf("failed to mutate pod, error: %+v", err)
 		podsMutatedFailedCounter.Inc()
@@ -208,11 +211,10 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func initConfig() {
-	viper.SetDefault("running_inside_azure_aks", true)
-	viper.SetDefault("ca_config_map_name", "akv2k8s-ca")
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
 	viper.SetDefault("docker_image_inspection_timeout", 20)
 	viper.SetDefault("docker_image_inspection_use_acs_credentials", true)
+	viper.SetDefault("auth_type", "cloudConfig")
 	viper.SetDefault("use_auth_service", true)
 	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
 	viper.SetDefault("metrics_enabled", false)
@@ -238,39 +240,29 @@ func main() {
 	config = azureKeyVaultConfig{
 		port:                         viper.GetString("port"),
 		httpPort:                     viper.GetString("port_http"),
-		runningInsideAzureAks:        viper.GetBool("running_inside_azure_aks"),
-		customAuth:                   viper.GetBool("custom_auth"),
+		authType:                     viper.GetString("auth_type"),
 		serveMetrics:                 viper.GetBool("metrics_enabled"),
-		certFile:                     viper.GetString("tls_cert_file"),
-		keyFile:                      viper.GetString("tls_private_key_file"),
+		tlsCertFile:                  fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.crt"),
+		tlsKeyFile:                   fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.key"),
 		useAuthService:               viper.GetBool("use_auth_service"),
 		authServiceName:              viper.GetString("webhook_auth_service"),
 		authServicePort:              viper.GetString("webhook_auth_service_port"),
-		caBundleConfigMapName:        viper.GetString("ca_config_map_name"),
 		cloudConfigHostPath:          viper.GetString("cloud_config_host_path"),
 		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
 		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
 	}
 
-	if !config.runningInsideAzureAks {
-		config.useAksCredentialsWithAcs = false
-	}
-
 	log.Info("Active settings:")
-	log.Infof("  Running inside Azure AKS  : %t", config.runningInsideAzureAks)
 	log.Infof("  Webhook port              : %s", config.port)
 	log.Infof("  Serve metrics             : %t", config.serveMetrics)
-	log.Infof("  Use custom auth           : %t", config.customAuth)
+	log.Infof("  Auth type                 : %s", config.authType)
 	log.Infof("  Use auth service          : %t", config.useAuthService)
 	if config.useAuthService {
 		log.Infof("  Auth service name         : %s", config.authServiceName)
 		log.Infof("  Auth service port         : %s", config.authServicePort)
 	}
-	if config.runningInsideAzureAks {
-		log.Infof("  Use AKS creds with ACS    : %t", config.useAksCredentialsWithAcs)
-	}
+	log.Infof("  Use AKS creds with ACS    : %t", config.useAksCredentialsWithAcs)
 	log.Infof("  Docker inspection timeout : %d", config.dockerImageInspectionTimeout)
-	log.Infof("  CA ConfigMap name         : %s", config.caBundleConfigMapName)
 	log.Infof("  Cloud config path         : %s", config.cloudConfigHostPath)
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
@@ -280,8 +272,30 @@ func main() {
 	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, metricsRecorder, internalLogger)
 
 	var err error
-	if !config.runningInsideAzureAks || config.customAuth {
-		log.Debug("using custom auth - looking for azure key vault credentials in envrionment")
+	if config.useAuthService {
+		log.Debug("loading ca to use for mtls and auth service")
+
+		caCertDir := viper.GetString("ca_cert_dir")
+		if caCertDir == "" {
+			log.Fatalf("env var CA_CERT_DIR not provided - must exist to use auth service")
+		}
+
+		caCertFile := filepath.Join(caCertDir, "tls.crt")
+		caKeyFile := filepath.Join(caCertDir, "tls.key")
+
+		config.caCert, err = ioutil.ReadFile(caCertFile)
+		if err != nil {
+			log.Fatalf("failed to read pem file for ca cert %s, error: %+v", caCertFile, err)
+		}
+
+		config.caKey, err = ioutil.ReadFile(caKeyFile)
+		if err != nil {
+			log.Fatalf("failed to read pem file for ca key %s, error: %+v", caKeyFile, err)
+		}
+	}
+
+	if config.authType != "cloudConfig" {
+		log.Debug("not using cloudConfig for auth - looking for azure key vault credentials in envrionment")
 		cProvider, err := credentialprovider.NewFromEnvironment()
 		if err != nil {
 			log.Fatal(fmt.Errorf("failed to create credentials provider for azure key vault, error %+v", err))
@@ -292,8 +306,8 @@ func main() {
 			log.Fatal(fmt.Errorf("failed to get credentials for azure key vault, error %+v", err))
 		}
 
-		log.Debugf("using custom auth")
 	} else {
+		log.Debugf("using cloudConfig for auth - reading credentials from %s", config.cloudConfigHostPath)
 		f, err := os.Open(config.cloudConfigHostPath)
 		if err != nil {
 			log.Fatalf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
@@ -310,6 +324,14 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+
+	log.Debug("checking credentials by getting authorizer from credentials")
+	_, err = config.credentials.Authorizer()
+	if err != nil {
+		log.Fatal("failed to get authorizer for azure key vault credentials")
+	}
+
+	log.Debug("getting azure key vault authorizer succeded")
 
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
@@ -348,13 +370,41 @@ func main() {
 	router.HandleFunc("/healthz", healthHandler)
 	log.Infof("Serving encrypted healthz at %s/healthz", tlsURL)
 
+	var server *http.Server
+
 	if config.useAuthService {
 		router.HandleFunc("/auth/{namespace}/{pod}", authHandler)
 		log.Infof("Serving encrypted auth at %s/auth", tlsURL)
+		server = createServerWithMTLS(config.caCert, router, tlsURL)
+	} else {
+		server = createServer(router, tlsURL, nil)
 	}
 
-	err = http.ListenAndServeTLS(tlsURL, config.certFile, config.keyFile, router)
-	if err != nil {
-		log.Fatalf("error serving webhook: %+v", err)
+	log.Fatal(server.ListenAndServeTLS(config.tlsCertFile, config.tlsKeyFile))
+}
+
+func createServerWithMTLS(caCert []byte, router http.Handler, url string) *http.Server {
+	clientCertPool := x509.NewCertPool()
+	clientCertPool.AppendCertsFromPEM(caCert)
+
+	tlsConfig := &tls.Config{
+		ClientAuth:               tls.RequireAndVerifyClientCert,
+		ClientCAs:                clientCertPool,
+		PreferServerCipherSuites: true,
+		MinVersion:               tls.VersionTLS12,
+	}
+
+	tlsConfig.BuildNameToCertificate()
+
+	return createServer(router, url, tlsConfig)
+}
+
+func createServer(router http.Handler, url string, tlsConfig *tls.Config) *http.Server {
+	return &http.Server{
+		Addr:         url,
+		TLSConfig:    tlsConfig,
+		Handler:      router,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
 	}
 }

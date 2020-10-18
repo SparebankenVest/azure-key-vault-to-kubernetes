@@ -24,7 +24,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func getContainerCmd(clientset kubernetes.Interface, container *corev1.Container, podSpec *corev1.PodSpec) ([]string, error) {
+func getContainerCmd(clientset kubernetes.Interface, container *corev1.Container, podSpec *corev1.PodSpec, namespace string) ([]string, error) {
 	log.Debugf("getting container command for container '%s'", container.Name)
 	cmd := container.Command
 
@@ -33,7 +33,7 @@ func getContainerCmd(clientset kubernetes.Interface, container *corev1.Container
 	if len(cmd) == 0 {
 		log.Debugf("no cmd override in kubernetes for container %s, checking docker image configuration for entrypoint and cmd for %s", container.Name, container.Image)
 
-		imgConfig, err := registry.GetImageConfig(clientset, config.namespace, container, podSpec, config.cloudConfigHostPath)
+		imgConfig, err := registry.GetImageConfig(clientset, namespace, container, podSpec, config.cloudConfigHostPath)
 		if err != nil {
 			return nil, err
 		}

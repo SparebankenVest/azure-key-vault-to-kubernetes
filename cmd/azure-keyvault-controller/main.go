@@ -56,9 +56,6 @@ var (
 func initConfig() {
 	viper.SetDefault("version", "dev")
 	viper.SetDefault("log_format", "fmt")
-	viper.SetDefault("namespace_label_selector_name", "azure-key-vault-env-injection")
-	viper.SetDefault("namespace_label_selector_value", "enabled")
-	viper.SetDefault("akv_ca_config_map_name", "akv2k8s-ca")
 	viper.SetDefault("cloudconfig", "/etc/kubernetes/azure.json")
 	viper.SetDefault("custom_auth", false)
 
@@ -88,25 +85,6 @@ func main() {
 	// cloudconfig := viper.GetString("cloudconfig")
 
 	customAuth := viper.GetBool("custom_auth")
-
-	nsSelector := &controller.NamespaceSelectorLabel{
-		Name:  viper.GetString("namespace_label_selector_name"),
-		Value: viper.GetString("namespace_label_selector_value"),
-	}
-
-	caBundle := &controller.CABundle{
-		ConfigMapName:   viper.GetString("akv_ca_config_map_name"),
-		SecretName:      viper.GetString("akv_ca_secret_name"),
-		SecretNamespace: viper.GetString("akv_ca_namespace"),
-	}
-
-	if caBundle.SecretName == "" {
-		log.Fatalf("env var AKV_CA_SECRET_NAME required")
-	}
-
-	if caBundle.SecretNamespace == "" {
-		log.Fatalf("env var AKV_CA_NAMESPACE required")
-	}
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -165,9 +143,8 @@ func main() {
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
 	options := &controller.Options{
-		MaxNumRequeues:        5,
-		NumThreads:            1,
-		CABundleConfigMapName: caConfigMapName,
+		MaxNumRequeues: 5,
+		NumThreads:     1,
 	}
 
 	controller := controller.NewController(
@@ -177,8 +154,6 @@ func main() {
 		kubeInformerFactory,
 		recorder,
 		vaultService,
-		caBundle,
-		nsSelector,
 		options)
 
 	controller.Run(stopCh)

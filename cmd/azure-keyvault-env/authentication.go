@@ -27,18 +27,26 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"path"
 	"time"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 )
 
-func createHTTPClientWithTrustedCA(caCert []byte) (*http.Client, error) {
+func createHTTPClientWithTrustedCAAndMtls(caCert, clientCert, clientKey []byte) (*http.Client, error) {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
+	clientKeyPair, err := tls.X509KeyPair(clientCert, clientKey)
+	if err != nil {
+		return nil, err
+	}
+
 	tlsConf := &tls.Config{
-		RootCAs: caCertPool,
+		RootCAs:      caCertPool,
+		Certificates: []tls.Certificate{clientKeyPair},
 	}
 	tlsConf.BuildNameToCertificate()
 
@@ -51,9 +59,25 @@ func createHTTPClientWithTrustedCA(caCert []byte) (*http.Client, error) {
 	return tlsClient, nil
 }
 
-func getCredentials(useAuthService bool, authServiceAddress, caCert string) (*credentialprovider.AzureKeyVaultCredentials, error) {
+func getCredentials(useAuthService bool, authServiceAddress string, clientCertDir string) (*credentialprovider.AzureKeyVaultCredentials, error) {
 	if useAuthService {
-		client, err := createHTTPClientWithTrustedCA([]byte(caCert))
+		// caCert, clientCert, clientKey []byte
+		caCert, err := ioutil.ReadFile(path.Join(clientCertDir, "ca.crt"))
+		if err != nil {
+			return nil, err
+		}
+
+		clientCert, err := ioutil.ReadFile(path.Join(clientCertDir, "tls.crt"))
+		if err != nil {
+			return nil, err
+		}
+
+		clientKey, err := ioutil.ReadFile(path.Join(clientCertDir, "tls.key"))
+		if err != nil {
+			return nil, err
+		}
+
+		client, err := createHTTPClientWithTrustedCAAndMtls(caCert, clientCert, clientKey)
 		if err != nil {
 			logger.Fatalf("failed to download ca cert, error: %+v", err)
 		}

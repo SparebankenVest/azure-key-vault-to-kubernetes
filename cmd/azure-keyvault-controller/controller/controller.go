@@ -106,42 +106,28 @@ type Controller struct {
 	akvsCrdQueue              *queue.Worker
 	azureKeyVaultQueue        *queue.Worker
 
-	// CA Bundle
-	caBundleSecretQueue *queue.Worker
-	caBundle            CABundle
-
-	// Namespace
-	namespaceLister corelisters.NamespaceLister
-	namespaceQueue  *queue.Worker
-
-	// ConfigMap
-	configMapLister corelisters.ConfigMapLister
-
 	options *Options
 	clock   Timer
 
-	akvLogger      *log.Entry
-	caBundleLogger *log.Entry
+	akvLogger *log.Entry
 }
 
 // Options contains options for the controller
 type Options struct {
-	NumThreads            int
-	MaxNumRequeues        int
-	ResyncPeriod          time.Duration
-	AkvsRef               corev1.ObjectReference
-	CABundleConfigMapName string
+	NumThreads     int
+	MaxNumRequeues int
+	ResyncPeriod   time.Duration
+	AkvsRef        corev1.ObjectReference
 }
 
 // NewController returns a new AzureKeyVaultSecret controller
-func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, recorder record.EventRecorder, vaultService vault.Service, caBundle CABundle, nsSelector NamespaceSelectorLabel, options *Options) *Controller {
+func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvInformerFactory akvInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, recorder record.EventRecorder, vaultService vault.Service, options *Options) *Controller {
 	// Create event broadcaster
 	// Add azure-keyvault-controller types to the default Kubernetes Scheme so Events can be
 	// logged for azure-keyvault-controller types.
 	utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
 
 	akvLogger := log.WithFields(log.Fields{"component": "akvs"})
-	caBundleLogger := log.WithFields(log.Fields{"component": "caBundle"})
 
 	controller := &Controller{
 		kubeclientset: client,
@@ -149,34 +135,24 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 		recorder:      recorder,
 		vaultService:  vaultService,
 
-		caBundle: caBundle,
-
 		akvsInformerFactory: akvInformerFactory,
 		kubeInformerFactory: kubeInformerFactory,
 
 		secretsLister:             kubeInformerFactory.Core().V1().Secrets().Lister(),
 		azureKeyVaultSecretLister: akvInformerFactory.Keyvault().V2alpha1().AzureKeyVaultSecrets().Lister(),
-		configMapLister:           kubeInformerFactory.Core().V1().ConfigMaps().Lister(),
-		namespaceLister:           kubeInformerFactory.Core().V1().Namespaces().Lister(),
 
 		options: options,
 		clock:   &Clock{},
 
-		akvLogger:      akvLogger,
-		caBundleLogger: caBundleLogger,
+		akvLogger: akvLogger,
 	}
 
 	controller.akvsCrdQueue = queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVaultSecret)
 	controller.akvsSecretQueue = queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, controller.syncSecret)
 	controller.azureKeyVaultQueue = queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
-	controller.caBundleSecretQueue = queue.New("CABundleSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncCABundleSecret)
-	controller.namespaceQueue = queue.New("Namespaces", options.MaxNumRequeues, options.NumThreads, controller.syncCABundleInNamespace)
 
 	log.Info("Setting up event handlers")
 	controller.initAzureKeyVaultSecret()
-	controller.initSecret()
-	controller.initNamespace()
-	controller.initConfigMap()
 
 	return controller
 }
@@ -212,12 +188,6 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 
 	log.Info("starting azure key vault queue")
 	c.azureKeyVaultQueue.Run(stopCh)
-
-	log.Info("starting ca bundle secret queue")
-	c.caBundleSecretQueue.Run(stopCh)
-
-	log.Info("starting ca bundle namespace queue")
-	c.namespaceQueue.Run(stopCh)
 
 	log.Info("started workers")
 	<-stopCh

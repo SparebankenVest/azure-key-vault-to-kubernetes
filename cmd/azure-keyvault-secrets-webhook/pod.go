@@ -29,8 +29,15 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+)
+
+const (
+	authSecretVolumeName  = "akv2k8s-client-cert"
+	keyVaultEnvVolumeName = "azure-keyvault-env"
 )
 
 // This init-container copies a program to /azure-keyvault/ and
@@ -57,10 +64,10 @@ func getInitContainers() []corev1.Container {
 	return []corev1.Container{container}
 }
 
-func getVolumes() []corev1.Volume {
+func getVolumes(authSecret *corev1.Secret) []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
-			Name: "azure-keyvault-env",
+			Name: keyVaultEnvVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{
 					Medium: corev1.StorageMediumMemory,
@@ -69,10 +76,25 @@ func getVolumes() []corev1.Volume {
 		},
 	}
 
+	if config.useAuthService {
+		mode := int32(420)
+		volumes = append(volumes, []corev1.Volume{
+			{
+				Name: authSecretVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName:  authSecret.Name,
+						DefaultMode: &mode,
+					},
+				},
+			},
+		}...)
+	}
+
 	return volumes
 }
 
-func mutateContainers(clientset kubernetes.Interface, containers []corev1.Container, podSpec *corev1.PodSpec) (bool, error) {
+func mutateContainers(clientset kubernetes.Interface, containers []corev1.Container, podSpec *corev1.PodSpec, namespace string, authServiceSecret *corev1.Secret) (bool, error) {
 	mutated := false
 
 	for i, container := range containers {
@@ -104,7 +126,7 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 			continue
 		}
 
-		autoArgs, err := getContainerCmd(clientset, &container, podSpec)
+		autoArgs, err := getContainerCmd(clientset, &container, podSpec, namespace)
 		if err != nil {
 			return false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
 		}
@@ -140,30 +162,14 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 
 		container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
 			{
-				Name:      "azure-keyvault-env",
+				Name:      keyVaultEnvVolumeName,
 				MountPath: injectorDir,
 				ReadOnly:  true,
 			},
 		}...)
-		log.Debugf("mounting volume '%s' to '%s'", "azure-keyvault-env", injectorDir)
+		log.Debugf("mounting volume '%s' to '%s'", keyVaultEnvVolumeName, injectorDir)
 
 		container.Env = append(container.Env, []corev1.EnvVar{
-			{
-				Name: "ENV_INJECTOR_POD_NAMESPACE",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.namespace",
-					},
-				},
-			},
-			{
-				Name: "ENV_INJECTOR_POD_NAME",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.name",
-					},
-				},
-			},
 			{
 				Name:  "ENV_INJECTOR_ARGS_SIGNATURE",
 				Value: base64.StdEncoding.EncodeToString([]byte(signature)),
@@ -172,33 +178,66 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 				Name:  "ENV_INJECTOR_ARGS_KEY",
 				Value: base64.StdEncoding.EncodeToString([]byte(publicSigningKey)),
 			},
-		}...)
-
-		log.Debugf("setting ENV_INJECTOR_USE_AUTH_SERVICE=%t for container %s", useAuthService, container.Name)
-		container.Env = append(container.Env, []corev1.EnvVar{
 			{
 				Name:  "ENV_INJECTOR_USE_AUTH_SERVICE",
 				Value: strconv.FormatBool(useAuthService),
 			},
+			{
+				Name:  "ENV_INJECTOR_EXEC_DIR",
+				Value: injectorDir,
+			},
 		}...)
 
 		if useAuthService {
+			_, err := config.kubeClient.CoreV1().Secrets(namespace).Create(authServiceSecret)
+			if err != nil {
+				return false, err
+			}
+
+			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
+				{
+					Name:      authSecretVolumeName,
+					MountPath: clientCertDir,
+					ReadOnly:  true,
+				},
+			}...)
+
 			container.Env = append(container.Env, []corev1.EnvVar{
 				{
-					Name:  "ENV_INJECTOR_AUTH_SERVICE",
-					Value: fmt.Sprintf("%s.%s.svc:%s", config.authServiceName, namespace(), config.authServicePort),
+					Name:  "ENV_INJECTOR_CLIENT_CERT_DIR",
+					Value: clientCertDir,
 				},
 				{
-					Name: "ENV_INJECTOR_CA_CERT",
+					Name: "ENV_INJECTOR_POD_NAMESPACE",
 					ValueFrom: &corev1.EnvVarSource{
-						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: config.caBundleConfigMapName,
-							},
-							Key: "caCert",
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.namespace",
 						},
 					},
 				},
+				{
+					Name: "ENV_INJECTOR_POD_NAME",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.name",
+						},
+					},
+				},
+				{
+					Name:  "ENV_INJECTOR_AUTH_SERVICE",
+					Value: fmt.Sprintf("%s.%s.svc:%s", config.authServiceName, currentNamespace(), config.authServicePort),
+				},
+				// {
+				// 	Name: "ENV_INJECTOR_CA_CERT",
+				// 	ValueFrom: &corev1.EnvVarSource{
+				// 		ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+				// 			LocalObjectReference: corev1.LocalObjectReference{
+				// 				Name: config.caBundleConfigMapName,
+				// 			},
+				// 			Key: "caCert",
+				// 		},
+				// 	},
+				// },
 			}...)
 		}
 
@@ -208,7 +247,40 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 	return mutated, nil
 }
 
-func mutatePodSpec(pod *corev1.Pod) error {
+func createAuthServicePodSecret(pod *corev1.Pod, namespace string, caCert, caKey []byte) (*corev1.Secret, error) {
+	// Create secret containing CA cert and mTLS credentials
+
+	clientCert, err := generateClientCert(pod, 24, caCert, caKey)
+	if err != nil {
+		return nil, err
+	}
+
+	value := map[string][]byte{
+		"ca.crt":  clientCert.CA,
+		"tls.crt": clientCert.Crt,
+		"tls.key": clientCert.Key,
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("akv2k8s-%s", pod.Name),
+			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(pod, schema.GroupVersionKind{
+					Group:   metav1.SchemeGroupVersion.Group,
+					Version: metav1.SchemeGroupVersion.Version,
+					Kind:    "Pod",
+				}),
+			},
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: value,
+	}
+
+	return secret, nil
+}
+
+func mutatePodSpec(pod *corev1.Pod, namespace string) error {
 	podSpec := &pod.Spec
 
 	kubeConfig, err := rest.InClusterConfig()
@@ -221,19 +293,27 @@ func mutatePodSpec(pod *corev1.Pod) error {
 		return err
 	}
 
-	initContainersMutated, err := mutateContainers(clientset, podSpec.InitContainers, podSpec)
+	var authServiceSecret *corev1.Secret
+	if config.useAuthService {
+		authServiceSecret, err = createAuthServicePodSecret(pod, namespace, config.caCert, config.caKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	initContainersMutated, err := mutateContainers(clientset, podSpec.InitContainers, podSpec, namespace, authServiceSecret)
 	if err != nil {
 		return err
 	}
 
-	containersMutated, err := mutateContainers(clientset, podSpec.Containers, podSpec)
+	containersMutated, err := mutateContainers(clientset, podSpec.Containers, podSpec, namespace, authServiceSecret)
 	if err != nil {
 		return err
 	}
 
 	if initContainersMutated || containersMutated {
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
-		podSpec.Volumes = append(podSpec.Volumes, getVolumes()...)
+		podSpec.Volumes = append(podSpec.Volumes, getVolumes(authServiceSecret)...)
 		log.Info("containers mutated and pod updated with init-container and volumes")
 		podsMutatedCounter.Inc()
 	} else {
@@ -243,7 +323,7 @@ func mutatePodSpec(pod *corev1.Pod) error {
 	return nil
 }
 
-func namespace() string {
+func currentNamespace() string {
 	if ns, ok := os.LookupEnv("POD_NAMESPACE"); ok {
 		return ns
 	}

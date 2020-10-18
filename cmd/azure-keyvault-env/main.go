@@ -43,12 +43,13 @@ const (
 type injectorConfig struct {
 	namespace              string
 	podName                string
+	clientCertDir          string
+	akvDir                 string
 	retryTimes             int
 	waitTimeBetweenRetries int
 	useAuthService         bool
 	skipArgsValidation     bool
 	authServiceAddress     string
-	caCert                 string
 	signatureB64           string
 	pubKeyBase64           string
 }
@@ -171,19 +172,19 @@ func main() {
 	config = injectorConfig{
 		namespace:              viper.GetString("env_injector_pod_namespace"),
 		podName:                viper.GetString("env_injector_pod_name"),
+		clientCertDir:          viper.GetString("env_injector_client_cert_dir"),
+		akvDir:                 viper.GetString("env_injector_exec_dir"),
 		retryTimes:             viper.GetInt("env_injector_retries"),
 		waitTimeBetweenRetries: viper.GetInt("env_injector_wait_before_retry"),
 		useAuthService:         viper.GetBool("env_injector_use_auth_service"),
 		skipArgsValidation:     viper.GetBool("env_injector_skip_args_validation"),
 		authServiceAddress:     viper.GetString("env_injector_auth_service"),
-		caCert:                 viper.GetString("env_injector_ca_cert"),
 		signatureB64:           viper.GetString("env_injector_args_signature"),
 		pubKeyBase64:           viper.GetString("env_injector_args_key"),
 	}
 
 	requiredEnvVars := map[string]string{
 		"env_injector_auth_service":   config.authServiceAddress,
-		"env_injector_ca_cert":        config.caCert,
 		"env_injector_args_signature": config.signatureB64,
 		"env_injector_args_key":       config.pubKeyBase64,
 	}
@@ -220,11 +221,11 @@ func main() {
 		logger.Infof("found original container command to be %s %s", origCommand, origArgs)
 	}
 
-	creds, err := getCredentials(config.useAuthService, config.authServiceAddress, config.caCert)
+	creds, err := getCredentials(config.useAuthService, config.authServiceAddress, config.clientCertDir)
 	if err != nil {
 		log.Warnf("failed to get credentials, will retry %d times", config.retryTimes)
 		err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
-			creds, err = getCredentials(config.useAuthService, config.authServiceAddress, config.caCert)
+			creds, err = getCredentials(config.useAuthService, config.authServiceAddress, config.clientCertDir)
 			if err != nil {
 				logger.Warnf("failed to get credentials, error: %+v", err)
 				return err
