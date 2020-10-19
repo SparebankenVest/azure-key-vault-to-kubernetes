@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"math/big"
 	"time"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 type ClientCertificate struct {
@@ -20,7 +18,7 @@ type ClientCertificate struct {
 	Key []byte
 }
 
-func generateClientCert(pod *corev1.Pod, validMonths int, caCert, caKey []byte) (*ClientCertificate, error) {
+func generateClientCert(podName string, validMonths int, caCert, caKey []byte) (*ClientCertificate, error) {
 	ca, err := tls.X509KeyPair(caCert, caKey)
 	if err != nil {
 		return nil, err
@@ -52,7 +50,7 @@ func generateClientCert(pod *corev1.Pod, validMonths int, caCert, caKey []byte) 
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			Organization: []string{"akv2k8s"},
-			CommonName:   pod.Name,
+			CommonName:   podName,
 		},
 		NotBefore:             now,
 		NotAfter:              now.AddDate(0, validMonths, 0),

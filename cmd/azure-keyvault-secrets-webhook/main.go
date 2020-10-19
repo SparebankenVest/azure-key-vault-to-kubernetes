@@ -44,11 +44,11 @@ import (
 	whcontext "github.com/slok/kubewebhook/pkg/webhook/context"
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
+	"k8s.io/client-go/tools/clientcmd"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 const (
@@ -154,7 +154,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 
 	podsInspectedCounter.Inc()
 
-	err := mutatePodSpec(pod, req.Namespace)
+	err := mutatePodSpec(pod, req.Namespace, req.Name)
 	if err != nil {
 		log.Errorf("failed to mutate pod, error: %+v", err)
 		podsMutatedFailedCounter.Inc()
@@ -363,10 +363,15 @@ func main() {
 
 	log.Debug("getting azure key vault authorizer succeded")
 
-	cfg, err := rest.InClusterConfig()
+	cfg, err := clientcmd.BuildConfigFromFlags(params.masterURL, params.kubeconfig)
 	if err != nil {
-		log.Fatalf("failed to get kubernetes in cluster config, error: %+v", err)
+		log.Fatalf("Error building kubeconfig: %s", err.Error())
 	}
+
+	// cfg, err := rest.InClusterConfig()
+	// if err != nil {
+	// 	log.Fatalf("failed to get kubernetes in cluster config, error: %+v", err)
+	// }
 
 	config.kubeClient, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
@@ -410,7 +415,6 @@ func main() {
 
 		authRouter.HandleFunc("/auth/{namespace}/{pod}", authHandler)
 		authServer := createServerWithMTLS(config.caCert, authRouter, authURL)
-		log.Infof("Serving encrypted auth with mtls at %s/auth", authURL)
 
 		go func() {
 			err := authServer.ListenAndServeTLS(config.tlsCertFile, config.tlsKeyFile)

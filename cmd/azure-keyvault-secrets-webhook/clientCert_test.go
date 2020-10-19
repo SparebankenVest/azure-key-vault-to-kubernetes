@@ -2,9 +2,6 @@ package main
 
 import (
 	"testing"
-
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var caCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -58,13 +55,7 @@ IrepX5pgiugqVP5K+xYTIiQ28X3xstrq4sZHYXuO2yAVaILlVBp5/df/riRbymbQ
 -----END RSA PRIVATE KEY-----`)
 
 func TestDockerPull(t *testing.T) {
-	pod := &corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Name: "akv2k8s-envinjector-6b49f6bcd-j8mhh",
-		},
-	}
-
-	clientCert, err := generateClientCert(pod, 24, caCert, caKey)
+	clientCert, err := generateClientCert("akv2k8s-envinjector-6b49f6bcd-j8mhh", 24, caCert, caKey)
 	if err != nil {
 		t.Error(err)
 	}
