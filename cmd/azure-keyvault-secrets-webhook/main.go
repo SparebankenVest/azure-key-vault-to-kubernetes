@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
@@ -372,6 +373,9 @@ func main() {
 		log.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+
 	httpMux := http.NewServeMux()
 	httpURL := fmt.Sprintf(":%s", config.httpPort)
 
@@ -387,6 +391,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("error serving metrics at %s: %+v", httpURL, err)
 		}
+		wg.Done()
 	}()
 
 	router := mux.NewRouter()
@@ -399,6 +404,7 @@ func main() {
 	log.Infof("Serving encrypted healthz at %s/healthz", tlsURL)
 
 	if config.useAuthService {
+		wg.Add(1)
 		authURL := fmt.Sprintf(":%s", config.authServicePortInternal)
 		authRouter := mux.NewRouter()
 
@@ -411,11 +417,17 @@ func main() {
 			if err != nil {
 				log.Fatalf("error serving auth at %s: %+v", authURL, err)
 			}
+			wg.Done()
 		}()
 	}
 
-	server := createServer(router, tlsURL, nil)
-	log.Fatal(server.ListenAndServeTLS(config.tlsCertFile, config.tlsKeyFile))
+	go func() {
+		server := createServer(router, tlsURL, nil)
+		log.Fatal(server.ListenAndServeTLS(config.tlsCertFile, config.tlsKeyFile))
+		wg.Done()
+	}()
+
+	wg.Wait()
 }
 
 func createServerWithMTLS(caCert []byte, router http.Handler, url string) *http.Server {
