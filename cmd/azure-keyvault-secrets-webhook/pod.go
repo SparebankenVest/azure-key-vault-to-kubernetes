@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -247,10 +248,10 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 	return mutated, nil
 }
 
-func createAuthServicePodSecret(pod *corev1.Pod, namespace string, podName string, caCert, caKey []byte) (*corev1.Secret, error) {
+func createAuthServicePodSecret(pod *corev1.Pod, namespace string, mutationID types.UID, caCert, caKey []byte) (*corev1.Secret, error) {
 	// Create secret containing CA cert and mTLS credentials
 
-	clientCert, err := generateClientCert(podName, 24, caCert, caKey)
+	clientCert, err := generateClientCert(mutationID, 24, caCert, caKey)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +264,7 @@ func createAuthServicePodSecret(pod *corev1.Pod, namespace string, podName strin
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("akv2k8s-%s", podName),
+			Name:      fmt.Sprintf("akv2k8s-%s", mutationID),
 			Namespace: namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(pod, schema.GroupVersionKind{
@@ -280,7 +281,7 @@ func createAuthServicePodSecret(pod *corev1.Pod, namespace string, podName strin
 	return secret, nil
 }
 
-func mutatePodSpec(pod *corev1.Pod, namespace, podName string) error {
+func mutatePodSpec(pod *corev1.Pod, namespace string, mutationID types.UID) error {
 	podSpec := &pod.Spec
 
 	kubeConfig, err := rest.InClusterConfig()
@@ -295,7 +296,7 @@ func mutatePodSpec(pod *corev1.Pod, namespace, podName string) error {
 
 	var authServiceSecret *corev1.Secret
 	if config.useAuthService {
-		authServiceSecret, err = createAuthServicePodSecret(pod, namespace, podName, config.caCert, config.caKey)
+		authServiceSecret, err = createAuthServicePodSecret(pod, namespace, mutationID, config.caCert, config.caKey)
 		if err != nil {
 			return err
 		}
