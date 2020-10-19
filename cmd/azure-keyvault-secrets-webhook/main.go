@@ -233,6 +233,21 @@ func initConfig() {
 }
 
 func init() {
+	config = azureKeyVaultConfig{
+		port:                         viper.GetString("port"),
+		httpPort:                     viper.GetString("port_http"),
+		authType:                     viper.GetString("auth_type"),
+		serveMetrics:                 viper.GetBool("metrics_enabled"),
+		tlsCertFile:                  fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.crt"),
+		tlsKeyFile:                   fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.key"),
+		useAuthService:               viper.GetBool("use_auth_service"),
+		authServiceName:              viper.GetString("webhook_auth_service"),
+		authServicePort:              viper.GetString("webhook_auth_service_port"),
+		authServicePortInternal:      viper.GetString("webhook_auth_service_port_internal"),
+		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
+		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
+	}
+
 	flag.StringVar(&config.version, "version", "", "Version of this component.")
 	flag.StringVar(&config.versionEnvImage, "versionenvimage", "", "Version of the env image component.")
 	flag.StringVar(&config.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
@@ -252,22 +267,6 @@ func main() {
 	setLogFormat(logFormat)
 
 	akv2k8s.LogVersion()
-
-	config = azureKeyVaultConfig{
-		port:                         viper.GetString("port"),
-		httpPort:                     viper.GetString("port_http"),
-		authType:                     viper.GetString("auth_type"),
-		serveMetrics:                 viper.GetBool("metrics_enabled"),
-		tlsCertFile:                  fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.crt"),
-		tlsKeyFile:                   fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.key"),
-		useAuthService:               viper.GetBool("use_auth_service"),
-		authServiceName:              viper.GetString("webhook_auth_service"),
-		authServicePort:              viper.GetString("webhook_auth_service_port"),
-		authServicePortInternal:      viper.GetString("webhook_auth_service_port_internal"),
-		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
-		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
-		cloudConfig:                  viper.GetString("cloudconfig"),
-	}
 
 	log.Info("Active settings:")
 	log.Infof("  Webhook port              : %s", config.port)
