@@ -45,9 +45,7 @@ const (
 // if default auth copies a read only version of azure config into
 // the /azure-keyvault/ folder to use as auth
 func getInitContainers() []corev1.Container {
-	fullExecPath := filepath.Join(injectorDir, injectorExecutable)
-	cmd := fmt.Sprintf("echo 'Copying %s to %s'", fullExecPath, injectorDir)
-	cmd = cmd + fmt.Sprintf(" && cp /usr/local/bin/%s %s", injectorExecutable, injectorDir)
+	cmd := fmt.Sprintf("cp /usr/local/bin/%s %s", injectorExecutable, config.injectorDir)
 
 	container := corev1.Container{
 		Name:            "copy-azurekeyvault-env",
@@ -57,7 +55,7 @@ func getInitContainers() []corev1.Container {
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      initContainerVolumeName,
-				MountPath: injectorDir,
+				MountPath: config.injectorDir,
 			},
 		},
 	}
@@ -155,7 +153,7 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 
 		mutated = true
 
-		fullExecPath := filepath.Join(injectorDir, injectorExecutable)
+		fullExecPath := filepath.Join(config.injectorDir, injectorExecutable)
 		log.Debugf("full exec path: %s", fullExecPath)
 		container.Command = []string{fullExecPath}
 		container.Args = autoArgs
@@ -164,11 +162,11 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 		container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
 			{
 				Name:      keyVaultEnvVolumeName,
-				MountPath: injectorDir,
+				MountPath: config.injectorDir,
 				ReadOnly:  true,
 			},
 		}...)
-		log.Debugf("mounting volume '%s' to '%s'", keyVaultEnvVolumeName, injectorDir)
+		log.Debugf("mounting volume '%s' to '%s'", keyVaultEnvVolumeName, config.injectorDir)
 
 		container.Env = append(container.Env, []corev1.EnvVar{
 			{
@@ -182,10 +180,6 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 			{
 				Name:  "ENV_INJECTOR_USE_AUTH_SERVICE",
 				Value: strconv.FormatBool(useAuthService),
-			},
-			{
-				Name:  "ENV_INJECTOR_EXEC_DIR",
-				Value: injectorDir,
 			},
 		}...)
 

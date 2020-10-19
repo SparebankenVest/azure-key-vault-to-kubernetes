@@ -44,7 +44,6 @@ type injectorConfig struct {
 	namespace              string
 	podName                string
 	clientCertDir          string
-	akvDir                 string
 	retryTimes             int
 	waitTimeBetweenRetries int
 	useAuthService         bool
@@ -173,7 +172,6 @@ func main() {
 		namespace:              viper.GetString("env_injector_pod_namespace"),
 		podName:                viper.GetString("env_injector_pod_name"),
 		clientCertDir:          viper.GetString("env_injector_client_cert_dir"),
-		akvDir:                 viper.GetString("env_injector_exec_dir"),
 		retryTimes:             viper.GetInt("env_injector_retries"),
 		waitTimeBetweenRetries: viper.GetInt("env_injector_wait_before_retry"),
 		useAuthService:         viper.GetBool("env_injector_use_auth_service"),

@@ -54,7 +54,6 @@ import (
 const (
 	dockerHubHost           = "index.docker.io"
 	oldDockerHubHost        = "docker.io"
-	injectorDir             = "/azure-keyvault/"
 	injectorExecutable      = "azure-keyvault-env"
 	clientCertDir           = "/var/client-cert/"
 	initContainerVolumeName = "azure-keyvault-env"
@@ -82,6 +81,7 @@ type azureKeyVaultConfig struct {
 	versionEnvImage              string
 	kubeconfig                   string
 	masterURL                    string
+	injectorDir                  string
 }
 
 type cmdParams struct {
@@ -239,6 +239,7 @@ func initConfig() {
 	viper.SetDefault("webhook_auth_service_port_internal", "8443")
 	viper.SetDefault("log_level", "Info")
 	viper.SetDefault("log_format", "fmt")
+	viper.SetDefault("env_injector_exec_dir", "/azure-keyvault/")
 	viper.AutomaticEnv()
 }
 
@@ -276,6 +277,7 @@ func main() {
 		authServicePortInternal:      viper.GetString("webhook_auth_service_port_internal"),
 		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
 		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
+		injectorDir:                  viper.GetString("env_injector_exec_dir"),
 		version:                      params.version,
 		versionEnvImage:              params.versionEnvImage,
 		cloudConfig:                  params.cloudConfig,
