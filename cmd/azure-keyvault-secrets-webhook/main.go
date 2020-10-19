@@ -22,6 +22,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -60,7 +61,7 @@ const (
 
 type azureKeyVaultConfig struct {
 	port                         string
-	cloudConfigHostPath          string
+	cloudConfig                  string
 	serveMetrics                 bool
 	httpPort                     string
 	tlsCertFile                  string
@@ -73,8 +74,13 @@ type azureKeyVaultConfig struct {
 	useAksCredentialsWithAcs     bool
 	authServiceName              string
 	authServicePort              string
+	authServicePortInternal      string
 	kubeClient                   *kubernetes.Clientset
 	credentials                  credentialprovider.Credentials
+	version                      string
+	versionEnvImage              string
+	kubeconfig                   string
+	masterURL                    string
 }
 
 var config azureKeyVaultConfig
@@ -216,16 +222,26 @@ func initConfig() {
 	viper.SetDefault("docker_image_inspection_use_acs_credentials", true)
 	viper.SetDefault("auth_type", "cloudConfig")
 	viper.SetDefault("use_auth_service", true)
-	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
 	viper.SetDefault("metrics_enabled", false)
 	viper.SetDefault("port_http", "80")
 	viper.SetDefault("port", "443")
+	viper.SetDefault("webhook_auth_service_port", "8443")
+	viper.SetDefault("webhook_auth_service_port_internal", "8443")
 	viper.SetDefault("log_level", "Info")
 	viper.SetDefault("log_format", "fmt")
 	viper.AutomaticEnv()
 }
 
+func init() {
+	flag.StringVar(&config.version, "version", "", "Version of this component.")
+	flag.StringVar(&config.versionEnvImage, "versionenvimage", "", "Version of the env image component.")
+	flag.StringVar(&config.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&config.masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&config.cloudConfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
+}
+
 func main() {
+	flag.Parse()
 	initConfig()
 	akv2k8s.Version = viper.GetString("version")
 
@@ -247,7 +263,7 @@ func main() {
 		useAuthService:               viper.GetBool("use_auth_service"),
 		authServiceName:              viper.GetString("webhook_auth_service"),
 		authServicePort:              viper.GetString("webhook_auth_service_port"),
-		cloudConfigHostPath:          viper.GetString("cloud_config_host_path"),
+		authServicePortInternal:      viper.GetString("webhook_auth_service_port_internal"),
 		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
 		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
 	}
@@ -260,10 +276,11 @@ func main() {
 	if config.useAuthService {
 		log.Infof("  Auth service name         : %s", config.authServiceName)
 		log.Infof("  Auth service port         : %s", config.authServicePort)
+		log.Infof("  Auth service internal port: %s", config.authServicePortInternal)
 	}
 	log.Infof("  Use AKS creds with ACS    : %t", config.useAksCredentialsWithAcs)
 	log.Infof("  Docker inspection timeout : %d", config.dockerImageInspectionTimeout)
-	log.Infof("  Cloud config path         : %s", config.cloudConfigHostPath)
+	log.Infof("  Cloud config path         : %s", config.cloudConfig)
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
@@ -307,16 +324,16 @@ func main() {
 		}
 
 	} else {
-		log.Debugf("using cloudConfig for auth - reading credentials from %s", config.cloudConfigHostPath)
-		f, err := os.Open(config.cloudConfigHostPath)
+		log.Debugf("using cloudConfig for auth - reading credentials from %s", config.cloudConfig)
+		f, err := os.Open(config.cloudConfig)
 		if err != nil {
-			log.Fatalf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
+			log.Fatalf("Failed reading azure config from %s, error: %+v", config.cloudConfig, err)
 		}
 		defer f.Close()
 
 		cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
 		if err != nil {
-			log.Fatalf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
+			log.Fatalf("Failed reading azure config from %s, error: %+v", config.cloudConfig, err)
 		}
 
 		config.credentials, err = cloudCnfProvider.GetAzureKeyVaultCredentials()
@@ -354,7 +371,6 @@ func main() {
 	log.Infof("Serving healthz at %s/healthz", httpURL)
 
 	go func() {
-
 		err := http.ListenAndServe(httpURL, httpMux)
 		if err != nil {
 			log.Fatalf("error serving metrics at %s: %+v", httpURL, err)
@@ -370,16 +386,23 @@ func main() {
 	router.HandleFunc("/healthz", healthHandler)
 	log.Infof("Serving encrypted healthz at %s/healthz", tlsURL)
 
-	var server *http.Server
-
 	if config.useAuthService {
-		router.HandleFunc("/auth/{namespace}/{pod}", authHandler)
-		log.Infof("Serving encrypted auth at %s/auth", tlsURL)
-		server = createServerWithMTLS(config.caCert, router, tlsURL)
-	} else {
-		server = createServer(router, tlsURL, nil)
+		authURL := fmt.Sprintf(":%s", config.authServicePortInternal)
+		authRouter := mux.NewRouter()
+
+		authRouter.HandleFunc("/auth/{namespace}/{pod}", authHandler)
+		authServer := createServerWithMTLS(config.caCert, authRouter, authURL)
+		log.Infof("Serving encrypted auth with mtls at %s/auth", authURL)
+
+		go func() {
+			err := authServer.ListenAndServeTLS(config.tlsCertFile, config.tlsKeyFile)
+			if err != nil {
+				log.Fatalf("error serving auth at %s: %+v", authURL, err)
+			}
+		}()
 	}
 
+	server := createServer(router, tlsURL, nil)
 	log.Fatal(server.ListenAndServeTLS(config.tlsCertFile, config.tlsKeyFile))
 }
 
