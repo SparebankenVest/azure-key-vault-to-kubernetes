@@ -29,8 +29,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -192,7 +192,14 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 		if useAuthService {
 			_, err := config.kubeClient.CoreV1().Secrets(namespace).Create(authServiceSecret)
 			if err != nil {
-				return false, err
+				if errors.IsAlreadyExists(err) {
+					_, err = config.kubeClient.CoreV1().Secrets(namespace).Update(authServiceSecret)
+					if err != nil {
+						return false, err
+					}
+				} else {
+					return false, err
+				}
 			}
 
 			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
@@ -266,13 +273,13 @@ func createAuthServicePodSecret(pod *corev1.Pod, namespace string, mutationID ty
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("akv2k8s-%s", mutationID),
 			Namespace: namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(pod, schema.GroupVersionKind{
-					Group:   metav1.SchemeGroupVersion.Group,
-					Version: metav1.SchemeGroupVersion.Version,
-					Kind:    "Pod",
-				}),
-			},
+			// OwnerReferences: []metav1.OwnerReference{
+			// 	*metav1.NewControllerRef(pod, schema.GroupVersionKind{
+			// 		Group:   metav1.SchemeGroupVersion.Group,
+			// 		Version: metav1.SchemeGroupVersion.Version,
+			// 		Kind:    "Pod",
+			// 	}),
+			// },
 		},
 		Type: corev1.SecretTypeTLS,
 		Data: value,
