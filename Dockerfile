@@ -79,7 +79,7 @@ ENTRYPOINT ["/usr/local/bin/ca-bundle-controller"]
 # --------
 # vaultenv
 # --------
-FROM $BASEIMAGE AS vaultenv
+FROM $BASE_ALPINE AS vaultenv
 ARG VCS_REF
 ARG BUILD_DATE
 ARG VCS_URL
