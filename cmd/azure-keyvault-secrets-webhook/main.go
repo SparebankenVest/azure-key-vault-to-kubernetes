@@ -243,7 +243,7 @@ func init() {
 func main() {
 	flag.Parse()
 	initConfig()
-	akv2k8s.Version = viper.GetString("version")
+	akv2k8s.Version = config.version
 
 	logLevel := viper.GetString("log_level")
 	setLogLevel(logLevel)
@@ -266,6 +266,7 @@ func main() {
 		authServicePortInternal:      viper.GetString("webhook_auth_service_port_internal"),
 		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
 		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
+		cloudConfig:                  viper.GetString("cloudconfig"),
 	}
 
 	log.Info("Active settings:")
