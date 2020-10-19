@@ -40,8 +40,8 @@ func (t crendentialsToken) OAuthToken() string {
 	return t.token
 }
 
-// AzureKeyVaultEndpoint takes the name of the keyvault and creates a correct andpoint url
-func (c OAuthCredentials) AzureKeyVaultEndpoint(keyVaultName string) string {
+// Endpoint takes the name of the keyvault and creates a correct andpoint url
+func (c OAuthCredentials) Endpoint(keyVaultName string) string {
 	return fmt.Sprintf(c.EndpointPartial, keyVaultName)
 }
 

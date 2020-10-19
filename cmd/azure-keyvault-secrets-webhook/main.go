@@ -76,7 +76,7 @@ type azureKeyVaultConfig struct {
 	authServicePort              string
 	authServicePortInternal      string
 	kubeClient                   *kubernetes.Clientset
-	credentials                  credentialprovider.Credentials
+	credentials                  credentialprovider.AzureKeyVaultCredentials
 	version                      string
 	versionEnvImage              string
 	kubeconfig                   string

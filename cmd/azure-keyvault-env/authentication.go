@@ -59,7 +59,7 @@ func createHTTPClientWithTrustedCAAndMtls(caCert, clientCert, clientKey []byte) 
 	return tlsClient, nil
 }
 
-func getCredentials(useAuthService bool, authServiceAddress string, clientCertDir string) (*credentialprovider.AzureKeyVaultCredentials, error) {
+func getCredentials(useAuthService bool, authServiceAddress string, clientCertDir string) (credentialprovider.AzureKeyVaultCredentials, error) {
 	if useAuthService {
 		// caCert, clientCert, clientKey []byte
 		caCert, err := ioutil.ReadFile(path.Join(clientCertDir, "ca.crt"))
@@ -95,7 +95,7 @@ func getCredentials(useAuthService bool, authServiceAddress string, clientCertDi
 			return nil, fmt.Errorf("failed to get credentials, %s", res.Status)
 		}
 
-		var creds *credentialprovider.AzureKeyVaultCredentials
+		var creds *credentialprovider.OAuthCredentials
 		err = json.NewDecoder(res.Body).Decode(&creds)
 
 		if err != nil {

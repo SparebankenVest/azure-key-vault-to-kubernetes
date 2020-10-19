@@ -78,7 +78,7 @@ func TestIntegrationAuthFromEnvironmentAudience(t *testing.T) {
 		t.Error(err)
 	}
 
-	token := creds.Token
+	token := creds.(*keyVaultCredentials).Token
 	err = token.Refresh()
 	if err != nil {
 		t.Error(err)
@@ -146,7 +146,7 @@ func TestIntegrationAuthFromConfigAudience(t *testing.T) {
 		t.Error(err)
 	}
 
-	token := creds.Token
+	token := creds.(*keyVaultCredentials).Token
 	err = token.Refresh()
 	if err != nil {
 		t.Error(err)
