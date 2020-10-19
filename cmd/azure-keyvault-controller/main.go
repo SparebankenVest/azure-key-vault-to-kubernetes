@@ -57,7 +57,7 @@ func initConfig() {
 	viper.SetDefault("version", "dev")
 	viper.SetDefault("log_format", "fmt")
 	viper.SetDefault("cloudconfig", "/etc/kubernetes/azure.json")
-	viper.SetDefault("custom_auth", false)
+	viper.SetDefault("auth_type", "azureCloudConfig")
 
 	viper.AutomaticEnv()
 }
@@ -82,9 +82,9 @@ func main() {
 
 	// kubeconfig := viper.GetString("kubeconfig")
 	// masterURL := viper.GetString("master")
-	// cloudconfig := viper.GetString("cloudconfig")
+	cloudConfig := viper.GetString("cloudconfig")
 
-	customAuth := viper.GetBool("custom_auth")
+	authType := viper.GetString("auth_type")
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -113,30 +113,19 @@ func main() {
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	var vaultAuth *credentialprovider.AzureKeyVaultCredentials
-	if customAuth {
-		provider, err := credentialprovider.NewFromEnvironment()
+	switch authType {
+	case "azureCloudConfig":
+		vaultAuth, err = getCredentialsFromCloudConfig(cloudConfig)
 		if err != nil {
-			log.Fatalf("failed to create azure credentials provider, error: %+v", err.Error())
-		}
-
-		if vaultAuth, err = provider.GetAzureKeyVaultCredentials(); err != nil {
-			log.Fatalf("failed to get azure key vault credentials, error: %+v", err.Error())
-		}
-	} else {
-		f, err := os.Open(cloudconfig)
-		if err != nil {
-			log.Fatalf("Failed reading azure config from %s, error: %+v", cloudconfig, err)
-		}
-		defer f.Close()
-
-		cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
-		if err != nil {
-			log.Fatalf("Failed reading azure config from %s, error: %+v", cloudconfig, err)
-		}
-
-		if vaultAuth, err = cloudCnfProvider.GetAzureKeyVaultCredentials(); err != nil {
 			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
 		}
+	case "environment":
+		vaultAuth, err = getCredentialsFromEnvironment()
+		if err != nil {
+			log.Fatalf("failed to get azure key vault credentials, error: %+v", err.Error())
+		}
+	default:
+		log.Fatalf("auth type %s not supported", authType)
 	}
 
 	vaultService := vault.NewService(vaultAuth)
@@ -183,4 +172,28 @@ func setLogLevel(logLevel string) {
 		log.Fatalf("error setting log level: %s", err.Error())
 	}
 	log.SetLevel(logrusLevel)
+}
+
+func getCredentialsFromCloudConfig(cloudconfig string) (*credentialprovider.AzureKeyVaultCredentials, error) {
+	f, err := os.Open(cloudconfig)
+	if err != nil {
+		log.Fatalf("Failed reading azure config from %s, error: %+v", cloudconfig, err)
+	}
+	defer f.Close()
+
+	cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
+	if err != nil {
+		log.Fatalf("Failed reading azure config from %s, error: %+v", cloudconfig, err)
+	}
+
+	return cloudCnfProvider.GetAzureKeyVaultCredentials()
+}
+
+func getCredentialsFromEnvironment() (*credentialprovider.AzureKeyVaultCredentials, error) {
+	provider, err := credentialprovider.NewFromEnvironment()
+	if err != nil {
+		log.Fatalf("failed to create azure credentials provider, error: %+v", err.Error())
+	}
+
+	return provider.GetAzureKeyVaultCredentials()
 }
