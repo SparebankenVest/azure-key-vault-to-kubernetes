@@ -2,6 +2,8 @@ package main
 
 import (
 	"testing"
+
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var caCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -54,8 +56,9 @@ IrepX5pgiugqVP5K+xYTIiQ28X3xstrq4sZHYXuO2yAVaILlVBp5/df/riRbymbQ
 7vphGG+/JeJJ6sb2yw48kYfQBroTO49aaf+A3LjykrkL+qAecX331w==
 -----END RSA PRIVATE KEY-----`)
 
-func TestDockerPull(t *testing.T) {
-	clientCert, err := generateClientCert("akv2k8s-envinjector-6b49f6bcd-j8mhh", 24, caCert, caKey)
+func TestCreateClientCert(t *testing.T) {
+	uid := types.UID("asdlkfjalsdjflj")
+	clientCert, err := generateClientCert(uid, 24, caCert, caKey)
 	if err != nil {
 		t.Error(err)
 	}
