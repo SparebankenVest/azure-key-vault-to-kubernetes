@@ -83,7 +83,16 @@ type azureKeyVaultConfig struct {
 	masterURL                    string
 }
 
+type cmdParams struct {
+	version         string
+	versionEnvImage string
+	kubeconfig      string
+	masterURL       string
+	cloudConfig     string
+}
+
 var config azureKeyVaultConfig
+var params cmdParams
 
 var (
 	podsMutatedCounter = promauto.NewCounter(prometheus.CounterOpts{
@@ -233,26 +242,11 @@ func initConfig() {
 }
 
 func init() {
-	config = azureKeyVaultConfig{
-		port:                         viper.GetString("port"),
-		httpPort:                     viper.GetString("port_http"),
-		authType:                     viper.GetString("auth_type"),
-		serveMetrics:                 viper.GetBool("metrics_enabled"),
-		tlsCertFile:                  fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.crt"),
-		tlsKeyFile:                   fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.key"),
-		useAuthService:               viper.GetBool("use_auth_service"),
-		authServiceName:              viper.GetString("webhook_auth_service"),
-		authServicePort:              viper.GetString("webhook_auth_service_port"),
-		authServicePortInternal:      viper.GetString("webhook_auth_service_port_internal"),
-		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
-		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
-	}
-
-	flag.StringVar(&config.version, "version", "", "Version of this component.")
-	flag.StringVar(&config.versionEnvImage, "versionenvimage", "", "Version of the env image component.")
-	flag.StringVar(&config.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&config.masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&config.cloudConfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
+	flag.StringVar(&params.version, "version", "", "Version of this component.")
+	flag.StringVar(&params.versionEnvImage, "versionenvimage", "", "Version of the env image component.")
+	flag.StringVar(&params.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&params.masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&params.cloudConfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
 }
 
 func main() {
@@ -267,6 +261,24 @@ func main() {
 	setLogFormat(logFormat)
 
 	akv2k8s.LogVersion()
+
+	config = azureKeyVaultConfig{
+		port:                         viper.GetString("port"),
+		httpPort:                     viper.GetString("port_http"),
+		authType:                     viper.GetString("auth_type"),
+		serveMetrics:                 viper.GetBool("metrics_enabled"),
+		tlsCertFile:                  fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.crt"),
+		tlsKeyFile:                   fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.key"),
+		useAuthService:               viper.GetBool("use_auth_service"),
+		authServiceName:              viper.GetString("webhook_auth_service"),
+		authServicePort:              viper.GetString("webhook_auth_service_port"),
+		authServicePortInternal:      viper.GetString("webhook_auth_service_port_internal"),
+		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
+		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
+		version:                      params.version,
+		versionEnvImage:              params.versionEnvImage,
+		cloudConfig:                  params.cloudConfig,
+	}
 
 	log.Info("Active settings:")
 	log.Infof("  Webhook port              : %s", config.port)
