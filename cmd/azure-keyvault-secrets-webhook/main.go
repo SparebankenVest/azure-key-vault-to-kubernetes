@@ -417,6 +417,7 @@ func main() {
 
 		authRouter.HandleFunc("/auth/{namespace}/{pod}", authHandler)
 		authServer := createServerWithMTLS(config.caCert, authRouter, authURL)
+		log.Infof("Serving encrypted auth at %s/auth", authURL)
 
 		go func() {
 			err := authServer.ListenAndServeTLS(config.tlsCertFile, config.tlsKeyFile)

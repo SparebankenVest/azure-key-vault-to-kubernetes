@@ -263,17 +263,24 @@ func createAuthServicePodSecret(pod *corev1.Pod, namespace string, mutationID ty
 		"tls.key": clientCert.Key,
 	}
 
+	name := pod.GetName()
+	ownerReferences := pod.GetOwnerReferences()
+	if name == "" {
+		if len(ownerReferences) > 0 {
+			if strings.Contains(ownerReferences[0].Name, "-") {
+				generateNameSlice := strings.Split(ownerReferences[0].Name, "-")
+				name = strings.Join(generateNameSlice[:len(generateNameSlice)-1], "-")
+			} else {
+				name = ownerReferences[0].Name
+			}
+		}
+	}
+
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("akv2k8s-%s", mutationID),
-			Namespace: namespace,
-			// OwnerReferences: []metav1.OwnerReference{
-			// 	*metav1.NewControllerRef(pod, schema.GroupVersionKind{
-			// 		Group:   metav1.SchemeGroupVersion.Group,
-			// 		Version: metav1.SchemeGroupVersion.Version,
-			// 		Kind:    "Pod",
-			// 	}),
-			// },
+			Name:            fmt.Sprintf("akv2k8s-%s", name),
+			Namespace:       namespace,
+			OwnerReferences: ownerReferences,
 		},
 		Type: corev1.SecretTypeTLS,
 		Data: value,
