@@ -79,19 +79,21 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 
 	log.Debugf("get or create configmap %s in namespace %s", cmName, akvs.Namespace)
 	if cm, err = c.configMapsLister.ConfigMaps(akvs.Namespace).Get(cmName); err != nil {
+		log.Debugf("failed to get configmap %s in namespace %s, error: %+v", cmName, akvs.Namespace, err)
 		if errors.IsNotFound(err) {
+			log.Debug("getting secret from azure key vault")
 			cmValues, err = c.getConfigMapFromKeyVault(akvs)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get configmap from azure key vault for configmap '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
 			}
 
 			if cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Create(createNewConfigMap(akvs, cmValues)); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to create new configmap, err: %+v", err)
 			}
 
-			log.Infof("Updating status for AzureKeyVaultSecret '%s'", akvs.Name)
+			log.Infof("updating status for azurekeyvaultsecret '%s'", akvs.Name)
 			if err = c.updateAzureKeyVaultSecretStatusForConfigMap(akvs, getMD5HashOfStringValues(cmValues)); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to update status for azurekeyvaultsecret %s, error: %+v", akvs.Name, err)
 			}
 
 			return cm, nil
@@ -99,6 +101,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 	}
 
 	// get updated secret values from azure key vault
+	log.Debug("getting secret from azure key vault")
 	cmValues, err = c.getConfigMapFromKeyVault(akvs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from Azure Key Vault for secret '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
@@ -123,7 +126,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 	}
 
 	if hasAzureKeyVaultSecretChangedForConfigMap(akvs, cmValues, cm) {
-		log.Infof("AzureKeyVaultSecret %s/%s output.secret values has changed and requires update to Secret %s", akvs.Namespace, akvs.Name, cmName)
+		log.Infof("azurekeyvaultsecret %s/%s output.configmap values has changed and requires update to configmap %s", akvs.Namespace, akvs.Name, cmName)
 
 		updatedCM, err := updateExistingConfigMap(akvs, cmValues, cm)
 		if err != nil {
@@ -133,6 +136,9 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 		cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(updatedCM)
 	}
 
+	if err != nil {
+		log.Warnf("error still exists while creating/updating configmap %s, error: %+v", cmName, err)
+	}
 	return cm, err
 }
 
