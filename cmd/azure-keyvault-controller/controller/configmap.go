@@ -146,7 +146,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
 func createNewConfigMap(azureKeyVaultSecret *akv.AzureKeyVaultSecret, azureSecretValue map[string]string) *corev1.ConfigMap {
-	cmName := determineSecretName(azureKeyVaultSecret)
+	cmName := determineConfigMapName(azureKeyVaultSecret)
 
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
