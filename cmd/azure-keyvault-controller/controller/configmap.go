@@ -67,30 +67,30 @@ func (c *Controller) getConfigMap(key string) (*corev1.ConfigMap, error) {
 	return cm, err
 }
 
-func (c *Controller) getOrCreateKubernetesConfigMap(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (*corev1.ConfigMap, error) {
+func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecret) (*corev1.ConfigMap, error) {
 	var cm *corev1.ConfigMap
 	var cmValues map[string]string
 	var err error
 
-	cmName := azureKeyVaultSecret.Spec.Output.ConfigMap.Name
+	cmName := akvs.Spec.Output.ConfigMap.Name
 	if cmName == "" {
 		return nil, fmt.Errorf("output configmap name must be specified using spec.output.configMap.name")
 	}
 
-	log.Debugf("get or create configmap %s in namespace %s", cmName, azureKeyVaultSecret.Namespace)
-	if cm, err = c.configMapsLister.ConfigMaps(azureKeyVaultSecret.Namespace).Get(cmName); err != nil {
+	log.Debugf("get or create configmap %s in namespace %s", cmName, akvs.Namespace)
+	if cm, err = c.configMapsLister.ConfigMaps(akvs.Namespace).Get(cmName); err != nil {
 		if errors.IsNotFound(err) {
-			cmValues, err = c.getConfigMapFromKeyVault(azureKeyVaultSecret)
+			cmValues, err = c.getConfigMapFromKeyVault(akvs)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get configmap from azure key vault for configmap '%s'/'%s', error: %+v", azureKeyVaultSecret.Namespace, azureKeyVaultSecret.Name, err)
+				return nil, fmt.Errorf("failed to get configmap from azure key vault for configmap '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
 			}
 
-			if cm, err = c.kubeclientset.CoreV1().ConfigMaps(azureKeyVaultSecret.Namespace).Create(createNewConfigMap(azureKeyVaultSecret, cmValues)); err != nil {
+			if cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Create(createNewConfigMap(akvs, cmValues)); err != nil {
 				return nil, err
 			}
 
-			log.Infof("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
-			if err = c.updateAzureKeyVaultSecretStatusForConfigMap(azureKeyVaultSecret, getMD5HashForConfigMapValues(cmValues)); err != nil {
+			log.Infof("Updating status for AzureKeyVaultSecret '%s'", akvs.Name)
+			if err = c.updateAzureKeyVaultSecretStatusForConfigMap(akvs, getMD5HashOfStringValues(cmValues)); err != nil {
 				return nil, err
 			}
 
@@ -98,25 +98,39 @@ func (c *Controller) getOrCreateKubernetesConfigMap(azureKeyVaultSecret *akv.Azu
 		}
 	}
 
+	// get updated secret values from azure key vault
+	cmValues, err = c.getConfigMapFromKeyVault(akvs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret from Azure Key Vault for secret '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
+	}
+
 	if cmName != cm.Name {
 		// Name of configmap has changed in AzureKeyVaultSecret, so we need to delete current configmap and recreate
 		// under new name
 
-		// Delete configmap
-		if err = c.kubeclientset.CoreV1().ConfigMaps(azureKeyVaultSecret.Namespace).Delete(cm.Name, nil); err != nil {
-			return nil, err
+		// Only delete if this akvs is the only owner
+		if !hasMultipleOwners(cm.GetOwnerReferences()) {
+			// Delete configmap
+			if err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Delete(cm.Name, nil); err != nil {
+				return nil, err
+			}
 		}
-
 		// Recreate configmap under new Name
-		if cm, err = c.kubeclientset.CoreV1().ConfigMaps(azureKeyVaultSecret.Namespace).Create(createNewConfigMap(azureKeyVaultSecret, cmValues)); err != nil {
+		if cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Create(createNewConfigMap(akvs, cmValues)); err != nil {
 			return nil, err
 		}
 		return cm, nil
 	}
 
-	if hasAzureKeyVaultSecretChangedForConfigMap(azureKeyVaultSecret, cm) {
-		log.Infof("AzureKeyVaultSecret %s/%s output.secret values has changed and requires update to Secret %s", azureKeyVaultSecret.Namespace, azureKeyVaultSecret.Name, cmName)
-		cm, err = c.kubeclientset.CoreV1().ConfigMaps(azureKeyVaultSecret.Namespace).Update(createNewConfigMap(azureKeyVaultSecret, cm.Data))
+	if hasAzureKeyVaultSecretChangedForConfigMap(akvs, cmValues, cm) {
+		log.Infof("AzureKeyVaultSecret %s/%s output.secret values has changed and requires update to Secret %s", akvs.Namespace, akvs.Name, cmName)
+
+		updatedCM, err := updateExistingConfigMap(akvs, cmValues, cm)
+		if err != nil {
+			return nil, err
+		}
+
+		cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(updatedCM)
 	}
 
 	return cm, err
@@ -146,6 +160,53 @@ func createNewConfigMap(azureKeyVaultSecret *akv.AzureKeyVaultSecret, azureSecre
 	}
 }
 
+// updateExistingSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
+// the appropriate OwnerReferences on the resource so handleObject can discover
+// the AzureKeyVaultSecret resource that 'owns' it.
+func updateExistingConfigMap(akvs *akv.AzureKeyVaultSecret, values map[string]string, existingCM *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	cmName := determineConfigMapName(akvs)
+	cmClone := existingCM.DeepCopy()
+	ownerRefs := cmClone.GetOwnerReferences()
+
+	if !metav1.IsControlledBy(existingCM, akvs) {
+		ownerRefs = append(ownerRefs, *metav1.NewControllerRef(akvs, schema.GroupVersionKind{
+			Group:   akv.SchemeGroupVersion.Group,
+			Version: akv.SchemeGroupVersion.Version,
+			Kind:    "AzureKeyVaultSecret",
+		}))
+	}
+
+	mergedValues := mergeValuesWithExistingConfigMap(values, existingCM)
+
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cmName,
+			Namespace:       akvs.Namespace,
+			Labels:          akvs.Labels,
+			Annotations:     akvs.Annotations,
+			OwnerReferences: ownerRefs,
+		},
+		Data: mergedValues,
+	}, nil
+}
+
+func mergeValuesWithExistingConfigMap(values map[string]string, cm *corev1.ConfigMap) map[string]string {
+	newValues := make(map[string]string)
+
+	// copy existing values into new map
+	for k, v := range values {
+		newValues[k] = v
+	}
+
+	// copy any values from existing secret that does not exist in akvs values
+	for key, val := range cm.Data {
+		if _, ok := values[key]; !ok {
+			newValues[key] = val
+		}
+	}
+	return newValues
+}
+
 func determineConfigMapName(azureKeyVaultSecret *akv.AzureKeyVaultSecret) string {
 	name := azureKeyVaultSecret.Spec.Output.ConfigMap.Name
 	if name == "" {
@@ -154,10 +215,11 @@ func determineConfigMapName(azureKeyVaultSecret *akv.AzureKeyVaultSecret) string
 	return name
 }
 
-func getMD5HashForConfigMapValues(values map[string]string) string {
+func getMD5HashOfStringValues(values map[string]string) string {
 	var mergedValues bytes.Buffer
 
-	keys := sortValueKeysForConfigMap(values)
+	// sort keys to make sure hash is consistant
+	keys := sortStringValueKeys(values)
 
 	for _, k := range keys {
 		mergedValues.WriteString(k + values[k])
@@ -168,7 +230,25 @@ func getMD5HashForConfigMapValues(values map[string]string) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func sortValueKeysForConfigMap(values map[string]string) []string {
+func getMD5HashOfConfigMap(akvsValues map[string]string, cm *corev1.ConfigMap) string {
+	// filter out only values related to this akvs,
+	// as multiple akvs can write to a single secret
+	values := filterStringValueKeys(akvsValues, cm.Data)
+	return getMD5HashOfStringValues(values)
+}
+
+func filterStringValueKeys(akvsValues, cmValues map[string]string) map[string]string {
+	filtered := make(map[string]string)
+
+	for key := range akvsValues {
+		if cmVal, ok := cmValues[key]; ok {
+			filtered[key] = cmVal
+		}
+	}
+	return filtered
+}
+
+func sortStringValueKeys(values map[string]string) []string {
 	var keys []string
 	for k := range values {
 		keys = append(keys, k)

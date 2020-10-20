@@ -67,30 +67,30 @@ func (c *Controller) getSecret(key string) (*corev1.Secret, error) {
 	return secret, err
 }
 
-func (c *Controller) getOrCreateKubernetesSecret(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (*corev1.Secret, error) {
+func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) (*corev1.Secret, error) {
 	var secret *corev1.Secret
 	var secretValues map[string][]byte
 	var err error
 
-	secretName := azureKeyVaultSecret.Spec.Output.Secret.Name
+	secretName := akvs.Spec.Output.Secret.Name
 	if secretName == "" {
 		return nil, fmt.Errorf("output secret name must be specified using spec.output.secret.name")
 	}
 
-	log.Debugf("Get or create secret %s in namespace %s", secretName, azureKeyVaultSecret.Namespace)
-	if secret, err = c.secretsLister.Secrets(azureKeyVaultSecret.Namespace).Get(secretName); err != nil {
+	log.Debugf("Get or create secret %s in namespace %s", secretName, akvs.Namespace)
+	if secret, err = c.secretsLister.Secrets(akvs.Namespace).Get(secretName); err != nil {
 		if errors.IsNotFound(err) {
-			secretValues, err = c.getSecretFromKeyVault(azureKeyVaultSecret)
+			secretValues, err = c.getSecretFromKeyVault(akvs)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get secret from Azure Key Vault for secret '%s'/'%s', error: %+v", azureKeyVaultSecret.Namespace, azureKeyVaultSecret.Name, err)
+				return nil, fmt.Errorf("failed to get secret from Azure Key Vault for secret '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
 			}
 
-			if secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(createNewSecret(azureKeyVaultSecret, secretValues)); err != nil {
+			if secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Create(createNewSecret(akvs, secretValues)); err != nil {
 				return nil, err
 			}
 
-			log.Infof("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
-			if err = c.updateAzureKeyVaultSecretStatusForSecret(azureKeyVaultSecret, getMD5Hash(secretValues)); err != nil {
+			log.Infof("Updating status for AzureKeyVaultSecret '%s'", akvs.Name)
+			if err = c.updateAzureKeyVaultSecretStatusForSecret(akvs, getMD5HashOfByteValues(secretValues)); err != nil {
 				return nil, err
 			}
 
@@ -98,45 +98,72 @@ func (c *Controller) getOrCreateKubernetesSecret(azureKeyVaultSecret *akv.AzureK
 		}
 	}
 
+	// get updated secret values from azure key vault
+	secretValues, err = c.getSecretFromKeyVault(akvs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret from Azure Key Vault for secret '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
+	}
+
 	if secretName != secret.Name {
 		// Name of secret has changed in AzureKeyVaultSecret, so we need to delete current Secret and recreate
 		// under new name
 
-		// Delete secret
-		if err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Delete(secret.Name, nil); err != nil {
-			return nil, err
+		// Only delete if this akvs is the only owner
+		if !hasMultipleOwners(secret.GetOwnerReferences()) {
+			// Delete secret
+			if err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Delete(secret.Name, nil); err != nil {
+				return nil, err
+			}
 		}
 
 		// Recreate secret under new Name
-		if secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Create(createNewSecret(azureKeyVaultSecret, secretValues)); err != nil {
+		if secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Create(createNewSecret(akvs, secretValues)); err != nil {
 			return nil, err
 		}
 		return secret, nil
 	}
 
-	if hasAzureKeyVaultSecretChanged(azureKeyVaultSecret, secret) {
-		log.Infof("AzureKeyVaultSecret %s/%s output.secret values has changed and requires update to Secret %s", azureKeyVaultSecret.Namespace, azureKeyVaultSecret.Name, secretName)
-		secret, err = c.kubeclientset.CoreV1().Secrets(azureKeyVaultSecret.Namespace).Update(createNewSecret(azureKeyVaultSecret, secret.Data))
+	if hasAzureKeyVaultSecretChangedForSecret(akvs, secretValues, secret) {
+		log.Infof("AzureKeyVaultSecret %s/%s output.secret values has changed and requires update to Secret %s", akvs.Namespace, akvs.Name, secretName)
+
+		updatedSecret, err := updateExistingSecret(akvs, secretValues, secret)
+		if err != nil {
+			return nil, err
+		}
+		secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(updatedSecret)
 	}
 
 	return secret, err
 }
 
+func hasMultipleOwners(refs []metav1.OwnerReference) bool {
+	hits := 0
+	for _, ref := range refs {
+		if ref.Kind == "AzureKeyVaultSecret" {
+			hits = hits + 1
+		}
+		if hits > 1 {
+			return true
+		}
+	}
+	return false
+}
+
 // newSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func createNewSecret(azureKeyVaultSecret *akv.AzureKeyVaultSecret, azureSecretValue map[string][]byte) *corev1.Secret {
-	secretName := determineSecretName(azureKeyVaultSecret)
-	secretType := determineSecretType(azureKeyVaultSecret)
+func createNewSecret(akvs *akv.AzureKeyVaultSecret, azureSecretValues map[string][]byte) *corev1.Secret {
+	secretName := determineSecretName(akvs)
+	secretType := determineSecretType(akvs)
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        secretName,
-			Namespace:   azureKeyVaultSecret.Namespace,
-			Labels:      azureKeyVaultSecret.Labels,
-			Annotations: azureKeyVaultSecret.Annotations,
+			Namespace:   akvs.Namespace,
+			Labels:      akvs.Labels,
+			Annotations: akvs.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(azureKeyVaultSecret, schema.GroupVersionKind{
+				*metav1.NewControllerRef(akvs, schema.GroupVersionKind{
 					Group:   akv.SchemeGroupVersion.Group,
 					Version: akv.SchemeGroupVersion.Version,
 					Kind:    "AzureKeyVaultSecret",
@@ -144,8 +171,68 @@ func createNewSecret(azureKeyVaultSecret *akv.AzureKeyVaultSecret, azureSecretVa
 			},
 		},
 		Type: secretType,
-		Data: azureSecretValue,
+		Data: azureSecretValues,
 	}
+}
+
+// updateExistingSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
+// the appropriate OwnerReferences on the resource so handleObject can discover
+// the AzureKeyVaultSecret resource that 'owns' it.
+func updateExistingSecret(akvs *akv.AzureKeyVaultSecret, values map[string][]byte, existingSecret *corev1.Secret) (*corev1.Secret, error) {
+	secretName := determineSecretName(akvs)
+	secretType := determineSecretType(akvs)
+
+	// if existing secret is not opaque and owned by a different akvs,
+	// we cannot update this secret, as none opaque secrets cannot have multiple owners,
+	// because they would overrite each others keys
+	if existingSecret.Type != corev1.SecretTypeOpaque {
+		if !metav1.IsControlledBy(existingSecret, akvs) {
+			controlledBy := metav1.GetControllerOf(existingSecret)
+			return nil, fmt.Errorf("cannot update existing secret %s/%s of type %s controlled by %s, as this azurekeyvalutsecret %s would overwrite keys", existingSecret.Namespace, existingSecret.Name, existingSecret.Type, controlledBy.Name, akvs.Name)
+		}
+	}
+
+	secretClone := existingSecret.DeepCopy()
+	ownerRefs := secretClone.GetOwnerReferences()
+
+	if !metav1.IsControlledBy(existingSecret, akvs) {
+		ownerRefs = append(ownerRefs, *metav1.NewControllerRef(akvs, schema.GroupVersionKind{
+			Group:   akv.SchemeGroupVersion.Group,
+			Version: akv.SchemeGroupVersion.Version,
+			Kind:    "AzureKeyVaultSecret",
+		}))
+	}
+
+	mergedValues := mergeValuesWithExistingSecret(values, existingSecret)
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            secretName,
+			Namespace:       akvs.Namespace,
+			Labels:          akvs.Labels,
+			Annotations:     akvs.Annotations,
+			OwnerReferences: ownerRefs,
+		},
+		Type: secretType,
+		Data: mergedValues,
+	}, nil
+}
+
+func mergeValuesWithExistingSecret(values map[string][]byte, secret *corev1.Secret) map[string][]byte {
+	newValues := make(map[string][]byte)
+
+	// copy existing values into new map
+	for k, v := range values {
+		newValues[k] = v
+	}
+
+	// copy any values from existing secret that does not exist in akvs values
+	for key, val := range secret.Data {
+		if _, ok := values[key]; !ok {
+			newValues[key] = val
+		}
+	}
+	return newValues
 }
 
 func determineSecretName(azureKeyVaultSecret *akv.AzureKeyVaultSecret) string {
@@ -164,10 +251,11 @@ func determineSecretType(azureKeyVaultSecret *akv.AzureKeyVaultSecret) corev1.Se
 	return azureKeyVaultSecret.Spec.Output.Secret.Type
 }
 
-func getMD5Hash(values map[string][]byte) string {
+func getMD5HashOfByteValues(values map[string][]byte) string {
 	var mergedValues bytes.Buffer
 
-	keys := sortValueKeys(values)
+	// sort keys to make sure hash is consistant
+	keys := sortByteValueKeys(values)
 
 	for _, k := range keys {
 		mergedValues.WriteString(k + string(values[k]))
@@ -178,7 +266,25 @@ func getMD5Hash(values map[string][]byte) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func sortValueKeys(values map[string][]byte) []string {
+func getMD5HashOfSecret(akvsValues map[string][]byte, secret *corev1.Secret) string {
+	// filter out only values related to this akvs,
+	// as multiple akvs can write to a single secret
+	values := filterByteValueKeys(akvsValues, secret.Data)
+	return getMD5HashOfByteValues(values)
+}
+
+func filterByteValueKeys(akvsValues, secretValues map[string][]byte) map[string][]byte {
+	filtered := make(map[string][]byte)
+
+	for key := range akvsValues {
+		if secretVal, ok := secretValues[key]; ok {
+			filtered[key] = secretVal
+		}
+	}
+	return filtered
+}
+
+func sortByteValueKeys(values map[string][]byte) []string {
 	var keys []string
 	for k := range values {
 		keys = append(keys, k)
