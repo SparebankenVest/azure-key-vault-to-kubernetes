@@ -168,8 +168,8 @@ func (h *azureSecretHandler) HandleConfigMap() (map[string]string, error) {
 	}
 
 	if h.secretSpec.Spec.Vault.Object.Type != akv.AzureKeyVaultObjectTypeMultiKeyValueSecret &&
-		h.secretSpec.Spec.Output.Secret.DataKey == "" {
-		return nil, fmt.Errorf("no datakey spesified for output secret")
+		h.secretSpec.Spec.Output.ConfigMap.DataKey == "" {
+		return nil, fmt.Errorf("no datakey spesified for output configmap")
 	}
 	values[h.secretSpec.Spec.Output.ConfigMap.DataKey] = secret
 
@@ -230,7 +230,7 @@ func (h *azureCertificateHandler) HandleConfigMap() (map[string]string, error) {
 		return nil, err
 	}
 
-	values[h.secretSpec.Spec.Output.Secret.DataKey] = string(value)
+	values[h.secretSpec.Spec.Output.ConfigMap.DataKey] = string(value)
 
 	return values, nil
 }
@@ -255,7 +255,7 @@ func (h *azureKeyHandler) HandleConfigMap() (map[string]string, error) {
 	}
 
 	values := make(map[string]string)
-	values[h.secretSpec.Spec.Output.Secret.DataKey] = key
+	values[h.secretSpec.Spec.Output.ConfigMap.DataKey] = key
 	return values, nil
 }
 
