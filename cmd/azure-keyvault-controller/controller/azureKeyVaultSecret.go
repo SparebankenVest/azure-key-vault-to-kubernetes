@@ -172,12 +172,12 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 				return fmt.Errorf("failed to get existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
 			}
 
-			newSecret, err := updateExistingSecret(akvs, secretValue, existingSecret)
+			updatedSecret, err := updateExistingSecret(akvs, secretValue, existingSecret)
 			if err != nil {
 				return fmt.Errorf("failed to update existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
 			}
 
-			secret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(newSecret)
+			secret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(updatedSecret)
 			if err != nil {
 				return fmt.Errorf("failed to update secret, error: %+v", err)
 			}
@@ -251,7 +251,7 @@ func (c *Controller) akvsHasOutputSecret(secret *akv.AzureKeyVaultSecret) bool {
 }
 
 func (c *Controller) akvsHasOutputConfigMap(secret *akv.AzureKeyVaultSecret) bool {
-	return secret.Spec.Output.Secret.Name != ""
+	return secret.Spec.Output.ConfigMap.Name != ""
 }
 
 func (c *Controller) getAzureKeyVaultSecretFromSecret(secret *corev1.Secret, owner *metav1.OwnerReference) (*akv.AzureKeyVaultSecret, error) {
