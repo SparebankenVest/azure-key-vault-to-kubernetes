@@ -97,8 +97,10 @@ type Controller struct {
 	namespaceAkvsLabel  string
 
 	// Secret
-	secretsLister   corelisters.SecretLister
-	akvsSecretQueue *queue.Worker
+	secretsLister corelisters.SecretLister
+
+	// ConfigMap
+	configMapsLister corelisters.ConfigMapLister
 
 	// AzureKeyVaultSecret
 	azureKeyVaultSecretLister listers.AzureKeyVaultSecretLister
@@ -139,6 +141,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 		kubeInformerFactory: kubeInformerFactory,
 
 		secretsLister:             kubeInformerFactory.Core().V1().Secrets().Lister(),
+		configMapsLister:          kubeInformerFactory.Core().V1().ConfigMaps().Lister(),
 		azureKeyVaultSecretLister: akvInformerFactory.Keyvault().V2alpha1().AzureKeyVaultSecrets().Lister(),
 
 		options: options,
@@ -148,7 +151,6 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 	}
 
 	controller.akvsCrdQueue = queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVaultSecret)
-	controller.akvsSecretQueue = queue.New("Secrets", options.MaxNumRequeues, options.NumThreads, controller.syncSecret)
 	controller.azureKeyVaultQueue = queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
 
 	log.Info("Setting up event handlers")
@@ -182,9 +184,6 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 
 	log.Info("starting azure key vault secret queue")
 	c.akvsCrdQueue.Run(stopCh)
-
-	log.Info("starting secret queue for azure key vault secrets")
-	c.akvsSecretQueue.Run(stopCh)
 
 	log.Info("starting azure key vault queue")
 	c.azureKeyVaultQueue.Run(stopCh)

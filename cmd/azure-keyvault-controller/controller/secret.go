@@ -28,7 +28,6 @@ import (
 
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
 	log "github.com/sirupsen/logrus"
-	"kmodules.xyz/client-go/tools/queue"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -51,34 +50,6 @@ func convertToSecret(obj interface{}) (*corev1.Secret, error) {
 		}
 	}
 	return secret, nil
-}
-
-func (c *Controller) syncSecret(key string) error {
-	secret, err := c.getSecret(key)
-	if err != nil {
-		return err
-	}
-
-	if ownerRef := metav1.GetControllerOf(secret); ownerRef != nil {
-		azureKeyVaultSecret, err := c.getAzureKeyVaultSecretFromSecret(secret, ownerRef)
-		if err != nil {
-			return err
-		}
-
-		if c.akvsHasSecretOutput(azureKeyVaultSecret) {
-			queue.Enqueue(c.akvsCrdQueue.GetQueue(), azureKeyVaultSecret)
-		}
-	}
-	return nil
-}
-
-func (c *Controller) isOwnedByAzureKeyVaultSecret(secret *corev1.Secret) bool {
-	if ownerRef := metav1.GetControllerOf(secret); ownerRef != nil {
-		if ownerRef.Kind == "AzureKeyVaultSecret" {
-			return true
-		}
-	}
-	return false
 }
 
 func (c *Controller) getSecret(key string) (*corev1.Secret, error) {
@@ -119,7 +90,7 @@ func (c *Controller) getOrCreateKubernetesSecret(azureKeyVaultSecret *akv.AzureK
 			}
 
 			log.Infof("Updating status for AzureKeyVaultSecret '%s'", azureKeyVaultSecret.Name)
-			if err = c.updateAzureKeyVaultSecretStatus(azureKeyVaultSecret, getMD5Hash(secretValues)); err != nil {
+			if err = c.updateAzureKeyVaultSecretStatusForSecret(azureKeyVaultSecret, getMD5Hash(secretValues)); err != nil {
 				return nil, err
 			}
 

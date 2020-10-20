@@ -83,11 +83,19 @@ secondValue: some second value data`,
 	secret.Spec.Vault.Object.ContentType = "application/x-yaml"
 
 	handler := NewAzureMultiKeySecretHandler(secret, fakeVault)
-	values, err := handler.Handle()
+	values, err := handler.HandleSecret()
 	if err != nil {
 		t.Error(err)
 	}
 	if len(values) != 2 {
+		t.Errorf("number of values returned should be 2 but were %d", len(values))
+	}
+
+	valuesCM, err := handler.HandleConfigMap()
+	if err != nil {
+		t.Error(err)
+	}
+	if len(valuesCM) != 2 {
 		t.Errorf("number of values returned should be 2 but were %d", len(values))
 	}
 }
@@ -100,7 +108,24 @@ func TestHandleSecretWithNoDataKey(t *testing.T) {
 	secret := secret()
 	transformator, err := transformers.CreateTransformator(&secret.Spec.Output)
 	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
-	values, err := handler.Handle()
+	values, err := handler.HandleSecret()
+	if err == nil {
+		t.Error("Should fail when no datakey is spesified")
+	}
+	if values != nil {
+		t.Error("handler should not have returned values")
+	}
+}
+
+func TestHandleConfigMapWithNoDataKey(t *testing.T) {
+	fakeVault := &fakeVaultService{
+		fakeSecretValue: "Some very secret data",
+	}
+
+	secret := secret()
+	transformator, err := transformers.CreateTransformator(&secret.Spec.Output)
+	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
+	values, err := handler.HandleConfigMap()
 	if err == nil {
 		t.Error("Should fail when no datakey is spesified")
 	}
@@ -119,7 +144,7 @@ func TestHandleCertificateWithTlsOutput(t *testing.T) {
 	secret.Spec.Output.Secret.Type = corev1.SecretTypeTLS
 
 	handler := NewAzureCertificateHandler(secret, fakeVault)
-	values, err := handler.Handle()
+	values, err := handler.HandleSecret()
 	if err != nil {
 		t.Error(err)
 	}
@@ -147,7 +172,7 @@ func TestHandlePubliKeyCertificateOnlyWithTlsOutput(t *testing.T) {
 	secret.Spec.Output.Secret.Type = corev1.SecretTypeTLS
 
 	handler := NewAzureCertificateHandler(secret, fakeVault)
-	_, err := handler.Handle()
+	_, err := handler.HandleSecret()
 	if err == nil {
 		t.Error("Handler should fail because there are no private key in certificate")
 	}
@@ -163,7 +188,7 @@ func TestHandlePubliKeyCertificateWithDataKey(t *testing.T) {
 	secret.Spec.Output.Secret.DataKey = "mykey"
 
 	handler := NewAzureCertificateHandler(secret, fakeVault)
-	values, err := handler.Handle()
+	values, err := handler.HandleSecret()
 	if err != nil {
 		t.Error("Should have returned error because there is no private key")
 	}
@@ -187,7 +212,7 @@ func TestHandleCertificateFailureWithNoOutputDataKey(t *testing.T) {
 	secret.Spec.Vault.Object.Type = "certificate"
 
 	handler := NewAzureCertificateHandler(secret, fakeVault)
-	values, err := handler.Handle()
+	values, err := handler.HandleSecret()
 	if err == nil {
 		t.Error("Handler should fail because there are no dataKey defined")
 	}
@@ -206,7 +231,7 @@ func TestHandleCertificateWithOutputDataKey(t *testing.T) {
 	secret.Spec.Output.Secret.DataKey = "my-key"
 
 	handler := NewAzureCertificateHandler(secret, fakeVault)
-	values, err := handler.Handle()
+	values, err := handler.HandleSecret()
 	if err != nil {
 		t.Error(err)
 	}
@@ -232,7 +257,7 @@ func TestHandleCertificateWithRawOutput(t *testing.T) {
 	secret.Spec.Output.Secret.Type = corev1.SecretTypeOpaque
 
 	handler := NewAzureCertificateHandler(secret, fakeVault)
-	values, err := handler.Handle()
+	values, err := handler.HandleSecret()
 	if err != nil {
 		t.Error(err)
 	}
@@ -259,7 +284,7 @@ func TestHandleSecretWithBasicAuthOutput(t *testing.T) {
 	transformator, err := transformers.CreateTransformator(&secret.Spec.Output)
 
 	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
-	values, err := handler.Handle()
+	values, err := handler.HandleSecret()
 	if err != nil {
 		t.Error(err)
 	}
@@ -288,7 +313,7 @@ func TestHandleSecretWithDockerConfigJsonAsOutput(t *testing.T) {
 
 	transformator, err := transformers.CreateTransformator(&secret.Spec.Output)
 	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
-	values, err := handler.Handle()
+	values, err := handler.HandleSecret()
 	if err != nil {
 		t.Error(err)
 	}
@@ -314,7 +339,7 @@ func TestHandleSecretWithDockerConfigAsOutput(t *testing.T) {
 
 	transformator, err := transformers.CreateTransformator(&secret.Spec.Output)
 	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
-	values, err := handler.Handle()
+	values, err := handler.HandleSecret()
 	if err != nil {
 		t.Error(err)
 	}
@@ -340,7 +365,7 @@ func TestHandleSecretWithSSHAuthAsOutput(t *testing.T) {
 
 	transformator, err := transformers.CreateTransformator(&secret.Spec.Output)
 	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
-	values, err := handler.Handle()
+	values, err := handler.HandleSecret()
 	if err != nil {
 		t.Error(err)
 	}

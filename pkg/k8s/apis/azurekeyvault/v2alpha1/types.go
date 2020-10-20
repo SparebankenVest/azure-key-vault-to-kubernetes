@@ -95,7 +95,8 @@ const (
 
 // AzureKeyVaultOutput defines output sources, currently only support Secret
 type AzureKeyVaultOutput struct {
-	Secret AzureKeyVaultOutputSecret `json:"secret"`
+	Secret    AzureKeyVaultOutputSecret    `json:"secret"`
+	ConfigMap AzureKeyVaultOutputConfigMap `json:"configMap"`
 	// +optional
 	Transforms []string `json:"transforms,omitempty"`
 }
@@ -105,14 +106,25 @@ type AzureKeyVaultOutput struct {
 type AzureKeyVaultOutputSecret struct {
 	Name string `json:"name"`
 	// +optional
-	Type       corev1.SecretType `json:"type,omitempty"`
-	DataKey    string            `json:"dataKey"`
-	ChainOrder string            `json:"chainOrder"`
+	Type corev1.SecretType `json:"type,omitempty"`
+	// +optional
+	DataKey string `json:"dataKey,omitempty"`
+	// +optional
+	ChainOrder string `json:"chainOrder,omitempty"`
+}
+
+// AzureKeyVaultOutputConfigMap has information needed to output
+// a secret from Azure Key Vault to Kubertnetes as a ConfigMap resource
+type AzureKeyVaultOutputConfigMap struct {
+	Name    string `json:"name"`
+	DataKey string `json:"dataKey"`
 }
 
 // AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource
 type AzureKeyVaultSecretStatus struct {
 	SecretHash      string      `json:"secretHash"`
-	LastAzureUpdate metav1.Time `json:"lastAzureUpdate,omitempty"`
 	SecretName      string      `json:"secretName"`
+	ConfigMapHash   string      `json:"configMapHash"`
+	ConfigMapName   string      `json:"configMapName"`
+	LastAzureUpdate metav1.Time `json:"lastAzureUpdate,omitempty"`
 }
