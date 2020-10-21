@@ -20,6 +20,10 @@ spec:
       version: <optional - version of object to sync>
       contentType: <only used when type is the special multi-key-value-secret - either application/x-json or application/x-yaml>
   output: # ignored by env injector, required by controller to output kubernetes secret
+    transform: # optional transformers executed in listed order
+      - trim # optional - trims empty space
+      - base64encode # optional - encode to base64
+      - base64decode # optional - decode from base64
     secret: 
       name: <name of the kubernetes secret to create>
       type: <optional - kubernetes secret type - defaults to opaque>
@@ -90,3 +94,28 @@ This must be a properly formatted **Private** SSH Key stored in a Secret object.
 ## Chain Order
 
 When exporting a PFX certificate from Key Vault the server certificate sometimes end up at the end of the chain instead of the beginning. If this is used together with, for example, ingress-nginx the certificate won't be loaded and it will revert back to default. By setting `chainOrder` to `ensureserverfirst` the server certificate will be moved first in the chain.
+
+## Output Transformation
+
+Three common transformers exists - trim, base64encode and base64decode. Below is an example where a secret extracted from Azure Key Vault, which is base64 encoded, gets decoded by the transformer before added to a Kubernetes Secret.
+
+```
+apiVersion: spv.no/v1
+kind: AzureKeyVaultSecret
+metadata:
+  name: base64decoded-binary-file
+  namespace: my-kw
+spec:
+  vault:
+    name: my-kv
+    object:
+      name: my-kv-secret
+      type: secret
+  output:
+    transform:
+      - base64decode
+      - trim
+    secret: 
+      name: not-base64encoded-anymore
+      dataKey: myKey
+```
