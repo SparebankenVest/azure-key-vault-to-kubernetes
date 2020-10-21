@@ -118,14 +118,6 @@ ifndef TAG
 	$(error TAG is undefined)
 endif
 
-.PHONY: docs-install-dev
-docs-install-dev:
-	cd ./docs && npm install
-
-.PHONY: docs-run-dev
-docs-run-dev:
-	cd ./docs && GATSBY_ALGOLIA_ENABLED=false npm run start
-
 .PHONY: fmt
 fmt:
 	@echo "==> Fixing source code with gofmt..."
