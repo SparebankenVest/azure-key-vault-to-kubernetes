@@ -106,6 +106,7 @@ type Controller struct {
 	azureKeyVaultSecretLister listers.AzureKeyVaultSecretLister
 	akvsInformerFactory       akvInformers.SharedInformerFactory
 	akvsCrdQueue              *queue.Worker
+	akvsCrdDeletionQueue      *queue.Worker
 	azureKeyVaultQueue        *queue.Worker
 
 	options *Options
@@ -151,6 +152,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 	}
 
 	controller.akvsCrdQueue = queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVaultSecret)
+	controller.akvsCrdDeletionQueue = queue.New("DeletedAzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncDeletedAzureKeyVaultSecret)
 	controller.azureKeyVaultQueue = queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
 
 	log.Info("Setting up event handlers")
@@ -184,6 +186,9 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 
 	log.Info("starting azure key vault secret queue")
 	c.akvsCrdQueue.Run(stopCh)
+
+	log.Info("starting azure key vault deleted secret queue")
+	c.akvsCrdDeletionQueue.Run(stopCh)
 
 	log.Info("starting azure key vault queue")
 	c.azureKeyVaultQueue.Run(stopCh)

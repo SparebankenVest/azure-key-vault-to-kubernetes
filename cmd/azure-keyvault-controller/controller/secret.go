@@ -52,19 +52,50 @@ func convertToSecret(obj interface{}) (*corev1.Secret, error) {
 	return secret, nil
 }
 
-func (c *Controller) getSecret(key string) (*corev1.Secret, error) {
+func (c *Controller) getSecretByKey(key string) (*corev1.Secret, error) {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("invalid resource key: %s", key)
 	}
 
-	log.Debugf("Getting Secret %s from namespace %s", name, namespace)
-	secret, err := c.secretsLister.Secrets(namespace).Get(name)
+	return c.getSecret(namespace, name)
+}
+
+func (c *Controller) getSecret(ns, name string) (*corev1.Secret, error) {
+	log.Debugf("Getting Secret %s from namespace %s", name, ns)
+	secret, err := c.secretsLister.Secrets(ns).Get(name)
 
 	if err != nil {
 		return nil, err
 	}
 	return secret, err
+}
+
+func (c *Controller) deleteKubernetesSecretValues(akvs *akv.AzureKeyVaultSecret) error {
+	secret, err := c.getSecret(akvs.Namespace, akvs.Spec.Output.Secret.Name)
+	if errors.IsNotFound(err) {
+		return nil
+	}
+
+	secretClone := secret.DeepCopy()
+	if err != nil {
+		return err
+	}
+
+	data, err := c.getSecretFromKeyVault(akvs)
+	if err != nil {
+		return err
+	}
+
+	for key := range data {
+		delete(secretClone.Data, key)
+	}
+
+	secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(secretClone)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) (*corev1.Secret, error) {

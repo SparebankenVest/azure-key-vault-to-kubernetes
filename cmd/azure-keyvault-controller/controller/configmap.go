@@ -52,19 +52,49 @@ func convertToConfigMap(obj interface{}) (*corev1.ConfigMap, error) {
 	return cm, nil
 }
 
-func (c *Controller) getConfigMap(key string) (*corev1.ConfigMap, error) {
+func (c *Controller) getConfigMapByKey(key string) (*corev1.ConfigMap, error) {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("invalid resource key: %s", key)
 	}
+	return c.getConfigMap(namespace, name)
+}
 
-	log.Debugf("getting configmap %s from namespace %s", name, namespace)
-	cm, err := c.configMapsLister.ConfigMaps(namespace).Get(name)
+func (c *Controller) getConfigMap(ns, name string) (*corev1.ConfigMap, error) {
+	log.Debugf("getting configmap %s from namespace %s", name, ns)
+	cm, err := c.configMapsLister.ConfigMaps(ns).Get(name)
 
 	if err != nil {
 		return nil, err
 	}
 	return cm, err
+}
+
+func (c *Controller) deleteKubernetesConfigMapValues(akvs *akv.AzureKeyVaultSecret) error {
+	cm, err := c.getConfigMap(akvs.Namespace, akvs.Spec.Output.ConfigMap.Name)
+	if errors.IsNotFound(err) {
+		return nil
+	}
+
+	cmClone := cm.DeepCopy()
+	if err != nil {
+		return err
+	}
+
+	data, err := c.getConfigMapFromKeyVault(akvs)
+	if err != nil {
+		return err
+	}
+
+	for key := range data {
+		delete(cmClone.Data, key)
+	}
+
+	cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(cmClone)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecret) (*corev1.ConfigMap, error) {
