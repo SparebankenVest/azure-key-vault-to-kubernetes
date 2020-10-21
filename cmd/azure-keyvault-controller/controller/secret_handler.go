@@ -69,15 +69,6 @@ func NewAzureSecretHandler(secretSpec *akv.AzureKeyVaultSecret, vaultService vau
 	}
 }
 
-// // NewAzureSecretHandler return a new AzureSecretHandler
-// func NewAzureSecretConfigMapHandler(secretSpec *akv.AzureKeyVaultSecret, vaultService vault.Service, transformator transformers.Transformator) *azureSecretHandlerForKubernetesConfigMap {
-// 	return &azureSecretHandlerForKubernetesConfigMap{
-// 		secretSpec:    secretSpec,
-// 		vaultService:  vaultService,
-// 		transformator: transformator,
-// 	}
-// }
-
 // NewAzureCertificateHandler return a new AzureCertificateHandler
 func NewAzureCertificateHandler(secretSpec *akv.AzureKeyVaultSecret, vaultService vault.Service) *azureCertificateHandler {
 	return &azureCertificateHandler{

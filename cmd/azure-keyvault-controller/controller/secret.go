@@ -88,7 +88,7 @@ func (c *Controller) deleteKubernetesSecretValues(akvs *akv.AzureKeyVaultSecret)
 		delete(secretData, key)
 	}
 
-	newSecret, err := updateExistingSecretValues(akvs, secretData, secret)
+	newSecret, err := createNewSecretFromExistingWithUpdatedValues(akvs, secretData, secret)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 	if hasAzureKeyVaultSecretChangedForSecret(akvs, secretValues, secret) {
 		log.Infof("azurekeyvaultsecret %s/%s values has changed and requires update to secret %s", akvs.Namespace, akvs.Name, secretName)
 
-		updatedSecret, err := updateExistingSecret(akvs, secretValues, secret)
+		updatedSecret, err := createNewSecretFromExisting(akvs, secretValues, secret)
 		if err != nil {
 			return nil, err
 		}
@@ -208,10 +208,10 @@ func createNewSecret(akvs *akv.AzureKeyVaultSecret, azureSecretValues map[string
 	}
 }
 
-// updateExistingSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
+// createNewSecretFromExisting creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func updateExistingSecret(akvs *akv.AzureKeyVaultSecret, values map[string][]byte, existingSecret *corev1.Secret) (*corev1.Secret, error) {
+func createNewSecretFromExisting(akvs *akv.AzureKeyVaultSecret, values map[string][]byte, existingSecret *corev1.Secret) (*corev1.Secret, error) {
 	secretName := determineSecretName(akvs)
 	secretType := determineSecretType(akvs)
 
@@ -254,7 +254,7 @@ func updateExistingSecret(akvs *akv.AzureKeyVaultSecret, values map[string][]byt
 // updateExistingSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func updateExistingSecretValues(akvs *akv.AzureKeyVaultSecret, values map[string][]byte, existingSecret *corev1.Secret) (*corev1.Secret, error) {
+func createNewSecretFromExistingWithUpdatedValues(akvs *akv.AzureKeyVaultSecret, values map[string][]byte, existingSecret *corev1.Secret) (*corev1.Secret, error) {
 	secretName := determineSecretName(akvs)
 	secretType := determineSecretType(akvs)
 
@@ -275,12 +275,6 @@ func updateExistingSecretValues(akvs *akv.AzureKeyVaultSecret, values map[string
 }
 
 func isOwnedBy(obj metav1.Object, owner metav1.Object) bool {
-	// APIVersion:         gvk.GroupVersion().String(),
-	// Kind:               gvk.Kind,
-	// Name:               owner.GetName(),
-	// UID:                owner.GetUID(),
-	// BlockOwnerDeletion: &blockOwnerDeletion,
-	// Controller:         &isController,
 	ownerRefs := obj.GetOwnerReferences()
 
 	for _, ref := range ownerRefs {

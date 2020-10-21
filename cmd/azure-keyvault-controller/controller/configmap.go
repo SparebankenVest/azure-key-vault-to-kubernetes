@@ -87,7 +87,7 @@ func (c *Controller) deleteKubernetesConfigMapValues(akvs *akv.AzureKeyVaultSecr
 		delete(cmData, key)
 	}
 
-	newCM, err := updateExistingConfigMapValues(akvs, cmData, cm)
+	newCM, err := createNewConfigMapFromExistingWithUpdatedValues(akvs, cmData, cm)
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 	if hasAzureKeyVaultSecretChangedForConfigMap(akvs, cmValues, cm) {
 		log.Infof("azurekeyvaultsecret %s/%s output.configmap values has changed and requires update to configmap %s", akvs.Namespace, akvs.Name, cmName)
 
-		updatedCM, err := updateExistingConfigMap(akvs, cmValues, cm)
+		updatedCM, err := createNewConfigMapFromExisting(akvs, cmValues, cm)
 		if err != nil {
 			return nil, err
 		}
@@ -214,7 +214,7 @@ func newOwnerRef(owner metav1.Object, gvk schema.GroupVersionKind) *metav1.Owner
 // updateExistingSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func updateExistingConfigMap(akvs *akv.AzureKeyVaultSecret, values map[string]string, existingCM *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+func createNewConfigMapFromExisting(akvs *akv.AzureKeyVaultSecret, values map[string]string, existingCM *corev1.ConfigMap) (*corev1.ConfigMap, error) {
 	cmName := determineConfigMapName(akvs)
 	cmClone := existingCM.DeepCopy()
 	ownerRefs := cmClone.GetOwnerReferences()
@@ -244,7 +244,7 @@ func updateExistingConfigMap(akvs *akv.AzureKeyVaultSecret, values map[string]st
 // updateExistingSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the AzureKeyVaultSecret resource that 'owns' it.
-func updateExistingConfigMapValues(akvs *akv.AzureKeyVaultSecret, values map[string]string, existingCM *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+func createNewConfigMapFromExistingWithUpdatedValues(akvs *akv.AzureKeyVaultSecret, values map[string]string, existingCM *corev1.ConfigMap) (*corev1.ConfigMap, error) {
 	cmName := determineConfigMapName(akvs)
 	cmClone := existingCM.DeepCopy()
 	ownerRefs := cmClone.GetOwnerReferences()
