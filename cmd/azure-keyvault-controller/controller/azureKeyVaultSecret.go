@@ -222,7 +222,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 				return fmt.Errorf("failed to get existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
 			}
 
-			updatedSecret, err := updateExistingSecret(akvs, secretValue, existingSecret)
+			updatedSecret, err := createNewSecretFromExisting(akvs, secretValue, existingSecret)
 			if err != nil {
 				return fmt.Errorf("failed to update existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
 			}
