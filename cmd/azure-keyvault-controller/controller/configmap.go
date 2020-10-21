@@ -155,7 +155,7 @@ func createNewConfigMap(azureKeyVaultSecret *akv.AzureKeyVaultSecret, azureSecre
 			Labels:      azureKeyVaultSecret.Labels,
 			Annotations: azureKeyVaultSecret.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(azureKeyVaultSecret, schema.GroupVersionKind{
+				*newOwnerRef(azureKeyVaultSecret, schema.GroupVersionKind{
 					Group:   akv.SchemeGroupVersion.Group,
 					Version: akv.SchemeGroupVersion.Version,
 					Kind:    "AzureKeyVaultSecret",
@@ -163,6 +163,19 @@ func createNewConfigMap(azureKeyVaultSecret *akv.AzureKeyVaultSecret, azureSecre
 			},
 		},
 		Data: azureSecretValue,
+	}
+}
+
+func newOwnerRef(owner metav1.Object, gvk schema.GroupVersionKind) *metav1.OwnerReference {
+	blockOwnerDeletion := true
+	isController := false
+	return &metav1.OwnerReference{
+		APIVersion:         gvk.GroupVersion().String(),
+		Kind:               gvk.Kind,
+		Name:               owner.GetName(),
+		UID:                owner.GetUID(),
+		BlockOwnerDeletion: &blockOwnerDeletion,
+		Controller:         &isController,
 	}
 }
 
@@ -175,7 +188,7 @@ func updateExistingConfigMap(akvs *akv.AzureKeyVaultSecret, values map[string]st
 	ownerRefs := cmClone.GetOwnerReferences()
 
 	if !metav1.IsControlledBy(existingCM, akvs) {
-		ownerRefs = append(ownerRefs, *metav1.NewControllerRef(akvs, schema.GroupVersionKind{
+		ownerRefs = append(ownerRefs, *newOwnerRef(akvs, schema.GroupVersionKind{
 			Group:   akv.SchemeGroupVersion.Group,
 			Version: akv.SchemeGroupVersion.Version,
 			Kind:    "AzureKeyVaultSecret",

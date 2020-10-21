@@ -124,7 +124,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 	}
 
 	if hasAzureKeyVaultSecretChangedForSecret(akvs, secretValues, secret) {
-		log.Infof("AzureKeyVaultSecret %s/%s output.secret values has changed and requires update to Secret %s", akvs.Namespace, akvs.Name, secretName)
+		log.Infof("azurekeyvaultsecret %s/%s values has changed and requires update to secret %s", akvs.Namespace, akvs.Name, secretName)
 
 		updatedSecret, err := updateExistingSecret(akvs, secretValues, secret)
 		if err != nil {
@@ -163,7 +163,7 @@ func createNewSecret(akvs *akv.AzureKeyVaultSecret, azureSecretValues map[string
 			Labels:      akvs.Labels,
 			Annotations: akvs.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(akvs, schema.GroupVersionKind{
+				*newOwnerRef(akvs, schema.GroupVersionKind{
 					Group:   akv.SchemeGroupVersion.Group,
 					Version: akv.SchemeGroupVersion.Version,
 					Kind:    "AzureKeyVaultSecret",
@@ -196,7 +196,7 @@ func updateExistingSecret(akvs *akv.AzureKeyVaultSecret, values map[string][]byt
 	ownerRefs := secretClone.GetOwnerReferences()
 
 	if !metav1.IsControlledBy(existingSecret, akvs) {
-		ownerRefs = append(ownerRefs, *metav1.NewControllerRef(akvs, schema.GroupVersionKind{
+		ownerRefs = append(ownerRefs, *newOwnerRef(akvs, schema.GroupVersionKind{
 			Group:   akv.SchemeGroupVersion.Group,
 			Version: akv.SchemeGroupVersion.Version,
 			Kind:    "AzureKeyVaultSecret",
