@@ -83,5 +83,5 @@ Azure Key Vault to Kubernetes is licensed under Apache License 2.0.
 
 ### Contribute to the Documentation
 
-The documentation is located at [docs/source/content](docs/source/content). We're using Gatsby + MDX (Markdown + JSX) to generate static docs for https://akv2k8s.io. See [docs/README.md](docs/README.md) for details.
+The documentation is located in a seperate repository at https://github.com/SparebankenVest/akv2k8s-website. We're using Gatsby + MDX (Markdown + JSX) to generate static docs for https://akv2k8s.io.
 
