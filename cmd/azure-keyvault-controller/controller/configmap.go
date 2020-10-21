@@ -76,10 +76,7 @@ func (c *Controller) deleteKubernetesConfigMapValues(akvs *akv.AzureKeyVaultSecr
 		return nil
 	}
 
-	cmClone := cm.DeepCopy()
-	if err != nil {
-		return err
-	}
+	cmData := cm.Data
 
 	data, err := c.getConfigMapFromKeyVault(akvs)
 	if err != nil {
@@ -87,10 +84,15 @@ func (c *Controller) deleteKubernetesConfigMapValues(akvs *akv.AzureKeyVaultSecr
 	}
 
 	for key := range data {
-		delete(cmClone.Data, key)
+		delete(cmData, key)
 	}
 
-	cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(cmClone)
+	newCM, err := updateExistingConfigMapValues(akvs, cmData, cm)
+	if err != nil {
+		return err
+	}
+
+	cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(newCM)
 	if err != nil {
 		return err
 	}
@@ -236,6 +238,26 @@ func updateExistingConfigMap(akvs *akv.AzureKeyVaultSecret, values map[string]st
 			OwnerReferences: ownerRefs,
 		},
 		Data: mergedValues,
+	}, nil
+}
+
+// updateExistingSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
+// the appropriate OwnerReferences on the resource so handleObject can discover
+// the AzureKeyVaultSecret resource that 'owns' it.
+func updateExistingConfigMapValues(akvs *akv.AzureKeyVaultSecret, values map[string]string, existingCM *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	cmName := determineConfigMapName(akvs)
+	cmClone := existingCM.DeepCopy()
+	ownerRefs := cmClone.GetOwnerReferences()
+
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cmName,
+			Namespace:       akvs.Namespace,
+			Labels:          akvs.Labels,
+			Annotations:     akvs.Annotations,
+			OwnerReferences: ownerRefs,
+		},
+		Data: values,
 	}, nil
 }
 

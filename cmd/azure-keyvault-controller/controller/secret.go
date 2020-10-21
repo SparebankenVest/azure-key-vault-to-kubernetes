@@ -77,10 +77,7 @@ func (c *Controller) deleteKubernetesSecretValues(akvs *akv.AzureKeyVaultSecret)
 		return nil
 	}
 
-	secretClone := secret.DeepCopy()
-	if err != nil {
-		return err
-	}
+	secretData := secret.Data
 
 	data, err := c.getSecretFromKeyVault(akvs)
 	if err != nil {
@@ -88,10 +85,15 @@ func (c *Controller) deleteKubernetesSecretValues(akvs *akv.AzureKeyVaultSecret)
 	}
 
 	for key := range data {
-		delete(secretClone.Data, key)
+		delete(secretData, key)
 	}
 
-	secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(secretClone)
+	newSecret, err := updateExistingSecretValues(akvs, secretData, secret)
+	if err != nil {
+		return err
+	}
+
+	secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(newSecret)
 	if err != nil {
 		return err
 	}
@@ -246,6 +248,29 @@ func updateExistingSecret(akvs *akv.AzureKeyVaultSecret, values map[string][]byt
 		},
 		Type: secretType,
 		Data: mergedValues,
+	}, nil
+}
+
+// updateExistingSecret creates a new Secret for a AzureKeyVaultSecret resource. It also sets
+// the appropriate OwnerReferences on the resource so handleObject can discover
+// the AzureKeyVaultSecret resource that 'owns' it.
+func updateExistingSecretValues(akvs *akv.AzureKeyVaultSecret, values map[string][]byte, existingSecret *corev1.Secret) (*corev1.Secret, error) {
+	secretName := determineSecretName(akvs)
+	secretType := determineSecretType(akvs)
+
+	secretClone := existingSecret.DeepCopy()
+	ownerRefs := secretClone.GetOwnerReferences()
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            secretName,
+			Namespace:       akvs.Namespace,
+			Labels:          akvs.Labels,
+			Annotations:     akvs.Annotations,
+			OwnerReferences: ownerRefs,
+		},
+		Type: secretType,
+		Data: values,
 	}, nil
 }
 
