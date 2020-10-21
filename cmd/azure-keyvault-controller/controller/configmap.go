@@ -187,7 +187,7 @@ func updateExistingConfigMap(akvs *akv.AzureKeyVaultSecret, values map[string]st
 	cmClone := existingCM.DeepCopy()
 	ownerRefs := cmClone.GetOwnerReferences()
 
-	if !metav1.IsControlledBy(existingCM, akvs) {
+	if !isOwnedBy(existingCM, akvs) {
 		ownerRefs = append(ownerRefs, *newOwnerRef(akvs, schema.GroupVersionKind{
 			Group:   akv.SchemeGroupVersion.Group,
 			Version: akv.SchemeGroupVersion.Version,

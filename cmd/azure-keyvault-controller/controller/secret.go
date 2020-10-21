@@ -186,7 +186,7 @@ func updateExistingSecret(akvs *akv.AzureKeyVaultSecret, values map[string][]byt
 	// we cannot update this secret, as none opaque secrets cannot have multiple owners,
 	// because they would overrite each others keys
 	if existingSecret.Type != corev1.SecretTypeOpaque {
-		if !metav1.IsControlledBy(existingSecret, akvs) {
+		if !isOwnedBy(existingSecret, akvs) {
 			controlledBy := metav1.GetControllerOf(existingSecret)
 			return nil, fmt.Errorf("cannot update existing secret %s/%s of type %s controlled by %s, as this azurekeyvalutsecret %s would overwrite keys", existingSecret.Namespace, existingSecret.Name, existingSecret.Type, controlledBy.Name, akvs.Name)
 		}
@@ -195,7 +195,7 @@ func updateExistingSecret(akvs *akv.AzureKeyVaultSecret, values map[string][]byt
 	secretClone := existingSecret.DeepCopy()
 	ownerRefs := secretClone.GetOwnerReferences()
 
-	if !metav1.IsControlledBy(existingSecret, akvs) {
+	if !isOwnedBy(existingSecret, akvs) {
 		ownerRefs = append(ownerRefs, *newOwnerRef(akvs, schema.GroupVersionKind{
 			Group:   akv.SchemeGroupVersion.Group,
 			Version: akv.SchemeGroupVersion.Version,
@@ -216,6 +216,23 @@ func updateExistingSecret(akvs *akv.AzureKeyVaultSecret, values map[string][]byt
 		Type: secretType,
 		Data: mergedValues,
 	}, nil
+}
+
+func isOwnedBy(obj metav1.Object, owner metav1.Object) bool {
+	// APIVersion:         gvk.GroupVersion().String(),
+	// Kind:               gvk.Kind,
+	// Name:               owner.GetName(),
+	// UID:                owner.GetUID(),
+	// BlockOwnerDeletion: &blockOwnerDeletion,
+	// Controller:         &isController,
+	ownerRefs := obj.GetOwnerReferences()
+
+	for _, ref := range ownerRefs {
+		if ref.Kind == "AzureKeyVaultSecret" && ref.Name == owner.GetName() && ref.UID == owner.GetUID() {
+			return true
+		}
+	}
+	return false
 }
 
 func mergeValuesWithExistingSecret(values map[string][]byte, secret *corev1.Secret) map[string][]byte {

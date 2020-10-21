@@ -129,7 +129,7 @@ func (c *Controller) syncAzureKeyVaultSecret(key string) error {
 		outputObject = cm
 	}
 
-	if !metav1.IsControlledBy(outputObject, akvs) { // checks if the object has a controllerRef set to the given owner
+	if !isOwnedBy(outputObject, akvs) { // checks if the object has a controllerRef set to the given owner
 		msg := fmt.Sprintf(MessageResourceExists, outputObject.GetName())
 		log.Warning(msg)
 		c.recorder.Event(akvs, corev1.EventTypeWarning, ErrResourceExists, msg)
