@@ -24,7 +24,7 @@ import (
 )
 
 // SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = schema.GroupVersion{Group: azurekeyvault.GroupName, Version: "v2alpha1"}
+var SchemeGroupVersion = schema.GroupVersion{Group: azurekeyvault.GroupName, Version: "v2beta1"}
 
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind
 func Kind(kind string) schema.GroupKind {
