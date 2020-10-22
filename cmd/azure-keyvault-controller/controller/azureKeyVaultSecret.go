@@ -23,7 +23,7 @@ import (
 	"fmt"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
-	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
 	log "github.com/sirupsen/logrus"
 
 	corev1 "k8s.io/api/core/v1"
@@ -36,7 +36,7 @@ import (
 )
 
 func (c *Controller) initAzureKeyVaultSecret() {
-	c.akvsInformerFactory.Keyvault().V2alpha1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	c.akvsInformerFactory.Keyvault().V2beta1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			akvs, err := convertToAzureKeyVaultSecret(obj)
 			if err != nil {
@@ -436,7 +436,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatus(akvs *akv.AzureKeyVaultSecr
 	akvsCopy.Status.ConfigMapHash = cmHash
 	akvsCopy.Status.LastAzureUpdate = c.clock.Now()
 
-	_, err := c.akvsClient.KeyvaultV2alpha1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
+	_, err := c.akvsClient.KeyvaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
 	return err
 }
 
@@ -450,7 +450,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatusForSecret(akvs *akv.AzureKey
 	akvsCopy.Status.LastAzureUpdate = now
 
 	log.Debugf("updating status of azurekeyvaultsecert %s - secretname: %s, secrethash: %s, lastazureupdate: %s", akvsCopy.Name, secretName, secretHash, now)
-	_, err := c.akvsClient.KeyvaultV2alpha1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
+	_, err := c.akvsClient.KeyvaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
 	return err
 }
 
@@ -462,7 +462,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatusForConfigMap(akvs *akv.Azure
 	akvsCopy.Status.ConfigMapHash = cmHash
 	akvsCopy.Status.LastAzureUpdate = c.clock.Now()
 
-	_, err := c.akvsClient.KeyvaultV2alpha1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
+	_, err := c.akvsClient.KeyvaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
 	return err
 }
 

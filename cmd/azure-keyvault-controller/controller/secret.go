@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"sort"
 
-	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
 	log "github.com/sirupsen/logrus"
 
 	corev1 "k8s.io/api/core/v1"

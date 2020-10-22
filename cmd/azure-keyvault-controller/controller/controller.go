@@ -39,7 +39,7 @@ import (
 	akvcs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	keyvaultScheme "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/scheme"
 	akvInformers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions"
-	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/listers/azurekeyvault/v2alpha1"
+	listers "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/listers/azurekeyvault/v2beta1"
 )
 
 const (
@@ -143,7 +143,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 
 		secretsLister:             kubeInformerFactory.Core().V1().Secrets().Lister(),
 		configMapsLister:          kubeInformerFactory.Core().V1().ConfigMaps().Lister(),
-		azureKeyVaultSecretLister: akvInformerFactory.Keyvault().V2alpha1().AzureKeyVaultSecrets().Lister(),
+		azureKeyVaultSecretLister: akvInformerFactory.Keyvault().V2beta1().AzureKeyVaultSecrets().Lister(),
 
 		options: options,
 		clock:   &Clock{},

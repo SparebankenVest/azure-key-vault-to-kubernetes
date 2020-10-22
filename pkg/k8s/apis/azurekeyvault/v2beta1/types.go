@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v2alpha1
+package v2beta1
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -122,9 +122,9 @@ type AzureKeyVaultOutputConfigMap struct {
 
 // AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource
 type AzureKeyVaultSecretStatus struct {
-	SecretHash      string      `json:"secretHash"`
-	SecretName      string      `json:"secretName"`
-	ConfigMapHash   string      `json:"configMapHash"`
-	ConfigMapName   string      `json:"configMapName"`
+	SecretHash      string      `json:"secretHash,omitempty"`
+	SecretName      string      `json:"secretName,omitempty"`
+	ConfigMapHash   string      `json:"configMapHash,omitempty"`
+	ConfigMapName   string      `json:"configMapName,omitempty"`
 	LastAzureUpdate metav1.Time `json:"lastAzureUpdate,omitempty"`
 }

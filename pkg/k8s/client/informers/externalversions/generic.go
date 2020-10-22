@@ -26,7 +26,7 @@ import (
 
 	v1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	v1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
-	v2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
+	v2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -65,9 +65,9 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	case v1alpha1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Keyvault().V1alpha1().AzureKeyVaultSecrets().Informer()}, nil
 
-		// Group=keyvault.azure.spv.no, Version=v2alpha1
-	case v2alpha1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Keyvault().V2alpha1().AzureKeyVaultSecrets().Informer()}, nil
+		// Group=keyvault.azure.spv.no, Version=v2beta1
+	case v2beta1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Keyvault().V2beta1().AzureKeyVaultSecrets().Informer()}, nil
 
 	}
 

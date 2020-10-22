@@ -22,22 +22,22 @@ limitations under the License.
 package fake
 
 import (
-	v2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1"
+	v2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeKeyvaultV2alpha1 struct {
+type FakeKeyvaultV2beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeKeyvaultV2alpha1) AzureKeyVaultSecrets(namespace string) v2alpha1.AzureKeyVaultSecretInterface {
+func (c *FakeKeyvaultV2beta1) AzureKeyVaultSecrets(namespace string) v2beta1.AzureKeyVaultSecretInterface {
 	return &FakeAzureKeyVaultSecrets{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeKeyvaultV2alpha1) RESTClient() rest.Interface {
+func (c *FakeKeyvaultV2beta1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }
