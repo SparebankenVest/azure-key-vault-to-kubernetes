@@ -77,7 +77,6 @@ type azureKeyVaultConfig struct {
 	authServicePortInternal      string
 	kubeClient                   *kubernetes.Clientset
 	credentials                  credentialprovider.AzureKeyVaultCredentials
-	version                      string
 	versionEnvImage              string
 	kubeconfig                   string
 	masterURL                    string
@@ -254,7 +253,7 @@ func init() {
 func main() {
 	flag.Parse()
 	initConfig()
-	akv2k8s.Version = config.version
+	akv2k8s.Version = params.version
 
 	logLevel := viper.GetString("log_level")
 	setLogLevel(logLevel)
@@ -278,7 +277,6 @@ func main() {
 		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
 		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
 		injectorDir:                  viper.GetString("env_injector_exec_dir"),
-		version:                      params.version,
 		versionEnvImage:              params.versionEnvImage,
 		cloudConfig:                  params.cloudConfig,
 	}

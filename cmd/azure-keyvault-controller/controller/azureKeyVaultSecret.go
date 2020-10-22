@@ -21,6 +21,7 @@ package controller
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
@@ -36,6 +37,25 @@ import (
 )
 
 func (c *Controller) initAzureKeyVaultSecret() {
+	done := make(chan bool)
+	ticker := time.NewTicker(1 * time.Minute)
+
+	go func() {
+		for {
+			select {
+			case <-done:
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				c.azureKeyVaultQueue
+			}
+		}
+	}()
+
+	// wait for 10 seconds
+	time.Sleep(10 * time.Second)
+	done <- true
+
 	c.akvsInformerFactory.Keyvault().V2beta1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			akvs, err := convertToAzureKeyVaultSecret(obj)

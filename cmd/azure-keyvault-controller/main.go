@@ -54,7 +54,6 @@ var (
 )
 
 func initConfig() {
-	viper.SetDefault("version", "dev")
 	viper.SetDefault("log_format", "fmt")
 	viper.SetDefault("cloudconfig", "/etc/kubernetes/azure.json")
 	viper.SetDefault("auth_type", "azureCloudConfig")
@@ -73,7 +72,7 @@ func main() {
 	flag.Parse()
 	initConfig()
 
-	akv2k8s.Version = viper.GetString("version")
+	akv2k8s.Version = version
 
 	setLogLevel(viper.GetString("log_level"))
 	setLogFormat(viper.GetString("log_format"))
