@@ -256,7 +256,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 
 		log.Debugf("checking if secret value for %s has changed in azure", key)
 		if akvs.Status.ConfigMapHash != cmHash {
-			log.Debugf("secret value has changed in azure key vault - current hash %s, previous hash %s", akvs.Status.SecretHash, akvsValuesHash)
+			log.Debugf("secret value has changed in azure key vault - current hash %s, previous hash %s", akvs.Status.SecretHash, cmHash)
 			log.Infof("secret has changed in azure key vault for azurekeyvvaultsecret %s - updating secret now", akvs.Name)
 
 			cm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(createNewConfigMap(akvs, cmValue))
