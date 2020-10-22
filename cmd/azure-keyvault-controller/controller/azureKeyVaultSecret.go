@@ -44,7 +44,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			}
 
 			if c.akvsHasOutputDefined(akvs) {
-				log.Debugf("AzureKeyVaultSecret %s/%s added. Adding to queue.", akvs.Namespace, akvs.Name)
+				log.Debugf("azurekeyvaultsecret %s/%s added - adding to queue.", akvs.Namespace, akvs.Name)
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
 				// queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), obj)
 			}
@@ -62,13 +62,13 @@ func (c *Controller) initAzureKeyVaultSecret() {
 
 			// If akvs has not changed and has secret output, add to akv queue to check if secret has changed in akv
 			if newAkvs.ResourceVersion == oldAkvs.ResourceVersion && c.akvsHasOutputDefined(newAkvs) {
-				log.Debugf("AzureKeyVaultSecret %s/%s not changed. Adding to Azure Key Vault queue to check if secret has changed in Azure Key Vault.", newAkvs.Namespace, newAkvs.Name)
+				log.Debugf("azurekeyvaultsecret %s/%s not changed - adding to azure key vault queue to check if secret has changed in azure key vault", newAkvs.Namespace, newAkvs.Name)
 				queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), new)
 				return
 			}
 
 			if c.akvsHasOutputDefined(newAkvs) || c.akvsHasOutputDefined(oldAkvs) {
-				log.Debugf("AzureKeyVaultSecret %s/%s changed. Adding to queue.", newAkvs.Namespace, newAkvs.Name)
+				log.Debugf("azurekeyvaultsecret %s/%s changed - adding to queue.", newAkvs.Namespace, newAkvs.Name)
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), new)
 			}
 		},
@@ -79,7 +79,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			}
 
 			if c.akvsHasOutputDefined(akvs) {
-				log.Debugf("AzureKeyVaultSecret %s/%s deleted. Adding to delete queue.", akvs.Namespace, akvs.Name)
+				log.Debugf("azurekeyvaultsecret %s/%s deleted - adding to queue.", akvs.Namespace, akvs.Name)
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
 
 				err = c.deleteKubernetesValues(akvs)
@@ -103,7 +103,7 @@ func (c *Controller) syncDeletedAzureKeyVaultSecret(key string) error {
 	var akvs *akv.AzureKeyVaultSecret
 	var err error
 
-	log.Debugf("Processing AzureKeyVaultSecret %s", key)
+	log.Debugf("processing azurekeyvaultsecret %s", key)
 	if akvs, err = c.getAzureKeyVaultSecret(key); err != nil {
 		if exit := handleKeyVaultError(err, key); exit {
 			return nil
@@ -148,7 +148,7 @@ func (c *Controller) syncAzureKeyVaultSecret(key string) error {
 	var akvs *akv.AzureKeyVaultSecret
 	var err error
 
-	log.Debugf("Processing AzureKeyVaultSecret %s", key)
+	log.Debugf("processing azurekeyvaultsecret %s", key)
 	if akvs, err = c.getAzureKeyVaultSecret(key); err != nil {
 		if exit := handleKeyVaultError(err, key); exit {
 			return nil
@@ -193,7 +193,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 	var akvs *akv.AzureKeyVaultSecret
 	var err error
 
-	log.Debugf("Checking state for %s in Azure", key)
+	log.Debugf("checking state for %s in azure", key)
 	if akvs, err = c.getAzureKeyVaultSecret(key); err != nil {
 		if exit := handleKeyVaultError(err, key); exit {
 			return nil
@@ -202,20 +202,21 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 	}
 
 	if c.akvsHasOutputSecret(akvs) {
-		log.Debugf("Getting secret value for %s in Azure", key)
+		log.Debugf("getting secret value for %s in azure", key)
 		secretValue, err := c.getSecretFromKeyVault(akvs)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, akvs.Name, akvs.Spec.Vault.Name)
-			log.Errorf("failed to get secret value for '%s' from Azure Key vault '%s' using object name '%s', error: %+v", key, akvs.Spec.Vault.Name, akvs.Spec.Vault.Object.Name, err)
+			log.Errorf("failed to get secret value for '%s' from azure key vault '%s' using object name '%s', error: %+v", key, akvs.Spec.Vault.Name, akvs.Spec.Vault.Object.Name, err)
 			c.recorder.Event(akvs, corev1.EventTypeWarning, ErrAzureVault, msg)
 			return fmt.Errorf(msg)
 		}
 
 		akvsValuesHash := getMD5HashOfByteValues(secretValue)
 
-		log.Debugf("Checking if secret value for %s has changed in Azure", key)
+		log.Debugf("checking if secret value for %s has changed in azure", key)
 		if akvs.Status.SecretHash != akvsValuesHash {
-			log.Infof("Secret has changed in Azure Key Vault for AzureKeyvVaultSecret %s. Updating Secret now.", akvs.Name)
+			log.Debugf("secret value has changed in azure key vault - current hash %s, previous hash %s", akvs.Status.SecretHash, akvsValuesHash)
+			log.Infof("secret has changed in azure key vault for azurekeyvvaultsecret %s. updating secret now", akvs.Name)
 
 			existingSecret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Get(akvs.Spec.Output.Secret.Name, metav1.GetOptions{})
 			if err != nil {
@@ -232,47 +233,48 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 				return fmt.Errorf("failed to update secret, error: %+v", err)
 			}
 
-			log.Warningf("Secret value will now change for Secret '%s'. Any resources (like Pods) using this Secret must be restarted to pick up the new value. Details: https://github.com/kubernetes/kubernetes/issues/22368", secret.Name)
+			log.Warningf("secret value will now change for secret '%s' - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", secret.Name)
 		}
 
-		log.Debugf("Updating status for AzureKeyVaultSecret '%s'", akvs.Name)
+		log.Debugf("updating status for azurekeyvaultsecret '%s'", akvs.Name)
 		if err = c.updateAzureKeyVaultSecretStatusForSecret(akvs, akvsValuesHash); err != nil {
 			return err
 		}
 	}
 
 	if c.akvsHasOutputConfigMap(akvs) {
-		log.Debugf("Getting secret value for %s in Azure", key)
+		log.Debugf("getting secret value for %s in azure", key)
 		cmValue, err := c.getConfigMapFromKeyVault(akvs)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, akvs.Name, akvs.Spec.Vault.Name)
-			log.Errorf("failed to get secret value for '%s' from Azure Key vault '%s' using object name '%s', error: %+v", key, akvs.Spec.Vault.Name, akvs.Spec.Vault.Object.Name, err)
+			log.Errorf("failed to get secret value for '%s' from azure key vault '%s' using object name '%s', error: %+v", key, akvs.Spec.Vault.Name, akvs.Spec.Vault.Object.Name, err)
 			c.recorder.Event(akvs, corev1.EventTypeWarning, ErrAzureVault, msg)
 			return fmt.Errorf(msg)
 		}
 
 		cmHash := getMD5HashOfStringValues(cmValue)
 
-		log.Debugf("Checking if secret value for %s has changed in Azure", key)
+		log.Debugf("checking if secret value for %s has changed in azure", key)
 		if akvs.Status.ConfigMapHash != cmHash {
-			log.Infof("Secret has changed in Azure Key Vault for AzureKeyvVaultSecret %s. Updating Secret now.", akvs.Name)
+			log.Debugf("secret value has changed in azure key vault - current hash %s, previous hash %s", akvs.Status.SecretHash, akvsValuesHash)
+			log.Infof("secret has changed in azure key vault for azurekeyvvaultsecret %s - updating secret now", akvs.Name)
 
 			cm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(createNewConfigMap(akvs, cmValue))
 			if err != nil {
-				log.Warningf("Failed to create Secret, Error: %+v", err)
+				log.Warningf("failed to create secret, error: %+v", err)
 				return err
 			}
 
-			log.Warningf("Secret value will now change for Secret '%s'. Any resources (like Pods) using this Secret must be restarted to pick up the new value. Details: https://github.com/kubernetes/kubernetes/issues/22368", cm.Name)
+			log.Warningf("secret value will now change for secret '%s' - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", cm.Name)
 		}
 
-		log.Debugf("Updating status for AzureKeyVaultSecret '%s'", akvs.Name)
+		log.Debugf("updating status for azurekeyvaultsecret '%s'", akvs.Name)
 		if err = c.updateAzureKeyVaultSecretStatusForConfigMap(akvs, cmHash); err != nil {
 			return err
 		}
 	}
 
-	log.Debugf("Successfully synced AzureKeyVaultSecret %s with Azure Key Vault", key)
+	log.Debugf("successfully synced azurekeyvaultsecret %s with azure key vault", key)
 	c.recorder.Event(akvs, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSyncedWithAzureKeyVault)
 	return nil
 }
@@ -381,7 +383,7 @@ func (c *Controller) getAzureKeyVaultSecret(key string) (*akv.AzureKeyVaultSecre
 		return nil, fmt.Errorf("invalid resource key: %s", key)
 	}
 
-	log.Debugf("Getting AzureKeyVaultSecret %s from namespace %s", name, namespace)
+	log.Debugf("getting azurekeyvaultsecret %s from namespace %s", name, namespace)
 	azureKeyVaultSecret, err := c.azureKeyVaultSecretLister.AzureKeyVaultSecrets(namespace).Get(name)
 
 	if err != nil {
@@ -440,12 +442,14 @@ func (c *Controller) updateAzureKeyVaultSecretStatus(akvs *akv.AzureKeyVaultSecr
 
 func (c *Controller) updateAzureKeyVaultSecretStatusForSecret(akvs *akv.AzureKeyVaultSecret, secretHash string) error {
 	secretName := determineSecretName(akvs)
+	now := c.clock.Now()
 
 	akvsCopy := akvs.DeepCopy()
 	akvsCopy.Status.SecretName = secretName
 	akvsCopy.Status.SecretHash = secretHash
-	akvsCopy.Status.LastAzureUpdate = c.clock.Now()
+	akvsCopy.Status.LastAzureUpdate = now
 
+	log.Debugf("updating status of azurekeyvaultsecert %s - secretname: %s, secrethash: %s, lastazureupdate: %s", akvsCopy.Name, secretName, secretHash, now)
 	_, err := c.akvsClient.KeyvaultV2alpha1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
 	return err
 }
@@ -463,14 +467,14 @@ func (c *Controller) updateAzureKeyVaultSecretStatusForConfigMap(akvs *akv.Azure
 }
 
 func handleKeyVaultError(err error, key string) bool {
-	log.Debugf("Handling error for '%s' in AzureKeyVaultSecret: %s", key, err.Error())
+	log.Debugf("handling error for '%s' in azurekeyvaultsecret: %s", key, err.Error())
 	exit := false
 	if err != nil {
 		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop processing.
 		if errors.IsNotFound(err) {
-			log.Debugf("Error for '%s' was 'Not Found'", key)
+			log.Debugf("error for '%s' was 'not found'", key)
 
-			log.Errorf("AzureKeyVaultSecret '%s' in work queue no longer exists", key)
+			log.Errorf("azurekeyvaultsecret '%s' in work queue no longer exists", key)
 			exit = true
 		}
 	}
