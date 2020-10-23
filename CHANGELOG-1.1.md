@@ -43,7 +43,7 @@ The most notable changes in this release are:
 
 * Updated tutorials
 * Show multiple versions (currently 1.0 and 1.1) - where 1.1 is now default
-* Updated authentiction docs to reflect changes in 1.1
+* Updated authentication docs to reflect changes in 1.1
 
 ### Helm Charts
 
