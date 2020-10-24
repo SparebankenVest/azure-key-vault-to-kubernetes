@@ -7,3 +7,4 @@ debug.test
 *.tmp
 test.yaml
 coverage.txt
+/.idea

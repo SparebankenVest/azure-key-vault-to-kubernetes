@@ -365,36 +365,47 @@ func (c *Controller) isOwnedByAzureKeyVaultSecret(obj metav1.Object) bool {
 
 func (c *Controller) getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (map[string][]byte, error) {
 	var secretHandler KubernetesHandler
+	var err error
 
 	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
 	case akv.AzureKeyVaultObjectTypeSecret:
-		transformator, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
+		secretHandler, err = c.getSecretHandler(azureKeyVaultSecret)
 		if err != nil {
 			return nil, err
 		}
-		secretHandler = NewAzureSecretHandler(azureKeyVaultSecret, c.vaultService, *transformator)
 	case akv.AzureKeyVaultObjectTypeCertificate:
 		secretHandler = NewAzureCertificateHandler(azureKeyVaultSecret, c.vaultService)
 	case akv.AzureKeyVaultObjectTypeKey:
 		secretHandler = NewAzureKeyHandler(azureKeyVaultSecret, c.vaultService)
-	case akv.AzureKeyVaultObjectTypeMultiKeyValueSecret:
-		secretHandler = NewAzureMultiKeySecretHandler(azureKeyVaultSecret, c.vaultService)
 	default:
 		return nil, fmt.Errorf("azure key vault object type '%s' not currently supported", azureKeyVaultSecret.Spec.Vault.Object.Type)
 	}
 	return secretHandler.HandleSecret()
 }
 
-func (c *Controller) getConfigMapFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (map[string]string, error) {
-	var cmHandler KubernetesHandler
-
-	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
-	case akv.AzureKeyVaultObjectTypeSecret:
-		transformator, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
+func (c *Controller) getSecretHandler(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (KubernetesHandler, error) {
+	var secretHandler KubernetesHandler
+	if azureKeyVaultSecret.Spec.Vault.Object.Type != "" {
+		secretHandler = NewAzureMultiKeySecretHandler(azureKeyVaultSecret, c.vaultService)
+	} else {
+		transformer, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
 		if err != nil {
 			return nil, err
 		}
-		cmHandler = NewAzureSecretHandler(azureKeyVaultSecret, c.vaultService, *transformator)
+		secretHandler = NewAzureSecretHandler(azureKeyVaultSecret, c.vaultService, *transformer)
+	}
+	return secretHandler, nil
+}
+
+func (c *Controller) getConfigMapFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (map[string]string, error) {
+	var cmHandler KubernetesHandler
+	var err error
+	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
+	case akv.AzureKeyVaultObjectTypeSecret:
+		cmHandler, err = c.getSecretHandler(azureKeyVaultSecret)
+		if err != nil {
+			return nil, err
+		}
 	case akv.AzureKeyVaultObjectTypeCertificate:
 		cmHandler = NewAzureCertificateHandler(azureKeyVaultSecret, c.vaultService)
 	case akv.AzureKeyVaultObjectTypeKey:
