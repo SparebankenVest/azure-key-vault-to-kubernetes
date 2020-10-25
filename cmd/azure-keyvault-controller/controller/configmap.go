@@ -27,13 +27,12 @@ import (
 	"sort"
 
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
-	log "github.com/sirupsen/logrus"
+	"k8s.io/klog/v2"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -61,7 +60,7 @@ func (c *Controller) getConfigMapByKey(key string) (*corev1.ConfigMap, error) {
 }
 
 func (c *Controller) getConfigMap(ns, name string) (*corev1.ConfigMap, error) {
-	log.Debugf("getting configmap %s from namespace %s", name, ns)
+	klog.V(4).InfoS("getting configmap", klog.KRef(ns, name))
 	cm, err := c.configMapsLister.ConfigMaps(ns).Get(name)
 
 	if err != nil {
@@ -109,11 +108,12 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 		return nil, fmt.Errorf("output configmap name must be specified using spec.output.configMap.name")
 	}
 
-	log.Debugf("get or create configmap %s in namespace %s", cmName, akvs.Namespace)
+	klog.V(4).InfoS("get or create configmap", klog.KRef(akvs.Namespace, cmName))
 	if cm, err = c.configMapsLister.ConfigMaps(akvs.Namespace).Get(cmName); err != nil {
-		log.Debugf("failed to get configmap %s in namespace %s, error: %+v", cmName, akvs.Namespace, err)
+		klog.V(4).ErrorS(err, "failed to get configmap ", klog.KRef(akvs.Namespace, cmName))
 		if errors.IsNotFound(err) {
-			log.Debug("getting secret from azure key vault")
+			klog.V(4).InfoS("configmap was not found", klog.KRef(akvs.Namespace, cmName))
+			klog.V(4).InfoS("getting configmap value from azure key vault", klog.KRef(akvs.Namespace, cmName))
 			cmValues, err = c.getConfigMapFromKeyVault(akvs)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get configmap from azure key vault for configmap '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
@@ -123,7 +123,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 				return nil, fmt.Errorf("failed to create new configmap, err: %+v", err)
 			}
 
-			log.Infof("updating status for azurekeyvaultsecret '%s'", akvs.Name)
+			klog.V(2).InfoS("updating status for azurekeyvaultsecret", klog.KObj(akvs))
 			if err = c.updateAzureKeyVaultSecretStatusForConfigMap(akvs, getMD5HashOfStringValues(cmValues)); err != nil {
 				return nil, fmt.Errorf("failed to update status for azurekeyvaultsecret %s, error: %+v", akvs.Name, err)
 			}
@@ -133,7 +133,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 	}
 
 	// get updated secret values from azure key vault
-	log.Debug("getting secret from azure key vault")
+	klog.V(4).InfoS("getting secret from azure key vault", akvs)
 	cmValues, err = c.getConfigMapFromKeyVault(akvs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from Azure Key Vault for secret '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
@@ -158,7 +158,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 	}
 
 	if hasAzureKeyVaultSecretChangedForConfigMap(akvs, cmValues, cm) {
-		log.Infof("azurekeyvaultsecret %s/%s output.configmap values has changed and requires update to configmap %s", akvs.Namespace, akvs.Name, cmName)
+		klog.V(2).InfoS("azurekeyvaultsecret has changed and requires update to configmap %s", klog.KObj(akvs), klog.KObj(cm))
 
 		updatedCM, err := createNewConfigMapFromExisting(akvs, cmValues, cm)
 		if err != nil {
@@ -168,9 +168,6 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 		cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(updatedCM)
 	}
 
-	if err != nil {
-		log.Warnf("error still exists while creating/updating configmap %s, error: %+v", cmName, err)
-	}
 	return cm, err
 }
 
@@ -328,16 +325,13 @@ func sortStringValueKeys(values map[string]string) []string {
 	return keys
 }
 
-func handleConfigMapError(err error, key string) bool {
-	log.Debugf("Handling error for '%s' in ConfigMap: %s", key, err.Error())
-	if err != nil {
-		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop processing.
-		if errors.IsNotFound(err) {
-			log.Debugf("Error for '%s' was 'Not Found'", key)
-
-			utilruntime.HandleError(fmt.Errorf("ConfigMap '%s' in work queue no longer exists", key))
-			return true
-		}
-	}
-	return false
-}
+// func handleConfigMapError(err error, key string) bool {
+// 	if err != nil {
+// 		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop processing.
+// 		if errors.IsNotFound(err) {
+// 			klog.V(2).InfoS("configmap in work queue no longer exists", "key", key)
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }

@@ -27,13 +27,12 @@ import (
 	"sort"
 
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
-	log "github.com/sirupsen/logrus"
+	"k8s.io/klog/v2"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -62,7 +61,7 @@ func (c *Controller) getSecretByKey(key string) (*corev1.Secret, error) {
 }
 
 func (c *Controller) getSecret(ns, name string) (*corev1.Secret, error) {
-	log.Debugf("Getting Secret %s from namespace %s", name, ns)
+	klog.V(4).InfoS("getting secret", klog.KRef(ns, name))
 	secret, err := c.secretsLister.Secrets(ns).Get(name)
 
 	if err != nil {
@@ -110,7 +109,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 		return nil, fmt.Errorf("output secret name must be specified using spec.output.secret.name")
 	}
 
-	log.Debugf("Get or create secret %s in namespace %s", secretName, akvs.Namespace)
+	klog.V(4).InfoS("get or create secret", klog.KRef(akvs.Namespace, secretName))
 	if secret, err = c.secretsLister.Secrets(akvs.Namespace).Get(secretName); err != nil {
 		if errors.IsNotFound(err) {
 			secretValues, err = c.getSecretFromKeyVault(akvs)
@@ -122,7 +121,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 				return nil, err
 			}
 
-			log.Infof("Updating status for AzureKeyVaultSecret '%s'", akvs.Name)
+			klog.V(2).InfoS("updating status for azurekeyvaultsecret", klog.KObj(akvs))
 			if err = c.updateAzureKeyVaultSecretStatusForSecret(akvs, getMD5HashOfByteValues(secretValues)); err != nil {
 				return nil, err
 			}
@@ -157,7 +156,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 	}
 
 	if hasAzureKeyVaultSecretChangedForSecret(akvs, secretValues, secret) {
-		log.Infof("azurekeyvaultsecret %s/%s values has changed and requires update to secret %s", akvs.Namespace, akvs.Name, secretName)
+		klog.Infof("azurekeyvaultsecret values has changed and requires update to secret", klog.KObj(akvs), klog.KObj(secret))
 
 		updatedSecret, err := createNewSecretFromExisting(akvs, secretValues, secret)
 		if err != nil {
@@ -360,16 +359,15 @@ func sortByteValueKeys(values map[string][]byte) []string {
 	return keys
 }
 
-func handleSecretError(err error, key string) bool {
-	log.Debugf("Handling error for '%s' in Secret: %s", key, err.Error())
-	if err != nil {
-		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop processing.
-		if errors.IsNotFound(err) {
-			log.Debugf("Error for '%s' was 'Not Found'", key)
+// func handleSecretError(err error, key string) bool {
+// 	if err != nil {
+// 		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop processing.
+// 		if errors.IsNotFound(err) {
+// 			log.Debugf("Error for '%s' was 'Not Found'", key)
 
-			utilruntime.HandleError(fmt.Errorf("Secret '%s' in work queue no longer exists", key))
-			return true
-		}
-	}
-	return false
-}
+// 			utilruntime.HandleError(fmt.Errorf("Secret '%s' in work queue no longer exists", key))
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }

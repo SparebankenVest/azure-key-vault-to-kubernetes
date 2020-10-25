@@ -29,10 +29,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path"
 	"time"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
+	"k8s.io/klog/v2"
 )
 
 func createHTTPClientWithTrustedCAAndMtls(caCert, clientCert, clientKey []byte) (*http.Client, error) {
@@ -79,15 +81,17 @@ func getCredentials(useAuthService bool, authServiceAddress string, clientCertDi
 
 		client, err := createHTTPClientWithTrustedCAAndMtls(caCert, clientCert, clientKey)
 		if err != nil {
-			logger.Fatalf("failed to download ca cert, error: %+v", err)
+			klog.ErrorS(err, "failed to download ca cert")
+			os.Exit(1)
 		}
 
 		url := fmt.Sprintf("https://%s/auth/%s/%s", authServiceAddress, config.namespace, config.podName)
-		logger.Infof("requesting azure key vault oauth token from %s", url)
+		klog.InfoS("requesting azure key vault oauth token", "url", url)
 
 		res, err := client.Get(url)
 		if err != nil {
-			logger.Fatalf("request token failed from %s, error: %+v", url, err)
+			klog.ErrorS(err, "request token failed", "url", url)
+			os.Exit(1)
 		}
 		defer res.Body.Close()
 
@@ -102,7 +106,7 @@ func getCredentials(useAuthService bool, authServiceAddress string, clientCertDi
 			return nil, fmt.Errorf("failed to decode body, error %+v", err)
 		}
 
-		logger.Info("successfully received oauth token")
+		klog.InfoS("successfully received oauth token")
 		return creds, nil
 	}
 
@@ -148,24 +152,28 @@ func parseRsaPublicKey(pubPem string) (*rsa.PublicKey, error) {
 func validateArgsSignature(origArgs, signatureB64, pubKeyBase64 string) {
 	signatureArray, err := base64.StdEncoding.DecodeString(signatureB64)
 	if err != nil {
-		logger.Fatalf("failed to decode base64 signature string, error: %+v", err)
+		klog.ErrorS(err, "failed to decode base64 signature string")
+		os.Exit(1)
 	}
 
 	signature := string(signatureArray)
 
 	bPubKey, err := base64.StdEncoding.DecodeString(pubKeyBase64)
 	if err != nil {
-		logger.Fatalf("failed to decode base64 public key string, error: %+v", err)
+		klog.ErrorS(err, "failed to decode base64 public key string")
+		os.Exit(1)
 	}
 
 	pubKey := string(bPubKey)
 
 	pubRsaKey, err := parseRsaPublicKey(pubKey)
 	if err != nil {
-		logger.Fatalf("failed to parse rsa public key to verify args: %+v", err)
+		klog.ErrorS(err, "failed to parse rsa public key to verify args")
+		os.Exit(1)
 	}
 
 	if !verifyPKCS(signature, origArgs, *pubRsaKey) {
-		logger.Fatal("args does not match original args defined by env-injector")
+		klog.ErrorS(fmt.Errorf("pkcs signature verification failed"), "args does not match original args defined by env-injector")
+		os.Exit(1)
 	}
 }

@@ -26,7 +26,6 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -98,13 +98,13 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 
 	for i, container := range containers {
 		useAuthService := config.useAuthService
-		log.Infof("found container '%s' to mutate", container.Name)
+		klog.V(2).InfoS("found container to mutate", "container", klog.KRef(namespace, container.Name))
 
 		var envVars []corev1.EnvVar
-		log.Infof("checking for env vars containing '%s' in container %s", envVarReplacementKey, container.Name)
+		klog.V(2).InfoS("checking for env vars to inject", klog.KRef(namespace, container.Name))
 		for _, env := range container.Env {
 			if strings.Contains(env.Value, envVarReplacementKey) {
-				log.Infof("found env var: %s", env.Value)
+				klog.V(2).InfoS("found env var to inject", "env", env.Value, klog.KRef(namespace, container.Name))
 				envVars = append(envVars, env)
 			}
 
@@ -114,14 +114,14 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 					return false, fmt.Errorf("failed to parse container env var override for auth service, error: %+v", err)
 				}
 				if containerDisabledAuthService {
-					log.Infof("container %s has disabled auth service", container.Name)
+					klog.V(2).InfoS("container has disabled auth service", klog.KRef(namespace, container.Name))
 					useAuthService = false
 				}
 			}
 		}
 
 		if len(envVars) == 0 {
-			log.Info("found no env vars in container")
+			klog.Info("found no env vars to inject", klog.KRef(namespace, container.Name))
 			continue
 		}
 
@@ -131,7 +131,7 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 		}
 
 		autoArgsStr := strings.Join(autoArgs, " ")
-		log.Infof("using '%s' as arguments for env-injector", autoArgsStr)
+		klog.V(2).InfoS("found container arguments to use for env-injector", "cmd", autoArgsStr, klog.KRef(namespace, container.Name))
 
 		privKey, pubKey, err := newKeyPair()
 		if err != nil {
@@ -142,22 +142,21 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 		if err != nil {
 			return false, fmt.Errorf("failed to sign command args, error: %+v", err)
 		}
-		log.Debug("signed arguments to prevent override")
+		klog.V(4).InfoS("signed arguments to prevent override", klog.KRef(namespace, container.Name))
 
 		publicSigningKey, err := exportRsaPublicKey(pubKey)
 		if err != nil {
 			return false, fmt.Errorf("failed to export public rsa key to pem, error: %+v", err)
 		}
 
-		log.Debugf("public signing key for argument verification: \n%s", publicSigningKey)
+		klog.V(4).InfoS("public signing key for argument verification", "key", publicSigningKey, klog.KRef(namespace, container.Name))
 
 		mutated = true
 
 		fullExecPath := filepath.Join(config.injectorDir, injectorExecutable)
-		log.Debugf("full exec path: %s", fullExecPath)
+		klog.V(4).InfoS("full exec path", "path", fullExecPath, klog.KRef(namespace, container.Name))
 		container.Command = []string{fullExecPath}
 		container.Args = autoArgs
-		log.Debugf("container args: %+v", autoArgs)
 
 		container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
 			{
@@ -166,7 +165,7 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 				ReadOnly:  true,
 			},
 		}...)
-		log.Debugf("mounting volume '%s' to '%s'", keyVaultEnvVolumeName, config.injectorDir)
+		klog.V(4).InfoS("mounting volume", "volume", keyVaultEnvVolumeName, "path", config.injectorDir, klog.KRef(namespace, container.Name))
 
 		container.Env = append(container.Env, []corev1.EnvVar{
 			{
@@ -229,17 +228,6 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 					Name:  "ENV_INJECTOR_AUTH_SERVICE",
 					Value: fmt.Sprintf("%s.%s.svc:%s", config.authServiceName, currentNamespace(), config.authServicePort),
 				},
-				// {
-				// 	Name: "ENV_INJECTOR_CA_CERT",
-				// 	ValueFrom: &corev1.EnvVarSource{
-				// 		ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-				// 			LocalObjectReference: corev1.LocalObjectReference{
-				// 				Name: config.caBundleConfigMapName,
-				// 			},
-				// 			Key: "caCert",
-				// 		},
-				// 	},
-				// },
 			}...)
 		}
 
@@ -323,10 +311,10 @@ func mutatePodSpec(pod *corev1.Pod, namespace string, mutationID types.UID) erro
 	if initContainersMutated || containersMutated {
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
 		podSpec.Volumes = append(podSpec.Volumes, getVolumes(authServiceSecret)...)
-		log.Info("containers mutated and pod updated with init-container and volumes")
+		klog.V(2).InfoS("containers mutated and pod updated with init-container and volumes", klog.KRef(namespace, pod.Name))
 		podsMutatedCounter.Inc()
 	} else {
-		log.Info("no containers mutated")
+		klog.V(2).InfoS("no containers mutated", klog.KRef(namespace, pod.Name))
 	}
 
 	return nil

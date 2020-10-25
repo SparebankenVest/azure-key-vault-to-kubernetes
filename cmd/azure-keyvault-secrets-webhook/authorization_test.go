@@ -88,8 +88,6 @@ func createPod(name string, namespace string, multipleContainers bool) *corev1.P
 		},
 	}
 
-	pod.Status.PodIP = "127.0.0.1"
-
 	podSpec := corev1.PodSpec{
 		InitContainers: []corev1.Container{
 			corev1.Container{
@@ -119,10 +117,9 @@ func TestMultipleContainersInPod(t *testing.T) {
 	f.kubeobjects = append(f.kubeobjects, pod)
 
 	podData := podData{
-		remoteAddress: "127.0.0.1",
-		name:          "test",
-		namespace:     "test",
-		token:         "asfasdasf",
+		name:      "test",
+		namespace: "test",
+		token:     "asfasdasf",
 	}
 
 	f.initAuthorization()
