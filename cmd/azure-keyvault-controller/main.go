@@ -68,11 +68,11 @@ func init() {
 }
 
 func main() {
-	klog.InitFlags(nil)
-	defer klog.Flush()
-
 	flag.Parse()
 	initConfig()
+
+	klog.InitFlags(nil)
+	defer klog.Flush()
 
 	akv2k8s.Version = version
 	akv2k8s.LogVersion()
