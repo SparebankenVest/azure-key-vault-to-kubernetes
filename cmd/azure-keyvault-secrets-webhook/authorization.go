@@ -2,17 +2,15 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 type podData struct {
-	remoteAddress string
-	name          string
-	namespace     string
-	token         string
+	name      string
+	namespace string
+	token     string
 }
 
 func authorize(clientset kubernetes.Interface, podData podData) error {
@@ -28,11 +26,6 @@ func authorize(clientset kubernetes.Interface, podData podData) error {
 	pod, err := clientset.CoreV1().Pods(podData.namespace).Get(podData.name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get pod '%s' in namespace '%s', error: %+v", podData.name, podData.namespace, err)
-	}
-
-	remoteIP := strings.Split(podData.remoteAddress, ":")[0]
-	if pod.Status.PodIP != remoteIP {
-		return fmt.Errorf("the provided pod data does not correspond with caller ip")
 	}
 
 	containerHasInjectorCmd := false

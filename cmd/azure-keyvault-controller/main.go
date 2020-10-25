@@ -21,10 +21,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +34,7 @@ import (
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-controller/controller"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
@@ -51,17 +52,17 @@ var (
 	kubeconfig  string
 	masterURL   string
 	cloudconfig string
+	logLevel    string
 )
 
 func initConfig() {
-	viper.SetDefault("log_format", "fmt")
-	viper.SetDefault("cloudconfig", "/etc/kubernetes/azure.json")
 	viper.SetDefault("auth_type", "azureCloudConfig")
 
 	viper.AutomaticEnv()
 }
 
 func init() {
+	flag.StringVar(&logLevel, "v", "2", "klog log level")
 	flag.StringVar(&version, "version", "", "Version of this component.")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
@@ -69,19 +70,14 @@ func init() {
 }
 
 func main() {
+	klog.InitFlags(nil)
+	defer klog.Flush()
+
 	flag.Parse()
 	initConfig()
 
 	akv2k8s.Version = version
-
-	setLogLevel(viper.GetString("log_level"))
-	setLogFormat(viper.GetString("log_format"))
-
 	akv2k8s.LogVersion()
-
-	// kubeconfig := viper.GetString("kubeconfig")
-	// masterURL := viper.GetString("master")
-	cloudConfig := viper.GetString("cloudconfig")
 
 	authType := viper.GetString("auth_type")
 
@@ -90,41 +86,47 @@ func main() {
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		log.Fatalf("Error building kubeconfig: %s", err.Error())
+		klog.ErrorS(err, "failed to build kube config", "master", masterURL, "kubeconfig", kubeconfig)
+		os.Exit(1)
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		log.Fatalf("Error building kubernetes clientset: %s", err.Error())
+		klog.ErrorS(err, "failed to build kube clientset", "master", masterURL, "kubeconfig", kubeconfig)
+		os.Exit(1)
 	}
 
 	azureKeyVaultSecretClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
-		log.Fatalf("Error building azureKeyVaultSecret clientset: %s", err.Error())
+		klog.ErrorS(err, "failed to build clientset for azurekeyvaultsecret", "master", masterURL, "kubeconfig", kubeconfig)
+		os.Exit(1)
 	}
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	azureKeyVaultSecretInformerFactory := informers.NewSharedInformerFactory(azureKeyVaultSecretClient, time.Second*30)
 
-	log.Info("Creating event broadcaster")
+	klog.V(2).InfoS("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(log.Tracef)
+	eventBroadcaster.StartLogging(klog.V(4).InfoS)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	var vaultAuth credentialprovider.AzureKeyVaultCredentials
 	switch authType {
 	case "azureCloudConfig":
-		vaultAuth, err = getCredentialsFromCloudConfig(cloudConfig)
+		vaultAuth, err = getCredentialsFromCloudConfig(cloudconfig)
 		if err != nil {
-			log.Fatalf("failed to create azure key vault credentials, error: %+v", err.Error())
+			klog.ErrorS(err, "failed to create cloud config provider for azure key vault", "file", cloudconfig)
+			os.Exit(1)
 		}
 	case "environment":
 		vaultAuth, err = getCredentialsFromEnvironment()
 		if err != nil {
-			log.Fatalf("failed to get azure key vault credentials, error: %+v", err.Error())
+			klog.ErrorS(err, "failed to create credentials provider from environment for azure key vault")
+			os.Exit(1)
 		}
 	default:
-		log.Fatalf("auth type %s not supported", authType)
+		klog.ErrorS(nil, "auth type not supported", "type", authType)
+		os.Exit(1)
 	}
 
 	vaultService := vault.NewService(vaultAuth)
@@ -147,42 +149,16 @@ func main() {
 	controller.Run(stopCh)
 }
 
-func setLogFormat(logFormat string) {
-	switch logFormat {
-	case "fmt":
-		log.SetFormatter(&log.TextFormatter{
-			DisableColors: true,
-			FullTimestamp: true,
-		})
-	case "json":
-		log.SetFormatter(&log.JSONFormatter{})
-	default:
-		log.Warnf("Log format %s not supported - using default fmt", logFormat)
-	}
-}
-
-func setLogLevel(logLevel string) {
-	if logLevel == "" {
-		logLevel = log.InfoLevel.String()
-	}
-
-	logrusLevel, err := log.ParseLevel(logLevel)
-	if err != nil {
-		log.Fatalf("error setting log level: %s", err.Error())
-	}
-	log.SetLevel(logrusLevel)
-}
-
 func getCredentialsFromCloudConfig(cloudconfig string) (credentialprovider.AzureKeyVaultCredentials, error) {
 	f, err := os.Open(cloudconfig)
 	if err != nil {
-		log.Fatalf("Failed reading azure config from %s, error: %+v", cloudconfig, err)
+		return nil, fmt.Errorf("failed reading azure config from %s, error: %+v", cloudconfig, err)
 	}
 	defer f.Close()
 
 	cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
 	if err != nil {
-		log.Fatalf("Failed reading azure config from %s, error: %+v", cloudconfig, err)
+		return nil, fmt.Errorf("Failed reading azure config from %s, error: %+v", cloudconfig, err)
 	}
 
 	return cloudCnfProvider.GetAzureKeyVaultCredentials()
@@ -191,7 +167,7 @@ func getCredentialsFromCloudConfig(cloudconfig string) (credentialprovider.Azure
 func getCredentialsFromEnvironment() (credentialprovider.AzureKeyVaultCredentials, error) {
 	provider, err := credentialprovider.NewFromEnvironment()
 	if err != nil {
-		log.Fatalf("failed to create azure credentials provider, error: %+v", err.Error())
+		return nil, fmt.Errorf("failed to create azure credentials provider, error: %+v", err)
 	}
 
 	return provider.GetAzureKeyVaultCredentials()

@@ -24,9 +24,9 @@ import (
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
-	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 )
 
 // KubernetesSecretHandler handles getting and formatting secrets from Azure Key Vault to Kubernetes
@@ -96,7 +96,7 @@ func NewAzureMultiKeySecretHandler(secretSpec *akv.AzureKeyVaultSecret, vaultSer
 // Handle getting and formating Azure Key Vault Secret from Azure Key Vault to Kubernetes
 func (h *azureSecretHandler) HandleSecret() (map[string][]byte, error) {
 	if h.secretSpec.Spec.Vault.Object.Type == akv.AzureKeyVaultObjectTypeMultiKeyValueSecret && h.secretSpec.Spec.Output.Secret.DataKey != "" {
-		log.Warnf("output data key for %s/%s ignored, since vault object type is '%s' it will use its own keys", h.secretSpec.Namespace, h.secretSpec.Name, akv.AzureKeyVaultObjectTypeMultiKeyValueSecret)
+		klog.V(2).InfoS("output data key ignored - vault object type is multi key and will use its own keys", klog.KObj(h.secretSpec))
 	}
 
 	values := make(map[string][]byte)
@@ -143,7 +143,7 @@ func (h *azureSecretHandler) HandleSecret() (map[string][]byte, error) {
 // Handle getting and formating Azure Key Vault Secret from Azure Key Vault to Kubernetes
 func (h *azureSecretHandler) HandleConfigMap() (map[string]string, error) {
 	if h.secretSpec.Spec.Vault.Object.Type == akv.AzureKeyVaultObjectTypeMultiKeyValueSecret && h.secretSpec.Spec.Output.ConfigMap.DataKey != "" {
-		log.Warnf("output data key for %s/%s ignored, since vault object type is '%s' it will use its own keys", h.secretSpec.Namespace, h.secretSpec.Name, akv.AzureKeyVaultObjectTypeMultiKeyValueSecret)
+		klog.V(2).InfoS("output data key ignored - vault object type is multi key and will use its own keys", klog.KObj(h.secretSpec))
 	}
 
 	values := make(map[string]string)
@@ -179,8 +179,6 @@ func (h *azureCertificateHandler) HandleSecret() (map[string][]byte, error) {
 	if !options.ExportPrivateKey && h.secretSpec.Spec.Output.Secret.DataKey == "" {
 		return nil, fmt.Errorf("no datakey specified for output secret")
 	}
-
-	log.Infof("Exporting certificate with private key: %t", options.ExportPrivateKey)
 
 	cert, err := h.vaultService.GetCertificate(&h.secretSpec.Spec.Vault, &options)
 	if err != nil {

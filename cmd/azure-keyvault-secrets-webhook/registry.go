@@ -19,19 +19,19 @@ package main
 
 import (
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/docker/registry"
-	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 )
 
 func getContainerCmd(clientset kubernetes.Interface, container *corev1.Container, podSpec *corev1.PodSpec, namespace string) ([]string, error) {
-	log.Debugf("getting container command for container '%s'", container.Name)
+	klog.V(4).InfoS("getting container command for container", klog.KRef(namespace, container.Name))
 	cmd := container.Command
 
 	// If container.Command is set it will override both image.Entrypoint AND image.Cmd
 	// https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
 	if len(cmd) == 0 {
-		log.Debugf("no cmd override in kubernetes for container %s, checking docker image configuration for entrypoint and cmd for %s", container.Name, container.Image)
+		klog.V(4).InfoS("no cmd override in kubernetes for container, checking docker image configuration for entrypoint and cmd", "image", container.Image, klog.KRef(namespace, container.Name))
 
 		imgConfig, err := registry.GetImageConfig(clientset, namespace, container, podSpec, config.cloudConfig)
 		if err != nil {
@@ -44,7 +44,7 @@ func getContainerCmd(clientset kubernetes.Interface, container *corev1.Container
 			cmd = append(cmd, imgConfig.Cmd...)
 		}
 	} else {
-		log.Debugf("found cmd override in kubernetes for container %s, no need to inspect docker image configuration for %s", container.Name, container.Image)
+		klog.V(4).InfoS("found cmd override in kubernetes for container, no need to inspect docker image configuration", "image", container.Image, klog.KRef(namespace, container.Name))
 	}
 
 	cmd = append(cmd, container.Args...)

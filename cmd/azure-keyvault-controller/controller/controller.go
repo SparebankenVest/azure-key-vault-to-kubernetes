@@ -24,7 +24,7 @@ import (
 
 	"github.com/appscode/go/runtime"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"k8s.io/klog/v2"
 
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -111,8 +111,6 @@ type Controller struct {
 
 	options *Options
 	clock   Timer
-
-	akvLogger *log.Entry
 }
 
 // Options contains options for the controller
@@ -130,8 +128,6 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 	// logged for azure-keyvault-controller types.
 	utilruntime.Must(keyvaultScheme.AddToScheme(scheme.Scheme))
 
-	akvLogger := log.WithFields(log.Fields{"component": "akvs"})
-
 	controller := &Controller{
 		kubeclientset: client,
 		akvsClient:    akvsClient,
@@ -147,15 +143,13 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 
 		options: options,
 		clock:   &Clock{},
-
-		akvLogger: akvLogger,
 	}
 
 	controller.akvsCrdQueue = queue.New("AzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVaultSecret)
 	controller.akvsCrdDeletionQueue = queue.New("DeletedAzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncDeletedAzureKeyVaultSecret)
 	controller.azureKeyVaultQueue = queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
 
-	log.Info("Setting up event handlers")
+	klog.InfoS("Setting up event handlers")
 	controller.initAzureKeyVaultSecret()
 
 	return controller
@@ -166,7 +160,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 
 	// Start the informer factories to begin populating the informer caches
-	log.Info("Starting AzureKeyVaultSecret controller")
+	klog.Info("Starting AzureKeyVaultSecret controller")
 	c.akvsInformerFactory.Start(stopCh)
 	c.kubeInformerFactory.Start(stopCh)
 
@@ -184,16 +178,16 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 		}
 	}
 
-	log.Info("starting azure key vault secret queue")
+	klog.InfoS("starting azure key vault secret queue")
 	c.akvsCrdQueue.Run(stopCh)
 
-	log.Info("starting azure key vault deleted secret queue")
+	klog.InfoS("starting azure key vault deleted secret queue")
 	c.akvsCrdDeletionQueue.Run(stopCh)
 
-	log.Info("starting azure key vault queue")
+	klog.InfoS("starting azure key vault queue")
 	c.azureKeyVaultQueue.Run(stopCh)
 
-	log.Info("started workers")
+	klog.InfoS("started workers")
 	<-stopCh
-	log.Info("Shutting down workers")
+	klog.InfoS("Shutting down workers")
 }
