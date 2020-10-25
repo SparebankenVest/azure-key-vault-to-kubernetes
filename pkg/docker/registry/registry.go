@@ -26,7 +26,6 @@ import (
 	dockerTypes "github.com/docker/docker/api/types"
 	"github.com/heroku/docker-registry-client/registry"
 	imagev1 "github.com/opencontainers/image-spec/specs-go/v1"
-	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -43,8 +42,6 @@ func GetImageConfig(clientset kubernetes.Interface, namespace string, container 
 	if err != nil {
 		return nil, err
 	}
-
-	log.Infoln("using registry", containerInfo.RegistryAddress)
 
 	imageConfig, err := getImageBlob(containerInfo)
 	return imageConfig, err

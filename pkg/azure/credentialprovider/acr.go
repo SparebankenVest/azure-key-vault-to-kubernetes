@@ -23,7 +23,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
 	dockerTypes "github.com/docker/docker/api/types"
-	log "github.com/sirupsen/logrus"
+	"k8s.io/klog/v2"
 )
 
 var (
@@ -41,9 +41,9 @@ func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*dockerT
 	}
 
 	if c.config.UseManagedIdentityExtension {
-		log.Debug("using managed identity for acr credentials")
+		klog.V(4).InfoS("using managed identity for acr credentials")
 		if loginServer := parseACRLoginServerFromImage(image, c.environment); loginServer == "" {
-			log.Debugf("image(%s) is not from ACR, skip MSI authentication", image)
+			klog.V(4).InfoS("image is not from ACR, skip MSI authentication", "image", image)
 		} else {
 			token, err := getServicePrincipalTokenFromCloudConfig(c.config, c.environment, c.environment.ServiceManagementEndpoint)
 			if err != nil {
@@ -51,7 +51,7 @@ func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*dockerT
 			}
 
 			if managedCred, err := getACRDockerEntryFromARMToken(c.config, *c.environment, token, loginServer); err == nil {
-				log.Debugf("found acr gredentials for %s", loginServer)
+				klog.V(4).InfoS("found acr gredentials", "image", image, "url", loginServer)
 				return managedCred, nil
 			}
 		}
@@ -85,19 +85,19 @@ func getACRDockerEntryFromARMToken(config *AzureCloudConfig, env azure.Environme
 
 	armAccessToken := token.OAuthToken()
 
-	log.Debugf("discovering auth redirects for: %s", loginServer)
+	klog.V(4).InfoS("discovering auth redirects", "url", loginServer)
 	directive, err := receiveChallengeFromLoginServer(loginServer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to receive challenge: %s", err)
 	}
 
-	log.Debug("exchanging an acr refresh_token")
+	klog.V(4).InfoS("exchanging acr refresh_token", "url", loginServer)
 	registryRefreshToken, err := performTokenExchange(loginServer, directive, config.TenantID, armAccessToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform token exchange: %s", err)
 	}
 
-	log.Debugf("adding ACR docker config entry for: %s", loginServer)
+	klog.V(4).InfoS("adding ACR docker config entry", "url", loginServer)
 	return &dockerTypes.AuthConfig{
 		Username: dockerTokenLoginUsernameGUID,
 		Password: registryRefreshToken,

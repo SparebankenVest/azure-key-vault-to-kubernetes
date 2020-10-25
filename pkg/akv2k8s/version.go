@@ -3,7 +3,7 @@ package akv2k8s
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
+	"k8s.io/klog/v2"
 )
 
 // Version is the version of the component
@@ -28,10 +28,5 @@ func GetUserAgent() string {
 // LogVersion prints the version and exits
 // The format is: <component> - commit: <Git commit>  - date: <build date>
 func LogVersion() {
-	contextLogger := log.WithFields(log.Fields{
-		"commit":    GitCommit,
-		"buildDate": BuildDate,
-		"component": Component,
-	})
-	contextLogger.Infof("version %s", Version)
+	klog.InfoS("version info", "version", Version, "commit", GitCommit, "buildDate", BuildDate, "component", Component)
 }
