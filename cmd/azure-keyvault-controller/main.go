@@ -52,7 +52,6 @@ var (
 	kubeconfig  string
 	masterURL   string
 	cloudconfig string
-	logLevel    string
 )
 
 func initConfig() {
@@ -62,7 +61,6 @@ func initConfig() {
 }
 
 func init() {
-	flag.StringVar(&logLevel, "v", "2", "klog log level")
 	flag.StringVar(&version, "version", "", "Version of this component.")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")

@@ -85,7 +85,6 @@ type azureKeyVaultConfig struct {
 }
 
 type cmdParams struct {
-	logLevel        string
 	version         string
 	versionEnvImage string
 	kubeconfig      string
@@ -232,7 +231,6 @@ func initConfig() {
 }
 
 func init() {
-	flag.StringVar(&params.logLevel, "v", "2", "klog log level")
 	flag.StringVar(&params.version, "version", "", "Version of this component.")
 	flag.StringVar(&params.versionEnvImage, "versionenvimage", "", "Version of the env image component.")
 	flag.StringVar(&params.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
@@ -289,7 +287,8 @@ func main() {
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
 
-	klogLevel, err := strconv.Atoi(params.logLevel)
+	logLevel := flag.Lookup("v").Value.String()
+	klogLevel, err := strconv.Atoi(logLevel)
 	if err != nil {
 		klog.ErrorS(err, "failed to parse log level")
 		klogLevel = 2
