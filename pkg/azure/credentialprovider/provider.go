@@ -38,7 +38,7 @@ import (
 
 	aadProvider "github.com/Azure/aad-pod-identity/pkg/cloudprovider"
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
-	log "github.com/sirupsen/logrus"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 )
 
@@ -156,21 +156,22 @@ func getServicePrincipalTokenFromMSI(userAssignedIdentityID string, resource str
 	// 	return fmt.Errorf("failed to add MIC to user agent, error: %+v", err)
 	// }
 
-	log.Debug("azure: using managed identity extension to retrieve access token")
+	klog.V(4).InfoS("azure: using managed identity extension to retrieve access token", "id", userAssignedIdentityID)
 	msiEndpoint, err := adal.GetMSIVMEndpoint()
 	if err != nil {
 		return nil, fmt.Errorf("failed getting the managed service identity endpoint: %+v", err)
 	}
 
 	if len(userAssignedIdentityID) > 0 {
-		log.Debug("azure: using User Assigned MSI ID to retrieve access token")
+		klog.V(4).InfoS("azure: using User Assigned MSI ID to retrieve access token", "id", userAssignedIdentityID, "url", msiEndpoint)
 		token, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(msiEndpoint, resource, userAssignedIdentityID)
 		if err != nil {
 			return nil, fmt.Errorf("failed getting user assigned msi token from endpoint '%s': %+v", msiEndpoint, err)
 		}
 		return token, err
 	}
-	log.Debug("azure: using System Assigned MSI to retrieve access token")
+
+	klog.V(4).InfoS("azure: using System Assigned MSI to retrieve access token", "url", msiEndpoint)
 	token, err := adal.NewServicePrincipalTokenFromMSI(msiEndpoint, resource)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting system assigned msi token from endpoint '%s': %+v", msiEndpoint, err)
@@ -190,7 +191,7 @@ func getServicePrincipalTokenFromCloudConfig(config *AzureCloudConfig, env *azur
 	}
 
 	if len(config.AADClientSecret) > 0 {
-		log.Debug("azure: using client_id+client_secret to retrieve access token")
+		klog.V(4).InfoS("azure: using client_id+client_secret to retrieve access token", "id", config.AADClientID)
 		token, err := adal.NewServicePrincipalToken(
 			*oauthConfig,
 			config.AADClientID,
@@ -201,7 +202,7 @@ func getServicePrincipalTokenFromCloudConfig(config *AzureCloudConfig, env *azur
 	}
 
 	if len(config.AADClientCertPath) > 0 && len(config.AADClientCertPassword) > 0 {
-		log.Debug("azure: using jwt client_assertion (client_cert+client_private_key) to retrieve access token")
+		klog.V(4).InfoS("azure: using jwt client_assertion (client_cert+client_private_key) to retrieve access token", "path", config.AADClientCertPath)
 		certData, err := ioutil.ReadFile(config.AADClientCertPath)
 		if err != nil {
 			return nil, fmt.Errorf("reading the client certificate from file %s: %v", config.AADClientCertPath, err)
