@@ -156,7 +156,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 	}
 
 	if hasAzureKeyVaultSecretChangedForSecret(akvs, secretValues, secret) {
-		klog.Infof("azurekeyvaultsecret values has changed and requires update to secret", klog.KObj(akvs), klog.KObj(secret))
+		klog.InfoS("azurekeyvaultsecret values has changed and requires update to secret", klog.KObj(akvs), klog.KObj(secret))
 
 		updatedSecret, err := createNewSecretFromExisting(akvs, secretValues, secret)
 		if err != nil {
