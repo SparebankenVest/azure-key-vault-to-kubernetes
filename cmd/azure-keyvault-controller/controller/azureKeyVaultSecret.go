@@ -238,7 +238,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			}
 
 			secretName = secret.Name
-			klog.V(2).InfoS("secret value will now change for secret - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", klog.KObj(secret), klog.KObj(akvs))
+			klog.V(2).InfoS("secret value will now change for secret - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(secret), "secret", klog.KObj(akvs))
 		}
 	}
 
@@ -251,7 +251,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			return fmt.Errorf(msg)
 		}
 
-		cmHash := getMD5HashOfStringValues(cmValue)
+		cmHash = getMD5HashOfStringValues(cmValue)
 
 		klog.V(4).InfoS("checking if secret value has changed in azure key vault", "azurekeyvaultsecret", klog.KObj(akvs))
 		if akvs.Status.ConfigMapHash != cmHash {
@@ -274,7 +274,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			}
 
 			cmName = cm.Name
-			klog.V(2).InfoS("configmap value will now change for configmap - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", klog.KObj(akvs), klog.KObj(cm))
+			klog.V(2).InfoS("configmap value will now change for configmap - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 		}
 	}
 
