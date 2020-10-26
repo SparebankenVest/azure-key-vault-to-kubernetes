@@ -158,7 +158,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 	}
 
 	if hasAzureKeyVaultSecretChangedForConfigMap(akvs, cmValues, cm) {
-		klog.V(2).InfoS("azurekeyvaultsecret has changed and requires update to configmap", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
+		klog.V(2).InfoS("values have changed requiring update to configmap", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 
 		updatedCM, err := createNewConfigMapFromExisting(akvs, cmValues, cm)
 		if err != nil {
@@ -166,6 +166,9 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 		}
 
 		cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(updatedCM)
+		if err == nil {
+			klog.V(2).InfoS("configmap updated", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
+		}
 	}
 
 	return cm, err
