@@ -156,13 +156,16 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 	}
 
 	if hasAzureKeyVaultSecretChangedForSecret(akvs, secretValues, secret) {
-		klog.InfoS("azurekeyvaultsecret values has changed and requires update to secret", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
+		klog.V(2).InfoS("values have changed requiring update to secret", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
 
 		updatedSecret, err := createNewSecretFromExisting(akvs, secretValues, secret)
 		if err != nil {
 			return nil, err
 		}
 		secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(updatedSecret)
+		if err == nil {
+			klog.V(2).InfoS("secret updated", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
+		}
 	}
 
 	return secret, err
