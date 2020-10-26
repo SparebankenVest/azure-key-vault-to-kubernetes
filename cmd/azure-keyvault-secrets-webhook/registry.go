@@ -25,13 +25,13 @@ import (
 )
 
 func getContainerCmd(clientset kubernetes.Interface, container *corev1.Container, podSpec *corev1.PodSpec, namespace string) ([]string, error) {
-	klog.V(4).InfoS("getting container command for container", klog.KRef(namespace, container.Name))
+	klog.V(4).InfoS("getting container command for container", "container", klog.KRef(namespace, container.Name))
 	cmd := container.Command
 
 	// If container.Command is set it will override both image.Entrypoint AND image.Cmd
 	// https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
 	if len(cmd) == 0 {
-		klog.V(4).InfoS("no cmd override in kubernetes for container, checking docker image configuration for entrypoint and cmd", "image", container.Image, klog.KRef(namespace, container.Name))
+		klog.V(4).InfoS("no cmd override in kubernetes for container, checking docker image configuration for entrypoint and cmd", "image", container.Image, "container", klog.KRef(namespace, container.Name))
 
 		imgConfig, err := registry.GetImageConfig(clientset, namespace, container, podSpec, config.cloudConfig)
 		if err != nil {
@@ -44,7 +44,7 @@ func getContainerCmd(clientset kubernetes.Interface, container *corev1.Container
 			cmd = append(cmd, imgConfig.Cmd...)
 		}
 	} else {
-		klog.V(4).InfoS("found cmd override in kubernetes for container, no need to inspect docker image configuration", "image", container.Image, klog.KRef(namespace, container.Name))
+		klog.V(4).InfoS("found cmd override in kubernetes for container, no need to inspect docker image configuration", "image", container.Image, "container", klog.KRef(namespace, container.Name))
 	}
 
 	cmd = append(cmd, container.Args...)

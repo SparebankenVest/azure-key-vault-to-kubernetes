@@ -60,7 +60,7 @@ func (c *Controller) getConfigMapByKey(key string) (*corev1.ConfigMap, error) {
 }
 
 func (c *Controller) getConfigMap(ns, name string) (*corev1.ConfigMap, error) {
-	klog.V(4).InfoS("getting configmap", klog.KRef(ns, name))
+	klog.V(4).InfoS("getting configmap", "configmap", klog.KRef(ns, name))
 	cm, err := c.configMapsLister.ConfigMaps(ns).Get(name)
 
 	if err != nil {
@@ -108,12 +108,12 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 		return nil, fmt.Errorf("output configmap name must be specified using spec.output.configMap.name")
 	}
 
-	klog.V(4).InfoS("get or create configmap", klog.KRef(akvs.Namespace, cmName))
+	klog.V(4).InfoS("get or create configmap", "configmap", klog.KRef(akvs.Namespace, cmName))
 	if cm, err = c.configMapsLister.ConfigMaps(akvs.Namespace).Get(cmName); err != nil {
-		klog.V(4).ErrorS(err, "failed to get configmap ", klog.KRef(akvs.Namespace, cmName))
+		klog.V(4).ErrorS(err, "failed to get configmap ", "configmap", klog.KRef(akvs.Namespace, cmName))
 		if errors.IsNotFound(err) {
-			klog.V(4).InfoS("configmap was not found", klog.KRef(akvs.Namespace, cmName))
-			klog.V(4).InfoS("getting configmap value from azure key vault", klog.KRef(akvs.Namespace, cmName))
+			klog.V(4).InfoS("configmap was not found", "configmap", klog.KRef(akvs.Namespace, cmName))
+			klog.V(4).InfoS("getting configmap value from azure key vault", "configmap", klog.KRef(akvs.Namespace, cmName))
 			cmValues, err = c.getConfigMapFromKeyVault(akvs)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get configmap from azure key vault for configmap '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
@@ -123,7 +123,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 				return nil, fmt.Errorf("failed to create new configmap, err: %+v", err)
 			}
 
-			klog.V(2).InfoS("updating status for azurekeyvaultsecret", klog.KObj(akvs))
+			klog.V(2).InfoS("updating status for azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
 			if err = c.updateAzureKeyVaultSecretStatusForConfigMap(akvs, getMD5HashOfStringValues(cmValues)); err != nil {
 				return nil, fmt.Errorf("failed to update status for azurekeyvaultsecret %s, error: %+v", akvs.Name, err)
 			}
@@ -133,7 +133,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 	}
 
 	// get updated secret values from azure key vault
-	klog.V(4).InfoS("getting secret from azure key vault", akvs)
+	klog.V(4).InfoS("getting secret from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs))
 	cmValues, err = c.getConfigMapFromKeyVault(akvs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from Azure Key Vault for secret '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
@@ -158,7 +158,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 	}
 
 	if hasAzureKeyVaultSecretChangedForConfigMap(akvs, cmValues, cm) {
-		klog.V(2).InfoS("azurekeyvaultsecret has changed and requires update to configmap %s", klog.KObj(akvs), klog.KObj(cm))
+		klog.V(2).InfoS("azurekeyvaultsecret has changed and requires update to configmap", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 
 		updatedCM, err := createNewConfigMapFromExisting(akvs, cmValues, cm)
 		if err != nil {
