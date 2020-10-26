@@ -6,8 +6,8 @@ COMPONENT_VAR=$(PACKAGE)/pkg/akv2k8s.Component
 GIT_VAR=$(PACKAGE)/pkg/akv2k8s.GitCommit
 BUILD_DATE_VAR := $(PACKAGE)/pkg/akv2k8s.BuildDate
 
-KUBERNETES_VERSION=v1.17.2
-KUBERNETES_DEP_VERSION=v0.17.2
+KUBERNETES_VERSION=v1.19.0
+KUBERNETES_DEP_VERSION=v0.19.0
 
 WEBHOOK_BINARY_NAME=azure-keyvault-secrets-webhook
 CONTROLLER_BINARY_NAME=azure-keyvault-controller
@@ -192,6 +192,18 @@ build-vaultenv: clean-vaultenv
 
 .PHONY: images
 images: image-webhook image-controller image-ca-bundle-controller image-vaultenv
+
+.PHONY: upload-kind-webhook
+upload-kind-webhook:
+	kind load docker-image $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG)
+
+.PHONY: upload-kind-controller
+upload-kind-controller:
+	kind load docker-image $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG)
+
+.PHONY: upload-kind-vaultenv
+upload-kind-vaultenv:
+	kind load docker-image $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG)
 
 .PHONY: image-webhook
 image-webhook:

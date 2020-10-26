@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,7 +15,7 @@ type podData struct {
 }
 
 func authorize(clientset kubernetes.Interface, podData podData) error {
-	ns, err := clientset.CoreV1().Namespaces().Get(podData.namespace, metav1.GetOptions{})
+	ns, err := clientset.CoreV1().Namespaces().Get(context.TODO(), podData.namespace, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get namespace '%s', error: %+v", podData.namespace, err)
 	}
@@ -23,7 +24,7 @@ func authorize(clientset kubernetes.Interface, podData podData) error {
 		return fmt.Errorf("env-injection not enabled for namespace,")
 	}
 
-	pod, err := clientset.CoreV1().Pods(podData.namespace).Get(podData.name, metav1.GetOptions{})
+	pod, err := clientset.CoreV1().Pods(podData.namespace).Get(context.TODO(), podData.name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get pod '%s' in namespace '%s', error: %+v", podData.name, podData.namespace, err)
 	}

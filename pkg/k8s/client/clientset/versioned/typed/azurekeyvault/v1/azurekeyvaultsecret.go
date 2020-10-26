@@ -22,6 +22,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	"time"
 
 	v1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
@@ -40,15 +41,15 @@ type AzureKeyVaultSecretsGetter interface {
 
 // AzureKeyVaultSecretInterface has methods to work with AzureKeyVaultSecret resources.
 type AzureKeyVaultSecretInterface interface {
-	Create(*v1.AzureKeyVaultSecret) (*v1.AzureKeyVaultSecret, error)
-	Update(*v1.AzureKeyVaultSecret) (*v1.AzureKeyVaultSecret, error)
-	UpdateStatus(*v1.AzureKeyVaultSecret) (*v1.AzureKeyVaultSecret, error)
-	Delete(name string, options *metav1.DeleteOptions) error
-	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
-	Get(name string, options metav1.GetOptions) (*v1.AzureKeyVaultSecret, error)
-	List(opts metav1.ListOptions) (*v1.AzureKeyVaultSecretList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.AzureKeyVaultSecret, err error)
+	Create(ctx context.Context, azureKeyVaultSecret *v1.AzureKeyVaultSecret, opts metav1.CreateOptions) (*v1.AzureKeyVaultSecret, error)
+	Update(ctx context.Context, azureKeyVaultSecret *v1.AzureKeyVaultSecret, opts metav1.UpdateOptions) (*v1.AzureKeyVaultSecret, error)
+	UpdateStatus(ctx context.Context, azureKeyVaultSecret *v1.AzureKeyVaultSecret, opts metav1.UpdateOptions) (*v1.AzureKeyVaultSecret, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.AzureKeyVaultSecret, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.AzureKeyVaultSecretList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.AzureKeyVaultSecret, err error)
 	AzureKeyVaultSecretExpansion
 }
 
@@ -67,20 +68,20 @@ func newAzureKeyVaultSecrets(c *KeyvaultV1Client, namespace string) *azureKeyVau
 }
 
 // Get takes name of the azureKeyVaultSecret, and returns the corresponding azureKeyVaultSecret object, and an error if there is any.
-func (c *azureKeyVaultSecrets) Get(name string, options metav1.GetOptions) (result *v1.AzureKeyVaultSecret, err error) {
+func (c *azureKeyVaultSecrets) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.AzureKeyVaultSecret, err error) {
 	result = &v1.AzureKeyVaultSecret{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("azurekeyvaultsecrets").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of AzureKeyVaultSecrets that match those selectors.
-func (c *azureKeyVaultSecrets) List(opts metav1.ListOptions) (result *v1.AzureKeyVaultSecretList, err error) {
+func (c *azureKeyVaultSecrets) List(ctx context.Context, opts metav1.ListOptions) (result *v1.AzureKeyVaultSecretList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -91,13 +92,13 @@ func (c *azureKeyVaultSecrets) List(opts metav1.ListOptions) (result *v1.AzureKe
 		Resource("azurekeyvaultsecrets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested azureKeyVaultSecrets.
-func (c *azureKeyVaultSecrets) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *azureKeyVaultSecrets) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -108,87 +109,90 @@ func (c *azureKeyVaultSecrets) Watch(opts metav1.ListOptions) (watch.Interface, 
 		Resource("azurekeyvaultsecrets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a azureKeyVaultSecret and creates it.  Returns the server's representation of the azureKeyVaultSecret, and an error, if there is any.
-func (c *azureKeyVaultSecrets) Create(azureKeyVaultSecret *v1.AzureKeyVaultSecret) (result *v1.AzureKeyVaultSecret, err error) {
+func (c *azureKeyVaultSecrets) Create(ctx context.Context, azureKeyVaultSecret *v1.AzureKeyVaultSecret, opts metav1.CreateOptions) (result *v1.AzureKeyVaultSecret, err error) {
 	result = &v1.AzureKeyVaultSecret{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("azurekeyvaultsecrets").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(azureKeyVaultSecret).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a azureKeyVaultSecret and updates it. Returns the server's representation of the azureKeyVaultSecret, and an error, if there is any.
-func (c *azureKeyVaultSecrets) Update(azureKeyVaultSecret *v1.AzureKeyVaultSecret) (result *v1.AzureKeyVaultSecret, err error) {
+func (c *azureKeyVaultSecrets) Update(ctx context.Context, azureKeyVaultSecret *v1.AzureKeyVaultSecret, opts metav1.UpdateOptions) (result *v1.AzureKeyVaultSecret, err error) {
 	result = &v1.AzureKeyVaultSecret{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("azurekeyvaultsecrets").
 		Name(azureKeyVaultSecret.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(azureKeyVaultSecret).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-
-func (c *azureKeyVaultSecrets) UpdateStatus(azureKeyVaultSecret *v1.AzureKeyVaultSecret) (result *v1.AzureKeyVaultSecret, err error) {
+func (c *azureKeyVaultSecrets) UpdateStatus(ctx context.Context, azureKeyVaultSecret *v1.AzureKeyVaultSecret, opts metav1.UpdateOptions) (result *v1.AzureKeyVaultSecret, err error) {
 	result = &v1.AzureKeyVaultSecret{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("azurekeyvaultsecrets").
 		Name(azureKeyVaultSecret.Name).
 		SubResource("status").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(azureKeyVaultSecret).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the azureKeyVaultSecret and deletes it. Returns an error if one occurs.
-func (c *azureKeyVaultSecrets) Delete(name string, options *metav1.DeleteOptions) error {
+func (c *azureKeyVaultSecrets) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("azurekeyvaultsecrets").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *azureKeyVaultSecrets) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
+func (c *azureKeyVaultSecrets) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("azurekeyvaultsecrets").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched azureKeyVaultSecret.
-func (c *azureKeyVaultSecrets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.AzureKeyVaultSecret, err error) {
+func (c *azureKeyVaultSecrets) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.AzureKeyVaultSecret, err error) {
 	result = &v1.AzureKeyVaultSecret{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("azurekeyvaultsecrets").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }

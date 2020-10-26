@@ -21,6 +21,7 @@ package controller
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -92,7 +93,7 @@ func (c *Controller) deleteKubernetesSecretValues(akvs *akv.AzureKeyVaultSecret)
 		return err
 	}
 
-	secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(newSecret)
+	secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(context.TODO(), newSecret, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -117,7 +118,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 				return nil, fmt.Errorf("failed to get secret from Azure Key Vault for secret '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
 			}
 
-			if secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Create(createNewSecret(akvs, secretValues)); err != nil {
+			if secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Create(context.TODO(), createNewSecret(akvs, secretValues), metav1.CreateOptions{}); err != nil {
 				return nil, err
 			}
 
@@ -143,13 +144,13 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 		// Only delete if this akvs is the only owner
 		if !hasMultipleOwners(secret.GetOwnerReferences()) {
 			// Delete secret
-			if err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Delete(secret.Name, nil); err != nil {
+			if err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{}); err != nil {
 				return nil, err
 			}
 		}
 
 		// Recreate secret under new Name
-		if secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Create(createNewSecret(akvs, secretValues)); err != nil {
+		if secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Create(context.TODO(), createNewSecret(akvs, secretValues), metav1.CreateOptions{}); err != nil {
 			return nil, err
 		}
 		return secret, nil
@@ -162,7 +163,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 		if err != nil {
 			return nil, err
 		}
-		secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(updatedSecret)
+		secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(context.TODO(), updatedSecret, metav1.UpdateOptions{})
 		if err == nil {
 			klog.V(2).InfoS("secret updated", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
 		}

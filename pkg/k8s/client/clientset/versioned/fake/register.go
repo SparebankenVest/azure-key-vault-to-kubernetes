@@ -34,7 +34,7 @@ import (
 
 var scheme = runtime.NewScheme()
 var codecs = serializer.NewCodecFactory(scheme)
-var parameterCodec = runtime.NewParameterCodec(scheme)
+
 var localSchemeBuilder = runtime.SchemeBuilder{
 	keyvaultv1alpha1.AddToScheme,
 	keyvaultv1.AddToScheme,

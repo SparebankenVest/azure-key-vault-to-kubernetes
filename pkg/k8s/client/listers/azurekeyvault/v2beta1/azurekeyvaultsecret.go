@@ -29,8 +29,10 @@ import (
 )
 
 // AzureKeyVaultSecretLister helps list AzureKeyVaultSecrets.
+// All objects returned here must be treated as read-only.
 type AzureKeyVaultSecretLister interface {
 	// List lists all AzureKeyVaultSecrets in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v2beta1.AzureKeyVaultSecret, err error)
 	// AzureKeyVaultSecrets returns an object that can list and get AzureKeyVaultSecrets.
 	AzureKeyVaultSecrets(namespace string) AzureKeyVaultSecretNamespaceLister
@@ -61,10 +63,13 @@ func (s *azureKeyVaultSecretLister) AzureKeyVaultSecrets(namespace string) Azure
 }
 
 // AzureKeyVaultSecretNamespaceLister helps list and get AzureKeyVaultSecrets.
+// All objects returned here must be treated as read-only.
 type AzureKeyVaultSecretNamespaceLister interface {
 	// List lists all AzureKeyVaultSecrets in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v2beta1.AzureKeyVaultSecret, err error)
 	// Get retrieves the AzureKeyVaultSecret from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v2beta1.AzureKeyVaultSecret, error)
 	AzureKeyVaultSecretNamespaceListerExpansion
 }

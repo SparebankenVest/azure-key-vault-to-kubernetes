@@ -18,6 +18,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -183,10 +184,10 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 		}...)
 
 		if useAuthService {
-			_, err := config.kubeClient.CoreV1().Secrets(namespace).Create(authServiceSecret)
+			_, err := config.kubeClient.CoreV1().Secrets(namespace).Create(context.TODO(), authServiceSecret, metav1.CreateOptions{})
 			if err != nil {
 				if errors.IsAlreadyExists(err) {
-					_, err = config.kubeClient.CoreV1().Secrets(namespace).Update(authServiceSecret)
+					_, err = config.kubeClient.CoreV1().Secrets(namespace).Update(context.TODO(), authServiceSecret, metav1.UpdateOptions{})
 					if err != nil {
 						return false, err
 					}

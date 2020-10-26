@@ -1,6 +1,6 @@
 module github.com/SparebankenVest/azure-key-vault-to-kubernetes
 
-go 1.13
+go 1.15
 
 require (
 	emperror.dev/errors v0.8.0
@@ -14,18 +14,21 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/gorilla/mux v1.7.4
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
-	k8s.io/klog/v2 v2.3.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.1.0
+	github.com/prometheus/client_golang v1.7.1
 	github.com/slok/kubewebhook v0.4.0
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.17.2
-	k8s.io/apimachinery v0.17.2
-	k8s.io/client-go v0.17.2
+	k8s.io/api v0.19.3
+	k8s.io/apimachinery v0.19.3
+	k8s.io/client-go v0.19.3
+	k8s.io/component-base v0.19.3
+	k8s.io/klog/v2 v2.3.0
 	kmodules.xyz/client-go v0.0.0-20200521013203-6fe0a448d053
 	sigs.k8s.io/yaml v1.2.0
 )
+
+replace k8s.io/klog/v2 v2.3.0 => github.com/sparebankenvest/klog/v2 v2.3.1

@@ -34,6 +34,8 @@ import (
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
+
+	json "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-controller/controller"
@@ -52,6 +54,7 @@ var (
 	kubeconfig  string
 	masterURL   string
 	cloudconfig string
+	logFormat   string
 )
 
 func initConfig() {
@@ -63,6 +66,7 @@ func initConfig() {
 func init() {
 	flag.CommandLine = flag.NewFlagSet("akv2k8s controller", flag.ExitOnError)
 
+	flag.StringVar(&logFormat, "logging-format", "text", "Log format - text or json.")
 	flag.StringVar(&version, "version", "", "Version of this component.")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
@@ -76,11 +80,13 @@ func main() {
 	flag.Parse()
 	initConfig()
 
+	if logFormat == "json" {
+		klog.SetLogger(json.JSONLogger)
+	}
+	klog.InfoS("log settings", "format", logFormat, "level", flag.Lookup("v").Value)
+
 	akv2k8s.Version = version
 	akv2k8s.LogVersion()
-
-	klog.InfoS("log level", "level", flag.Lookup("v").Value)
-	klog.V(4).InfoS("some debug info...")
 
 	authType := viper.GetString("auth_type")
 
@@ -110,7 +116,7 @@ func main() {
 
 	klog.V(2).InfoS("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.V(4).InfoS)
+	eventBroadcaster.StartLogging(klog.V(6).Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	var vaultAuth credentialprovider.AzureKeyVaultCredentials

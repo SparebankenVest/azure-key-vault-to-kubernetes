@@ -22,6 +22,7 @@ limitations under the License.
 package v2beta1
 
 import (
+	"context"
 	time "time"
 
 	azurekeyvaultv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
@@ -64,13 +65,13 @@ func NewFilteredAzureKeyVaultSecretInformer(client versioned.Interface, namespac
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.KeyvaultV2beta1().AzureKeyVaultSecrets(namespace).List(options)
+				return client.KeyvaultV2beta1().AzureKeyVaultSecrets(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.KeyvaultV2beta1().AzureKeyVaultSecrets(namespace).Watch(options)
+				return client.KeyvaultV2beta1().AzureKeyVaultSecrets(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&azurekeyvaultv2beta1.AzureKeyVaultSecret{},

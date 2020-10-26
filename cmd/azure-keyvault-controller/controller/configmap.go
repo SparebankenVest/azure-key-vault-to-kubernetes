@@ -21,6 +21,7 @@ package controller
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -91,7 +92,7 @@ func (c *Controller) deleteKubernetesConfigMapValues(akvs *akv.AzureKeyVaultSecr
 		return err
 	}
 
-	cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(newCM)
+	cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(context.TODO(), newCM, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -119,7 +120,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 				return nil, fmt.Errorf("failed to get configmap from azure key vault for configmap '%s'/'%s', error: %+v", akvs.Namespace, akvs.Name, err)
 			}
 
-			if cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Create(createNewConfigMap(akvs, cmValues)); err != nil {
+			if cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Create(context.TODO(), createNewConfigMap(akvs, cmValues), metav1.CreateOptions{}); err != nil {
 				return nil, fmt.Errorf("failed to create new configmap, err: %+v", err)
 			}
 
@@ -146,12 +147,12 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 		// Only delete if this akvs is the only owner
 		if !hasMultipleOwners(cm.GetOwnerReferences()) {
 			// Delete configmap
-			if err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Delete(cm.Name, nil); err != nil {
+			if err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Delete(context.TODO(), cm.Name, metav1.DeleteOptions{}); err != nil {
 				return nil, err
 			}
 		}
 		// Recreate configmap under new Name
-		if cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Create(createNewConfigMap(akvs, cmValues)); err != nil {
+		if cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Create(context.TODO(), createNewConfigMap(akvs, cmValues), metav1.CreateOptions{}); err != nil {
 			return nil, err
 		}
 		return cm, nil
@@ -165,7 +166,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 			return nil, err
 		}
 
-		cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(updatedCM)
+		cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(context.TODO(), updatedCM, metav1.UpdateOptions{})
 		if err == nil {
 			klog.V(2).InfoS("configmap updated", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 		}

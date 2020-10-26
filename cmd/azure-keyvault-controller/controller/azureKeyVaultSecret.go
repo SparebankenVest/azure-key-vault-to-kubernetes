@@ -20,6 +20,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
@@ -222,7 +223,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			klog.V(4).InfoS("value has changed in azure key vault", "before", akvs.Status.SecretHash, "now", secretHash, "azurekeyvaultsecret", klog.KObj(akvs))
 
 			klog.V(2).InfoS("updating with recent changes from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KRef(akvs.Namespace, akvs.Spec.Output.Secret.Name))
-			existingSecret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Get(akvs.Spec.Output.Secret.Name, metav1.GetOptions{})
+			existingSecret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Get(context.TODO(), akvs.Spec.Output.Secret.Name, metav1.GetOptions{})
 			if err != nil {
 				return fmt.Errorf("failed to get existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
 			}
@@ -232,7 +233,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 				return fmt.Errorf("failed to update existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
 			}
 
-			secret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(updatedSecret)
+			secret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(context.TODO(), updatedSecret, metav1.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("failed to update secret, error: %+v", err)
 			}
@@ -258,7 +259,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			klog.V(4).InfoS("value has changed in azure key vault", "before", akvs.Status.SecretHash, "now", secretHash, "azurekeyvaultsecret", klog.KObj(akvs))
 
 			klog.V(2).InfoS("updating with recent changes from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KRef(akvs.Namespace, akvs.Spec.Output.ConfigMap.Name))
-			existingCm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Get(akvs.Spec.Output.ConfigMap.Name, metav1.GetOptions{})
+			existingCm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Get(context.TODO(), akvs.Spec.Output.ConfigMap.Name, metav1.GetOptions{})
 			if err != nil {
 				return fmt.Errorf("failed to get existing configmap %s, error: %+v", akvs.Spec.Output.ConfigMap.Name, err)
 			}
@@ -268,7 +269,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 				return fmt.Errorf("failed to update existing configmap %s, error: %+v", akvs.Spec.Output.ConfigMap.Name, err)
 			}
 
-			cm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(updatedCm)
+			cm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(context.TODO(), updatedCm, metav1.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("failed to update configmap, error: %+v", err)
 			}
@@ -448,7 +449,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatus(akvs *akv.AzureKeyVaultSecr
 	}
 	akvsCopy.Status.LastAzureUpdate = c.clock.Now()
 
-	_, err := c.akvsClient.KeyvaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
+	_, err := c.akvsClient.KeyvaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(context.TODO(), akvsCopy, metav1.UpdateOptions{})
 	return err
 }
 
@@ -461,7 +462,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatusForSecret(akvs *akv.AzureKey
 	akvsCopy.Status.SecretHash = secretHash
 	akvsCopy.Status.LastAzureUpdate = now
 
-	_, err := c.akvsClient.KeyvaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
+	_, err := c.akvsClient.KeyvaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(context.TODO(), akvsCopy, metav1.UpdateOptions{})
 	return err
 }
 
@@ -473,7 +474,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatusForConfigMap(akvs *akv.Azure
 	akvsCopy.Status.ConfigMapHash = cmHash
 	akvsCopy.Status.LastAzureUpdate = c.clock.Now()
 
-	_, err := c.akvsClient.KeyvaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
+	_, err := c.akvsClient.KeyvaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(context.TODO(), akvsCopy, metav1.UpdateOptions{})
 	return err
 }
 

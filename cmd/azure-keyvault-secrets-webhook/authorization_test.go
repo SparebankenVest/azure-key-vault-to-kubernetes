@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -153,7 +154,7 @@ func TestTokenReview(t *testing.T) {
 		},
 	}
 
-	trResult, err := clientset.AuthenticationV1().TokenReviews().Create(tr)
+	trResult, err := clientset.AuthenticationV1().TokenReviews().Create(context.TODO(), tr, metav1.CreateOptions{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -174,7 +175,7 @@ func TestTokenReview(t *testing.T) {
 			},
 		},
 	}
-	sarResult, err := clientset.AuthorizationV1().SubjectAccessReviews().Create(sar)
+	sarResult, err := clientset.AuthorizationV1().SubjectAccessReviews().Create(context.TODO(), sar, metav1.CreateOptions{})
 	if err != nil {
 		t.Error(err)
 	}
