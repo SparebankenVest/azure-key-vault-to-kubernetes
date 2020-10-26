@@ -61,6 +61,8 @@ func initConfig() {
 }
 
 func init() {
+	flag.CommandLine = flag.NewFlagSet("akv2k8s controller", flag.ExitOnError)
+
 	flag.StringVar(&version, "version", "", "Version of this component.")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
@@ -68,7 +70,7 @@ func init() {
 }
 
 func main() {
-	// klog.InitFlags(nil)
+	klog.InitFlags(nil)
 	defer klog.Flush()
 
 	flag.Parse()
@@ -76,6 +78,9 @@ func main() {
 
 	akv2k8s.Version = version
 	akv2k8s.LogVersion()
+
+	klog.InfoS("log level", "level", flag.Lookup("v").Value)
+	klog.V(4).InfoS("some debug info...")
 
 	authType := viper.GetString("auth_type")
 

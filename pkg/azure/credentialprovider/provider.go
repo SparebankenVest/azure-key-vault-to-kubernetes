@@ -34,16 +34,12 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/spf13/pflag"
 
 	aadProvider "github.com/Azure/aad-pod-identity/pkg/cloudprovider"
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 )
-
-var flagConfigFile = pflag.String("azure-container-registry-config", "",
-	"Path to the file containing Azure container registry configuration information.")
 
 const (
 	maxReadLength = 10 * 1 << 20 // 10MB

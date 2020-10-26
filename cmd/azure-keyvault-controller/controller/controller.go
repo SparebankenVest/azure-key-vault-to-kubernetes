@@ -149,7 +149,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 	controller.akvsCrdDeletionQueue = queue.New("DeletedAzureKeyVaultSecrets", options.MaxNumRequeues, options.NumThreads, controller.syncDeletedAzureKeyVaultSecret)
 	controller.azureKeyVaultQueue = queue.New("AzureKeyVault", options.MaxNumRequeues, options.NumThreads, controller.syncAzureKeyVault)
 
-	klog.InfoS("Setting up event handlers")
+	klog.InfoS("setting up event handlers")
 	controller.initAzureKeyVaultSecret()
 
 	return controller
@@ -160,7 +160,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 
 	// Start the informer factories to begin populating the informer caches
-	klog.Info("Starting AzureKeyVaultSecret controller")
+	klog.InfoS("starting azurekeyvaultsecret controller")
 	c.akvsInformerFactory.Start(stopCh)
 	c.kubeInformerFactory.Start(stopCh)
 
