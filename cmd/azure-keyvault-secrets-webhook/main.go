@@ -134,7 +134,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 
 	switch v := obj.(type) {
 	case *corev1.Pod:
-		klog.V(2).InfoS("found pod to mutate pod", klog.KRef(req.Namespace, req.Name))
+		klog.V(2).InfoS("found pod to mutate", "pod", klog.KRef(req.Namespace, req.Name))
 		pod = v
 	default:
 		return false, nil
@@ -144,7 +144,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 
 	err := mutatePodSpec(pod, req.Namespace, req.UID)
 	if err != nil {
-		klog.ErrorS(err, "failed to mutate pod", klog.KRef(req.Namespace, req.Name))
+		klog.ErrorS(err, "failed to mutate", "pod", klog.KRef(req.Namespace, req.Name))
 		podsMutatedFailedCounter.Inc()
 	}
 

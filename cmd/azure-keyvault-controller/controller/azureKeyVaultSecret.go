@@ -45,7 +45,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			}
 
 			if c.akvsHasOutputDefined(akvs) {
-				klog.V(4).InfoS("azurekeyvaultsecret adding to queue.", klog.KObj(akvs))
+				klog.V(4).InfoS("adding to queue", "azurekeyvaultsecret", klog.KObj(akvs))
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
 			}
 		},
@@ -64,13 +64,13 @@ func (c *Controller) initAzureKeyVaultSecret() {
 
 			// If akvs has not changed and has secret output, add to akv queue to check if secret has changed in akv
 			if newAkvs.ResourceVersion == oldAkvs.ResourceVersion && c.akvsHasOutputDefined(newAkvs) {
-				klog.V(4).InfoS("azurekeyvaultsecret not changed - adding to azure key vault queue to check if secret has changed in azure key vault", klog.KObj(newAkvs))
+				klog.V(4).InfoS("azurekeyvaultsecret not changed - adding to azure key vault queue to check if secret has changed in azure key vault", "azurekeyvaultsecret", klog.KObj(newAkvs))
 				queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), new)
 				return
 			}
 
 			if c.akvsHasOutputDefined(newAkvs) || c.akvsHasOutputDefined(oldAkvs) {
-				klog.V(4).InfoS("azurekeyvaultsecret changed - adding to queue", klog.KObj(newAkvs))
+				klog.V(4).InfoS("azurekeyvaultsecret changed - adding to queue", "azurekeyvaultsecret", klog.KObj(newAkvs))
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), new)
 			}
 		},
@@ -82,12 +82,12 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			}
 
 			if c.akvsHasOutputDefined(akvs) {
-				klog.V(4).InfoS("azurekeyvaultsecret deleted - adding to queue", klog.KObj(akvs))
+				klog.V(4).InfoS("azurekeyvaultsecret deleted - adding to queue", "azurekeyvaultsecret", klog.KObj(akvs))
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
 
 				err = c.deleteKubernetesValues(akvs)
 				if err != nil {
-					klog.ErrorS(err, "failed to delete secret data from azurekeyvaultsecret", klog.KObj(akvs))
+					klog.ErrorS(err, "failed to delete secret data from azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
 				}
 
 				// Getting default key to remove from Azure work queue
@@ -121,7 +121,7 @@ func (c *Controller) syncDeletedAzureKeyVaultSecret(key string) error {
 			return err
 		}
 
-		klog.V(4).InfoS("successfully synced azurekeyvaultsecret with kubernetes secret", klog.KObj(akvs), klog.KObj(secret))
+		klog.V(4).InfoS("successfully synced azurekeyvaultsecret with kubernetes secret", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
 		c.recorder.Event(secret, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		outputObject = secret
 	}
@@ -132,7 +132,7 @@ func (c *Controller) syncDeletedAzureKeyVaultSecret(key string) error {
 			return err
 		}
 
-		klog.V(4).InfoS("successfully synced azurekeyvaultsecret with kubernetes configmap", klog.KObj(akvs), klog.KObj(cm))
+		klog.V(4).InfoS("successfully synced azurekeyvaultsecret with kubernetes configmap", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 		c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		outputObject = cm
 	}
@@ -165,7 +165,7 @@ func (c *Controller) syncAzureKeyVaultSecret(key string) error {
 			return err
 		}
 
-		klog.V(4).InfoS("successfully synced azurekeyvaultsecret with kubernetes secret", klog.KObj(akvs), klog.KObj(secret))
+		klog.V(4).InfoS("successfully synced azurekeyvaultsecret with kubernetes secret", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
 		c.recorder.Event(secret, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		outputObject = secret
 	}
@@ -176,7 +176,7 @@ func (c *Controller) syncAzureKeyVaultSecret(key string) error {
 			return err
 		}
 
-		klog.V(4).InfoS("successfully synced azurekeyvaultsecret with kubernetes configmap", klog.KObj(akvs), klog.KObj(cm))
+		klog.V(4).InfoS("successfully synced azurekeyvaultsecret with kubernetes configmap", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 		c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		outputObject = cm
 	}
@@ -207,7 +207,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 	}
 
 	if c.akvsHasOutputSecret(akvs) {
-		klog.V(4).InfoS("getting secret value from azure key vault", klog.KObj(akvs))
+		klog.V(4).InfoS("getting secret value from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs))
 		secretValue, err := c.getSecretFromKeyVault(akvs)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, akvs.Name, akvs.Spec.Vault.Name)
@@ -217,11 +217,11 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 
 		secretHash = getMD5HashOfByteValues(secretValue)
 
-		klog.V(4).InfoS("checking if secret value has changed in azure", klog.KObj(akvs))
+		klog.V(4).InfoS("checking if secret value has changed in azure", "azurekeyvaultsecret", klog.KObj(akvs))
 		if akvs.Status.SecretHash != secretHash {
-			klog.V(4).InfoS("secret value has changed in azure key vault", "before", akvs.Status.SecretHash, "now", secretHash, klog.KObj(akvs))
+			klog.V(4).InfoS("secret value has changed in azure key vault", "before", akvs.Status.SecretHash, "now", secretHash, "azurekeyvaultsecret", klog.KObj(akvs))
 
-			klog.V(2).InfoS("secret has changed in azure key vault for azurekeyvvaultsecret - updating secret now", klog.KObj(akvs))
+			klog.V(2).InfoS("secret has changed in azure key vault for azurekeyvvaultsecret - updating secret now", "azurekeyvaultsecret", klog.KObj(akvs))
 			existingSecret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Get(akvs.Spec.Output.Secret.Name, metav1.GetOptions{})
 			if err != nil {
 				return fmt.Errorf("failed to get existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
@@ -243,7 +243,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 	}
 
 	if c.akvsHasOutputConfigMap(akvs) {
-		klog.V(4).InfoS("getting secret value from azure key vault", klog.KObj(akvs))
+		klog.V(4).InfoS("getting secret value from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs))
 		cmValue, err := c.getConfigMapFromKeyVault(akvs)
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, akvs.Name, akvs.Spec.Vault.Name)
@@ -253,11 +253,11 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 
 		cmHash := getMD5HashOfStringValues(cmValue)
 
-		klog.V(4).InfoS("checking if secret value has changed in azure key vault", klog.KObj(akvs))
+		klog.V(4).InfoS("checking if secret value has changed in azure key vault", "azurekeyvaultsecret", klog.KObj(akvs))
 		if akvs.Status.ConfigMapHash != cmHash {
-			klog.V(4).InfoS("secret value has changed in azure key vault", "before", akvs.Status.SecretHash, "now", secretHash, klog.KObj(akvs))
+			klog.V(4).InfoS("secret value has changed in azure key vault", "before", akvs.Status.SecretHash, "now", secretHash, "azurekeyvaultsecret", klog.KObj(akvs))
 
-			klog.V(2).InfoS("secret has changed in azure key vault for azurekeyvvaultsecret - updating configmap now", klog.KObj(akvs))
+			klog.V(2).InfoS("secret has changed in azure key vault for azurekeyvvaultsecret - updating configmap now", "azurekeyvaultsecret", klog.KObj(akvs))
 			existingCm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Get(akvs.Spec.Output.ConfigMap.Name, metav1.GetOptions{})
 			if err != nil {
 				return fmt.Errorf("failed to get existing configmap %s, error: %+v", akvs.Spec.Output.ConfigMap.Name, err)
@@ -278,12 +278,12 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 		}
 	}
 
-	klog.V(4).InfoS("updating status for azurekeyvaultsecret", klog.KObj(akvs))
+	klog.V(4).InfoS("updating status for azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
 	if err = c.updateAzureKeyVaultSecretStatus(akvs, secretName, cmName, secretHash, cmHash); err != nil {
 		return err
 	}
 
-	klog.V(4).InfoS("successfully synced azurekeyvaultsecret with azure key vault", klog.KObj(akvs))
+	klog.V(4).InfoS("successfully synced azurekeyvaultsecret with azure key vault", "azurekeyvaultsecret", klog.KObj(akvs))
 	c.recorder.Event(akvs, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSyncedWithAzureKeyVault)
 	return nil
 }
@@ -461,7 +461,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatusForSecret(akvs *akv.AzureKey
 	akvsCopy.Status.SecretHash = secretHash
 	akvsCopy.Status.LastAzureUpdate = now
 
-	klog.V(4).InfoS("updating secret status of azurekeyvaultsecert", klog.KObj(akvs), klog.KRef(akvs.Namespace, secretName), "hash", secretHash)
+	klog.V(4).InfoS("updating secret status of azurekeyvaultsecert", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KRef(akvs.Namespace, secretName), "hash", secretHash)
 	_, err := c.akvsClient.KeyvaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
 	return err
 }
@@ -474,7 +474,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatusForConfigMap(akvs *akv.Azure
 	akvsCopy.Status.ConfigMapHash = cmHash
 	akvsCopy.Status.LastAzureUpdate = c.clock.Now()
 
-	klog.V(4).InfoS("updating configmap status of azurekeyvaultsecert", klog.KObj(akvs), klog.KRef(akvs.Namespace, cmName), "hash", cmHash)
+	klog.V(4).InfoS("updating configmap status of azurekeyvaultsecert", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KRef(akvs.Namespace, cmName), "hash", cmHash)
 	_, err := c.akvsClient.KeyvaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(akvsCopy)
 	return err
 }

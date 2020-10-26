@@ -61,7 +61,7 @@ func (c *Controller) getSecretByKey(key string) (*corev1.Secret, error) {
 }
 
 func (c *Controller) getSecret(ns, name string) (*corev1.Secret, error) {
-	klog.V(4).InfoS("getting secret", klog.KRef(ns, name))
+	klog.V(4).InfoS("getting secret", "secret", klog.KRef(ns, name))
 	secret, err := c.secretsLister.Secrets(ns).Get(name)
 
 	if err != nil {
@@ -109,7 +109,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 		return nil, fmt.Errorf("output secret name must be specified using spec.output.secret.name")
 	}
 
-	klog.V(4).InfoS("get or create secret", klog.KRef(akvs.Namespace, secretName))
+	klog.V(4).InfoS("get or create secret", "secret", klog.KRef(akvs.Namespace, secretName))
 	if secret, err = c.secretsLister.Secrets(akvs.Namespace).Get(secretName); err != nil {
 		if errors.IsNotFound(err) {
 			secretValues, err = c.getSecretFromKeyVault(akvs)
@@ -121,7 +121,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 				return nil, err
 			}
 
-			klog.V(2).InfoS("updating status for azurekeyvaultsecret", klog.KObj(akvs))
+			klog.V(2).InfoS("updating status for azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
 			if err = c.updateAzureKeyVaultSecretStatusForSecret(akvs, getMD5HashOfByteValues(secretValues)); err != nil {
 				return nil, err
 			}
@@ -156,7 +156,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 	}
 
 	if hasAzureKeyVaultSecretChangedForSecret(akvs, secretValues, secret) {
-		klog.InfoS("azurekeyvaultsecret values has changed and requires update to secret", klog.KObj(akvs), klog.KObj(secret))
+		klog.InfoS("azurekeyvaultsecret values has changed and requires update to secret", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
 
 		updatedSecret, err := createNewSecretFromExisting(akvs, secretValues, secret)
 		if err != nil {

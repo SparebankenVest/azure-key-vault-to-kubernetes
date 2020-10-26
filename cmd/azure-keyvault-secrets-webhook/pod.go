@@ -101,10 +101,10 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 		klog.V(2).InfoS("found container to mutate", "container", klog.KRef(namespace, container.Name))
 
 		var envVars []corev1.EnvVar
-		klog.V(2).InfoS("checking for env vars to inject", klog.KRef(namespace, container.Name))
+		klog.V(2).InfoS("checking for env vars to inject", "container", klog.KRef(namespace, container.Name))
 		for _, env := range container.Env {
 			if strings.Contains(env.Value, envVarReplacementKey) {
-				klog.V(2).InfoS("found env var to inject", "env", env.Value, klog.KRef(namespace, container.Name))
+				klog.V(2).InfoS("found env var to inject", "env", env.Value, "container", klog.KRef(namespace, container.Name))
 				envVars = append(envVars, env)
 			}
 
@@ -114,14 +114,14 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 					return false, fmt.Errorf("failed to parse container env var override for auth service, error: %+v", err)
 				}
 				if containerDisabledAuthService {
-					klog.V(2).InfoS("container has disabled auth service", klog.KRef(namespace, container.Name))
+					klog.V(2).InfoS("container has disabled auth service", "container", klog.KRef(namespace, container.Name))
 					useAuthService = false
 				}
 			}
 		}
 
 		if len(envVars) == 0 {
-			klog.Info("found no env vars to inject", klog.KRef(namespace, container.Name))
+			klog.Info("found no env vars to inject", "container", klog.KRef(namespace, container.Name))
 			continue
 		}
 
@@ -131,7 +131,7 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 		}
 
 		autoArgsStr := strings.Join(autoArgs, " ")
-		klog.V(2).InfoS("found container arguments to use for env-injector", "cmd", autoArgsStr, klog.KRef(namespace, container.Name))
+		klog.V(2).InfoS("found container arguments to use for env-injector", "cmd", autoArgsStr, "container", klog.KRef(namespace, container.Name))
 
 		privKey, pubKey, err := newKeyPair()
 		if err != nil {
@@ -142,19 +142,19 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 		if err != nil {
 			return false, fmt.Errorf("failed to sign command args, error: %+v", err)
 		}
-		klog.V(4).InfoS("signed arguments to prevent override", klog.KRef(namespace, container.Name))
+		klog.V(4).InfoS("signed arguments to prevent override", "container", klog.KRef(namespace, container.Name))
 
 		publicSigningKey, err := exportRsaPublicKey(pubKey)
 		if err != nil {
 			return false, fmt.Errorf("failed to export public rsa key to pem, error: %+v", err)
 		}
 
-		klog.V(4).InfoS("public signing key for argument verification", "key", publicSigningKey, klog.KRef(namespace, container.Name))
+		klog.V(4).InfoS("public signing key for argument verification", "key", publicSigningKey, "container", klog.KRef(namespace, container.Name))
 
 		mutated = true
 
 		fullExecPath := filepath.Join(config.injectorDir, injectorExecutable)
-		klog.V(4).InfoS("full exec path", "path", fullExecPath, klog.KRef(namespace, container.Name))
+		klog.V(4).InfoS("full exec path", "path", fullExecPath, "container", klog.KRef(namespace, container.Name))
 		container.Command = []string{fullExecPath}
 		container.Args = autoArgs
 
@@ -165,7 +165,7 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 				ReadOnly:  true,
 			},
 		}...)
-		klog.V(4).InfoS("mounting volume", "volume", keyVaultEnvVolumeName, "path", config.injectorDir, klog.KRef(namespace, container.Name))
+		klog.V(4).InfoS("mounting volume", "volume", keyVaultEnvVolumeName, "path", config.injectorDir, "container", klog.KRef(namespace, container.Name))
 
 		container.Env = append(container.Env, []corev1.EnvVar{
 			{
@@ -311,10 +311,10 @@ func mutatePodSpec(pod *corev1.Pod, namespace string, mutationID types.UID) erro
 	if initContainersMutated || containersMutated {
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
 		podSpec.Volumes = append(podSpec.Volumes, getVolumes(authServiceSecret)...)
-		klog.V(2).InfoS("containers mutated and pod updated with init-container and volumes", klog.KRef(namespace, pod.Name))
+		klog.V(2).InfoS("containers mutated and pod updated with init-container and volumes", "pod", klog.KRef(namespace, pod.Name))
 		podsMutatedCounter.Inc()
 	} else {
-		klog.V(2).InfoS("no containers mutated", klog.KRef(namespace, pod.Name))
+		klog.V(2).InfoS("no containers mutated", "pod", klog.KRef(namespace, pod.Name))
 	}
 
 	return nil
