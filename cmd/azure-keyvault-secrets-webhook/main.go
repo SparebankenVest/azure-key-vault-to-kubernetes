@@ -270,7 +270,7 @@ func main() {
 		cloudConfig:                  params.cloudConfig,
 	}
 
-	klog.InfoS("Active settings:")
+	klog.Info("Active settings:")
 	klog.InfoS("  Webhook port              : %s", config.port)
 	klog.InfoS("  Serve metrics             : %t", config.serveMetrics)
 	klog.InfoS("  Auth type                 : %s", config.authType)

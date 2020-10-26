@@ -26,10 +26,10 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
-	"istio.io/pkg/log"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 )
 
 // K8s structure keeps information retrieved from POD definition
@@ -61,7 +61,7 @@ func (k *ContainerInfo) Collect(container *corev1.Container, podSpec *corev1.Pod
 		}
 
 		if found {
-			log.Infof("found credentials for registry %s in pod imagePullSecret: %s/%s", k.RegistryName, k.Namespace, imagePullSecret.Name)
+			klog.V(2).InfoS("found credentials for registry in imagePullSecrets", "registry", k.RegistryName, "namespace", k.Namespace, "pullSecret", imagePullSecret.Name)
 			break
 		}
 	}
@@ -88,7 +88,7 @@ func (k *ContainerInfo) Collect(container *corev1.Container, podSpec *corev1.Pod
 		}
 
 		if !found {
-			log.Infof("found no credentials for registry %s, assuming it is public", k.RegistryAddress)
+			klog.V(2).InfoS("found no credentials for registry, assuming it is public", "registry", k.RegistryAddress)
 		}
 	}
 	return nil
@@ -146,13 +146,13 @@ func getAcrCredentials(k *ContainerInfo, cloudConfigPath string) (bool, error) {
 			return false, fmt.Errorf("failed getting azure acr credentials, error: %w", err)
 		}
 
-		log.Debugf("found acr credentials to use in cloud config for '%s'", k.Image)
+		klog.V(4).InfoS("found acr credentials to use in cloud config for docker image", "image", k.Image)
 		k.RegistryUsername = cred.Username
 		k.RegistryPassword = cred.Password
 		return true, nil
 	}
 
-	log.Debugf("no acr credentials found for %s", k.RegistryAddress)
+	klog.V(4).InfoS("no acr credentials found", "registry", k.RegistryAddress)
 	return false, nil
 }
 
