@@ -100,7 +100,7 @@ func NewAzureKeyVaultMultiKeySecretHandler(secretSpec *akv.AzureKeyVaultSecret, 
 	}
 }
 
-// Handle getting and formating Azure Key Vault Secret from Azure Key Vault to Kubernetes
+// Handle getting and formatting Azure Key Vault Secret from Azure Key Vault to Kubernetes
 func (h *AzureKeyVaultSecretHandler) Handle() (string, error) {
 	secret, err := h.vaultService.GetSecret(&h.secretSpec.Spec.Vault)
 	if err != nil {
@@ -134,7 +134,7 @@ func (h *AzureKeyVaultSecretHandler) Handle() (string, error) {
 	}
 }
 
-// Handle getting and formating Azure Key Vault Certificate from Azure Key Vault to Kubernetes
+// Handle getting and formatting Azure Key Vault Certificate from Azure Key Vault to Kubernetes
 func (h *AzureKeyVaultCertificateHandler) Handle() (string, error) {
 	options := vault.CertificateOptions{
 		ExportPrivateKey:  h.query == corev1.TLSPrivateKeyKey,
@@ -167,7 +167,7 @@ func (h *AzureKeyVaultCertificateHandler) Handle() (string, error) {
 	return string(pubKey), nil
 }
 
-// Handle getting and formating Azure Key Vault Key from Azure Key Vault to Kubernetes
+// Handle getting and formatting Azure Key Vault Key from Azure Key Vault to Kubernetes
 func (h *AzureKeyVaultKeyHandler) Handle() (string, error) {
 	key, err := h.vaultService.GetKey(&h.secretSpec.Spec.Vault)
 	if err != nil {
@@ -177,7 +177,7 @@ func (h *AzureKeyVaultKeyHandler) Handle() (string, error) {
 	return key, nil
 }
 
-// Handle getting and formating Azure Key Vault Secret containing mulitple values from Azure Key Vault to Kubernetes
+// Handle getting and formatting Azure Key Vault Secret containing mulitple values from Azure Key Vault to Kubernetes
 func (h *AzureKeyVaultMultiValueSecretHandler) Handle() (string, error) {
 	if h.secretSpec.Spec.Vault.Object.ContentType == "" {
 		return "", fmt.Errorf("cannot use '%s' without also specifying content type", akv.AzureKeyVaultObjectTypeMultiKeyValueSecret)

@@ -92,7 +92,7 @@ func NewAzureMultiKeySecretHandler(secretSpec *akv.AzureKeyVaultSecret, vaultSer
 	}
 }
 
-// Handle getting and formating Azure Key Vault Secret from Azure Key Vault to Kubernetes
+// Handle getting and formatting Azure Key Vault Secret from Azure Key Vault to Kubernetes
 func (h *AzureSecretHandler) Handle() (map[string][]byte, error) {
 	if h.secretSpec.Spec.Vault.Object.Type == akv.AzureKeyVaultObjectTypeMultiKeyValueSecret && h.secretSpec.Spec.Output.Secret.DataKey != "" {
 		log.Warnf("output data key for %s/%s ignored, since vault object type is '%s' it will use its own keys", h.secretSpec.Namespace, h.secretSpec.Name, akv.AzureKeyVaultObjectTypeMultiKeyValueSecret)
@@ -139,7 +139,7 @@ func (h *AzureSecretHandler) Handle() (map[string][]byte, error) {
 	return values, nil
 }
 
-// Handle getting and formating Azure Key Vault Certificate from Azure Key Vault to Kubernetes
+// Handle getting and formatting Azure Key Vault Certificate from Azure Key Vault to Kubernetes
 func (h *AzureCertificateHandler) Handle() (map[string][]byte, error) {
 	values := make(map[string][]byte)
 	var err error
@@ -178,7 +178,7 @@ func (h *AzureCertificateHandler) Handle() (map[string][]byte, error) {
 	return values, nil
 }
 
-// Handle getting and formating Azure Key Vault Key from Azure Key Vault to Kubernetes
+// Handle getting and formatting Azure Key Vault Key from Azure Key Vault to Kubernetes
 func (h *AzureKeyHandler) Handle() (map[string][]byte, error) {
 	key, err := h.vaultService.GetKey(&h.secretSpec.Spec.Vault)
 	if err != nil {
@@ -190,7 +190,7 @@ func (h *AzureKeyHandler) Handle() (map[string][]byte, error) {
 	return values, nil
 }
 
-// Handle getting and formating Azure Key Vault Secret containing mulitple values from Azure Key Vault to Kubernetes
+// Handle getting and formatting Azure Key Vault Secret containing mulitple values from Azure Key Vault to Kubernetes
 func (h *AzureMultiValueSecretHandler) Handle() (map[string][]byte, error) {
 	values := make(map[string][]byte)
 
