@@ -193,22 +193,33 @@ func (c *Controller) getAzureKeyVaultSecretFromSecret(secret *corev1.Secret, own
 	return c.azureKeyVaultSecretLister.AzureKeyVaultSecrets(secret.Namespace).Get(owner.Name)
 }
 
-func (c *Controller) getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (map[string][]byte, error) {
+func (c *Controller) getSecretHandler(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (KubernetesSecretHandler, error) {
 	var secretHandler KubernetesSecretHandler
-
-	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
-	case akv.AzureKeyVaultObjectTypeSecret:
-		transformator, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
+	if azureKeyVaultSecret.Spec.Vault.Object.Type != "" {
+		secretHandler = NewAzureMultiKeySecretHandler(azureKeyVaultSecret, c.vaultService)
+	} else {
+		transformer, err := transformers.CreateTransformator(&azureKeyVaultSecret.Spec.Output)
 		if err != nil {
 			return nil, err
 		}
-		secretHandler = NewAzureSecretHandler(azureKeyVaultSecret, c.vaultService, *transformator)
+		secretHandler = NewAzureSecretHandler(azureKeyVaultSecret, c.vaultService, *transformer)
+	}
+	return secretHandler, nil
+}
+
+func (c *Controller) getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret) (map[string][]byte, error) {
+	var secretHandler KubernetesSecretHandler
+	var err error
+	switch azureKeyVaultSecret.Spec.Vault.Object.Type {
+	case akv.AzureKeyVaultObjectTypeSecret:
+		secretHandler, err = c.getSecretHandler(azureKeyVaultSecret)
+		if err != nil {
+			return nil, err
+		}
 	case akv.AzureKeyVaultObjectTypeCertificate:
 		secretHandler = NewAzureCertificateHandler(azureKeyVaultSecret, c.vaultService)
 	case akv.AzureKeyVaultObjectTypeKey:
 		secretHandler = NewAzureKeyHandler(azureKeyVaultSecret, c.vaultService)
-	case akv.AzureKeyVaultObjectTypeMultiKeyValueSecret:
-		secretHandler = NewAzureMultiKeySecretHandler(azureKeyVaultSecret, c.vaultService)
 	default:
 		return nil, fmt.Errorf("azure key vault object type '%s' not currently supported", azureKeyVaultSecret.Spec.Vault.Object.Type)
 	}
