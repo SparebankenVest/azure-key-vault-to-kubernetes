@@ -26,9 +26,7 @@ require (
 	k8s.io/apimachinery v0.19.3
 	k8s.io/client-go v0.19.3
 	k8s.io/component-base v0.19.3
-	k8s.io/klog/v2 v2.3.0
+	k8s.io/klog/v2 v2.3.1-0.20201028104956-52c62e3b70a9
 	kmodules.xyz/client-go v0.0.0-20200521013203-6fe0a448d053
 	sigs.k8s.io/yaml v1.2.0
 )
-
-replace k8s.io/klog/v2 v2.3.0 => github.com/sparebankenvest/klog/v2 v2.3.1
