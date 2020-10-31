@@ -124,7 +124,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 				return nil, fmt.Errorf("failed to create new configmap, err: %+v", err)
 			}
 
-			klog.V(2).InfoS("updating status for azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
+			klog.InfoS("updating status for azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
 			if err = c.updateAzureKeyVaultSecretStatusForConfigMap(akvs, getMD5HashOfStringValues(cmValues)); err != nil {
 				return nil, fmt.Errorf("failed to update status for azurekeyvaultsecret %s, error: %+v", akvs.Name, err)
 			}
@@ -159,7 +159,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 	}
 
 	if hasAzureKeyVaultSecretChangedForConfigMap(akvs, cmValues, cm) {
-		klog.V(2).InfoS("values have changed requiring update to configmap", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
+		klog.InfoS("values have changed requiring update to configmap", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 
 		updatedCM, err := createNewConfigMapFromExisting(akvs, cmValues, cm)
 		if err != nil {
@@ -168,7 +168,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 
 		cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(context.TODO(), updatedCM, metav1.UpdateOptions{})
 		if err == nil {
-			klog.V(2).InfoS("configmap updated", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
+			klog.InfoS("configmap updated", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 		}
 	}
 
@@ -333,7 +333,7 @@ func sortStringValueKeys(values map[string]string) []string {
 // 	if err != nil {
 // 		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop processing.
 // 		if errors.IsNotFound(err) {
-// 			klog.V(2).InfoS("configmap in work queue no longer exists", "key", key)
+// 			klog.InfoS("configmap in work queue no longer exists", "key", key)
 // 			return true
 // 		}
 // 	}

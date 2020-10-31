@@ -199,7 +199,7 @@ func main() {
 	if config.useAuthService {
 		klog.V(4).InfoS("using centralized akv2k8s auth service for authentication with azure key vault")
 	} else {
-		klog.V(2).InfoS("akv2k8s auth service not enabled - will look for azure key vault credentials locally")
+		klog.InfoS("akv2k8s auth service not enabled - will look for azure key vault credentials locally")
 	}
 
 	if len(os.Args) == 1 {

@@ -122,7 +122,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 				return nil, err
 			}
 
-			klog.V(2).InfoS("updating status for azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
+			klog.InfoS("updating status for azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
 			if err = c.updateAzureKeyVaultSecretStatusForSecret(akvs, getMD5HashOfByteValues(secretValues)); err != nil {
 				return nil, err
 			}
@@ -157,7 +157,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 	}
 
 	if hasAzureKeyVaultSecretChangedForSecret(akvs, secretValues, secret) {
-		klog.V(2).InfoS("values have changed requiring update to secret", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
+		klog.InfoS("values have changed requiring update to secret", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
 
 		updatedSecret, err := createNewSecretFromExisting(akvs, secretValues, secret)
 		if err != nil {
@@ -165,7 +165,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 		}
 		secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(context.TODO(), updatedSecret, metav1.UpdateOptions{})
 		if err == nil {
-			klog.V(2).InfoS("secret updated", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
+			klog.InfoS("secret updated", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
 		}
 	}
 

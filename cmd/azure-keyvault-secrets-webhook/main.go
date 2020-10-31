@@ -45,6 +45,7 @@ import (
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/tools/clientcmd"
+	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 
 	corev1 "k8s.io/api/core/v1"
@@ -72,7 +73,7 @@ type azureKeyVaultConfig struct {
 	authType                     string
 	useAuthService               bool
 	dockerImageInspectionTimeout int
-	useAksCredentialsWithAcs     bool
+	useAksCredentialsWithAcr     bool
 	authServiceName              string
 	authServicePort              string
 	authServicePortInternal      string
@@ -90,6 +91,7 @@ type cmdParams struct {
 	kubeconfig      string
 	masterURL       string
 	cloudConfig     string
+	logFormat       string
 }
 
 var config azureKeyVaultConfig
@@ -134,7 +136,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 
 	switch v := obj.(type) {
 	case *corev1.Pod:
-		klog.V(2).InfoS("found pod to mutate", "pod", klog.KRef(req.Namespace, req.Name))
+		klog.InfoS("found pod to mutate", "pod", klog.KRef(req.Namespace, req.Name))
 		pod = v
 	default:
 		return false, nil
@@ -176,7 +178,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if pod.name == "" || pod.namespace == "" {
-			klog.V(2).InfoS("failed to parse url parameters", "pod", pod.name, "namespace", pod.namespace)
+			klog.InfoS("failed to parse url parameters", "pod", pod.name, "namespace", pod.namespace)
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
@@ -200,7 +202,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
-		klog.V(2).InfoS("invalid request method")
+		klog.InfoS("invalid request method")
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 	}
 }
@@ -224,8 +226,6 @@ func initConfig() {
 	viper.SetDefault("port", "443")
 	viper.SetDefault("webhook_auth_service_port", "8443")
 	viper.SetDefault("webhook_auth_service_port_internal", "8443")
-	viper.SetDefault("log_level", "Info")
-	viper.SetDefault("log_format", "fmt")
 	viper.SetDefault("env_injector_exec_dir", "/azure-keyvault/")
 	viper.AutomaticEnv()
 }
@@ -236,6 +236,7 @@ func init() {
 	flag.StringVar(&params.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&params.masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&params.cloudConfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
+	flag.StringVar(&params.logFormat, "logging-format", "text", "Log format - text or json.")
 }
 
 func main() {
@@ -245,6 +246,11 @@ func main() {
 	flag.Parse()
 
 	initConfig()
+
+	if params.logFormat == "json" {
+		klog.SetLogger(jsonlogs.JSONLogger)
+	}
+
 	akv2k8s.Version = params.version
 
 	// logFormat := viper.GetString("log_format")
@@ -264,25 +270,30 @@ func main() {
 		authServicePort:              viper.GetString("webhook_auth_service_port"),
 		authServicePortInternal:      viper.GetString("webhook_auth_service_port_internal"),
 		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
-		useAksCredentialsWithAcs:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
+		useAksCredentialsWithAcr:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
 		injectorDir:                  viper.GetString("env_injector_exec_dir"),
 		versionEnvImage:              params.versionEnvImage,
 		cloudConfig:                  params.cloudConfig,
 	}
 
-	klog.Info("Active settings:")
-	klog.InfoS("  Webhook port              : %s", config.port)
-	klog.InfoS("  Serve metrics             : %t", config.serveMetrics)
-	klog.InfoS("  Auth type                 : %s", config.authType)
-	klog.InfoS("  Use auth service          : %t", config.useAuthService)
-	if config.useAuthService {
-		klog.InfoS("  Auth service name         : %s", config.authServiceName)
-		klog.InfoS("  Auth service port         : %s", config.authServicePort)
-		klog.InfoS("  Auth service internal port: %s", config.authServicePortInternal)
+	activeSettings := []interface{}{
+		"webhookPort", config.port,
+		"serveMetrics", config.serveMetrics,
+		"authType", config.authType,
+		"useAuthService", config.useAuthService,
+		"useAksCredsWithAcr", config.useAksCredentialsWithAcr,
+		"dockerInspectionTimeout", config.dockerImageInspectionTimeout,
+		"cloudConfigPath", config.cloudConfig,
 	}
-	klog.InfoS("  Use AKS creds with ACS    : %t", config.useAksCredentialsWithAcs)
-	klog.InfoS("  Docker inspection timeout : %d", config.dockerImageInspectionTimeout)
-	klog.InfoS("  Cloud config path         : %s", config.cloudConfig)
+
+	if config.useAuthService {
+		activeSettings = append(activeSettings,
+			"authServiceName", config.authServiceName,
+			"authServicePort", config.authServicePort,
+			"authServiceInternalPort", config.authServicePortInternal)
+	}
+
+	klog.InfoS("active settings", activeSettings...)
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
@@ -298,8 +309,6 @@ func main() {
 	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, metricsRecorder, internalLogger)
 
 	if config.useAuthService {
-		klog.V(3).InfoS("loading ca to use for mtls and auth service")
-
 		caCertDir := viper.GetString("ca_cert_dir")
 		if caCertDir == "" {
 			klog.InfoS("missing env var - must exist to use auth service", "env", "CA_CERT_DIR")
@@ -385,10 +394,10 @@ func main() {
 
 	if config.serveMetrics {
 		httpMux.Handle("/metrics", promhttp.Handler())
-		klog.V(2).InfoS("serving metrics endpoint", "path", fmt.Sprintf("%s/metrics", httpURL))
+		klog.InfoS("serving metrics endpoint", "path", fmt.Sprintf("%s/metrics", httpURL))
 	}
 	httpMux.HandleFunc("/healthz", healthHandler)
-	klog.V(2).InfoS("serving health endpoint", "path", fmt.Sprintf("%s/healthz", httpURL))
+	klog.InfoS("serving health endpoint", "path", fmt.Sprintf("%s/healthz", httpURL))
 
 	go func() {
 		err := http.ListenAndServe(httpURL, httpMux)

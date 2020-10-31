@@ -99,13 +99,13 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 
 	for i, container := range containers {
 		useAuthService := config.useAuthService
-		klog.V(2).InfoS("found container to mutate", "container", klog.KRef(namespace, container.Name))
+		klog.InfoS("found container to mutate", "container", klog.KRef(namespace, container.Name))
 
 		var envVars []corev1.EnvVar
-		klog.V(2).InfoS("checking for env vars to inject", "container", klog.KRef(namespace, container.Name))
+		klog.InfoS("checking for env vars to inject", "container", klog.KRef(namespace, container.Name))
 		for _, env := range container.Env {
 			if strings.Contains(env.Value, envVarReplacementKey) {
-				klog.V(2).InfoS("found env var to inject", "env", env.Value, "container", klog.KRef(namespace, container.Name))
+				klog.InfoS("found env var to inject", "env", env.Value, "container", klog.KRef(namespace, container.Name))
 				envVars = append(envVars, env)
 			}
 
@@ -115,7 +115,7 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 					return false, fmt.Errorf("failed to parse container env var override for auth service, error: %+v", err)
 				}
 				if containerDisabledAuthService {
-					klog.V(2).InfoS("container has disabled auth service", "container", klog.KRef(namespace, container.Name))
+					klog.InfoS("container has disabled auth service", "container", klog.KRef(namespace, container.Name))
 					useAuthService = false
 				}
 			}
@@ -132,7 +132,7 @@ func mutateContainers(clientset kubernetes.Interface, containers []corev1.Contai
 		}
 
 		autoArgsStr := strings.Join(autoArgs, " ")
-		klog.V(2).InfoS("found container arguments to use for env-injector", "cmd", autoArgsStr, "container", klog.KRef(namespace, container.Name))
+		klog.InfoS("found container arguments to use for env-injector", "cmd", autoArgsStr, "container", klog.KRef(namespace, container.Name))
 
 		privKey, pubKey, err := newKeyPair()
 		if err != nil {
@@ -312,10 +312,10 @@ func mutatePodSpec(pod *corev1.Pod, namespace string, mutationID types.UID) erro
 	if initContainersMutated || containersMutated {
 		podSpec.InitContainers = append(getInitContainers(), podSpec.InitContainers...)
 		podSpec.Volumes = append(podSpec.Volumes, getVolumes(authServiceSecret)...)
-		klog.V(2).InfoS("containers mutated and pod updated with init-container and volumes", "pod", klog.KRef(namespace, pod.Name))
+		klog.InfoS("containers mutated and pod updated with init-container and volumes", "pod", klog.KRef(namespace, pod.Name))
 		podsMutatedCounter.Inc()
 	} else {
-		klog.V(2).InfoS("no containers mutated", "pod", klog.KRef(namespace, pod.Name))
+		klog.InfoS("no containers mutated", "pod", klog.KRef(namespace, pod.Name))
 	}
 
 	return nil

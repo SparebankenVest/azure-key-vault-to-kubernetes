@@ -96,7 +96,7 @@ func NewAzureMultiKeySecretHandler(secretSpec *akv.AzureKeyVaultSecret, vaultSer
 // Handle getting and formating Azure Key Vault Secret from Azure Key Vault to Kubernetes
 func (h *azureSecretHandler) HandleSecret() (map[string][]byte, error) {
 	if h.secretSpec.Spec.Vault.Object.Type == akv.AzureKeyVaultObjectTypeMultiKeyValueSecret && h.secretSpec.Spec.Output.Secret.DataKey != "" {
-		klog.V(2).InfoS("output data key ignored - vault object type is multi key and will use its own keys", klog.KObj(h.secretSpec))
+		klog.InfoS("output data key ignored - vault object type is multi key and will use its own keys", klog.KObj(h.secretSpec))
 	}
 
 	values := make(map[string][]byte)
@@ -143,7 +143,7 @@ func (h *azureSecretHandler) HandleSecret() (map[string][]byte, error) {
 // Handle getting and formating Azure Key Vault Secret from Azure Key Vault to Kubernetes
 func (h *azureSecretHandler) HandleConfigMap() (map[string]string, error) {
 	if h.secretSpec.Spec.Vault.Object.Type == akv.AzureKeyVaultObjectTypeMultiKeyValueSecret && h.secretSpec.Spec.Output.ConfigMap.DataKey != "" {
-		klog.V(2).InfoS("output data key ignored - vault object type is multi key and will use its own keys", klog.KObj(h.secretSpec))
+		klog.InfoS("output data key ignored - vault object type is multi key and will use its own keys", klog.KObj(h.secretSpec))
 	}
 
 	values := make(map[string]string)

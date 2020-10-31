@@ -62,7 +62,7 @@ func (k *ContainerInfo) Collect(container *corev1.Container, podSpec *corev1.Pod
 		}
 
 		if found {
-			klog.V(2).InfoS("found credentials for registry in imagePullSecrets", "registry", k.RegistryName, "namespace", k.Namespace, "pullSecret", imagePullSecret.Name)
+			klog.InfoS("found credentials for registry in imagePullSecrets", "registry", k.RegistryName, "namespace", k.Namespace, "pullSecret", imagePullSecret.Name)
 			break
 		}
 	}
@@ -89,7 +89,7 @@ func (k *ContainerInfo) Collect(container *corev1.Container, podSpec *corev1.Pod
 		}
 
 		if !found {
-			klog.V(2).InfoS("found no credentials for registry, assuming it is public", "registry", k.RegistryAddress)
+			klog.InfoS("found no credentials for registry, assuming it is public", "registry", k.RegistryAddress)
 		}
 	}
 	return nil

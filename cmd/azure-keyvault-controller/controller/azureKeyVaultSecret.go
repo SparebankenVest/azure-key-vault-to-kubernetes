@@ -222,7 +222,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 		if akvs.Status.SecretHash != secretHash {
 			klog.V(4).InfoS("value has changed in azure key vault", "before", akvs.Status.SecretHash, "now", secretHash, "azurekeyvaultsecret", klog.KObj(akvs))
 
-			klog.V(2).InfoS("updating with recent changes from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KRef(akvs.Namespace, akvs.Spec.Output.Secret.Name))
+			klog.InfoS("updating with recent changes from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KRef(akvs.Namespace, akvs.Spec.Output.Secret.Name))
 			existingSecret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Get(context.TODO(), akvs.Spec.Output.Secret.Name, metav1.GetOptions{})
 			if err != nil {
 				return fmt.Errorf("failed to get existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
@@ -239,7 +239,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			}
 
 			secretName = secret.Name
-			klog.V(2).InfoS("secret changed - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(secret), "secret", klog.KObj(akvs))
+			klog.InfoS("secret changed - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(secret), "secret", klog.KObj(akvs))
 		}
 	}
 
@@ -258,7 +258,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 		if akvs.Status.ConfigMapHash != cmHash {
 			klog.V(4).InfoS("value has changed in azure key vault", "before", akvs.Status.SecretHash, "now", secretHash, "azurekeyvaultsecret", klog.KObj(akvs))
 
-			klog.V(2).InfoS("updating with recent changes from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KRef(akvs.Namespace, akvs.Spec.Output.ConfigMap.Name))
+			klog.InfoS("updating with recent changes from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KRef(akvs.Namespace, akvs.Spec.Output.ConfigMap.Name))
 			existingCm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Get(context.TODO(), akvs.Spec.Output.ConfigMap.Name, metav1.GetOptions{})
 			if err != nil {
 				return fmt.Errorf("failed to get existing configmap %s, error: %+v", akvs.Spec.Output.ConfigMap.Name, err)
@@ -275,7 +275,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			}
 
 			cmName = cm.Name
-			klog.V(2).InfoS("configmap changed - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
+			klog.InfoS("configmap changed - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 		}
 	}
 
@@ -483,7 +483,7 @@ func handleKeyVaultError(err error, key string) bool {
 	if err != nil {
 		// The AzureKeyVaultSecret resource may no longer exist, in which case we stop processing.
 		if errors.IsNotFound(err) {
-			klog.V(2).InfoS("azurekeyvaultsecret in work queue no longer exists", "key", key)
+			klog.InfoS("azurekeyvaultsecret in work queue no longer exists", "key", key)
 			exit = true
 		}
 	}
