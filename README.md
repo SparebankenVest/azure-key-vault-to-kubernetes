@@ -30,18 +30,20 @@
   
 <p align="center"><i>Azure Key Vault to Kubernetes (akv2k8s) makes Azure Key Vault secrets, certificates and keys available to your applications in Kubernetes, in a simple and secure way.</i></p> 
 
-<p align="center"><i>Documentation available at <a href="https://akv2k8s.io">https://akv2k8s.io</a> and join our <a href="https://join.slack.com/t/akv2k8s/shared_invite/zt-gsptc7if-g_lW4jHrYVrLGMX0MdYw_g">Slack Workspace</a> to ask questions to the akv2k8s community.</i></p>
+<p align="center"><i>Documentation available at <a href="https://akv2k8s.io">https://akv2k8s.io</a>. Join our <a href="https://join.slack.com/t/akv2k8s/shared_invite/zt-gsptc7if-g_lW4jHrYVrLGMX0MdYw_g">Slack Workspace</a> to ask questions to the akv2k8s community.</i></p>
+
+<p align="center"><i>Please spare one minute to take our survey: <a href="https://www.surveymonkey.com/r/HMFZVYR">https://www.surveymonkey.com/r/HMFZVYR</a>. Why? We have no ide how many are using Akv2k8s, except through user interaction here on GitHub. More importantly - what can we do to make Akv2k8s even better?</i></p>
 
 ## Overview
 
-Azure Key Vault to Kubernetes (akv2k8s) has two components for handling Azure Key Vault Secrets in Kubernetes:
+Azure Key Vault to Kubernetes (akv2k8s) will make Azure Key Vault objects available to Kubernetes in two ways:
 
-* Azure Key Vault Controller
-* Azure Key Vault Env Injector
+* As native Kubernetes `Secret`s 
+* As environment variables directly injected into your Container application
 
-The **Azure Key Vault Controller** (Controller for short) is for synchronizing Secrets, Certificates and Keys from Azure Key Vault to native `Secret`'s in Kubernetes.
+The **Azure Key Vault Controller** (Controller for short) is responsible for synchronizing Secrets, Certificates and Keys from Azure Key Vault to native `Secret`'s in Kubernetes.
 
-The **Azure Key Vault Env Injector** (Env Injector for short) is a Kubernetes Mutating Webhook transparently injecting Azure Key Vault secrets as environment variables into programs running in containers, without touching disk or in any other way expose the actual secret content outside the program.
+The **Azure Key Vault Env Injector** (Env Injector for short) is responsible for transparently injecting Azure Key Vault secrets as environment variables into Container applications, without touching disk or expose the actual secret to Kubernetes.
 
 ## Goals
 
