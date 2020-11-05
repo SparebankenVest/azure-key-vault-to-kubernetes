@@ -17,11 +17,11 @@ limitations under the License.
 package controller
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
+	fakeVault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client/fake"
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestNullLookup(t *testing.T) {
@@ -50,31 +50,11 @@ someKey: someValue
 someOtherKey: someOtherValue`
 )
 
-type fakeAkvsService struct {
-}
-
-func (s *fakeAkvsService) GetSecret(secret *akv.AzureKeyVault) (string, error) {
-	switch secret.Object.Type {
-	case akv.AzureKeyVaultObjectTypeSecret:
-		return fakeSecret, nil
-	case akv.AzureKeyVaultObjectTypeMultiKeyValueSecret:
-		return fakeJsonSecret, nil
-	default:
-		return nil, fmt.Errorf("secret type not supported")
-	}
-}
-
-func (s *fakeAkvsService) GetKey(secret *akv.AzureKeyVault) (string, error) {
-	return "some key", nil
-}
-
-func (s *fakeAkvsService) GetCertificate(secret *akv.AzureKeyVault, options *client.CertificateOptions) (*client.Certificate, error) {
-	return nil, nil
-}
-
-func TestGetAkvs(t *testing.T) {
+func TestSyncAzureKeyVaultMultiKeyVauleJson(t *testing.T) {
 	c := &Controller{
-		vaultService: &fakeAkvsService{},
+		vaultService: &fakeVault.AkvsService{
+			FakeSecret: fakeJsonSecret,
+		},
 	}
 
 	akvs := &akv.AzureKeyVaultSecret{
@@ -92,7 +72,120 @@ func TestGetAkvs(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if len(res) > 0 {
+	if len(res) != 2 {
+		t.Error("expected secret with two keys")
+	}
 
+	key, ok := res["someKey"]
+	if !ok {
+		t.Error("expected key 'someKey'")
+	}
+
+	if string(key) != "someValue" {
+		t.Error("expected value of key 'someKey' to be 'someValue'")
+	}
+
+	key, ok = res["someOtherKey"]
+	if !ok {
+		t.Error("expected key 'someOtherKey'")
+	}
+
+	if string(key) != "someOtherValue" {
+		t.Error("expected value of key 'someOtherKey' to be 'someOtherValue'")
+	}
+}
+
+func TestSyncAzureKeyVaultMultiKeyVauleYaml(t *testing.T) {
+	c := &Controller{
+		vaultService: &fakeVault.AkvsService{
+			FakeSecret: fakeYamlSecret,
+		},
+	}
+
+	akvs := &akv.AzureKeyVaultSecret{
+		Spec: akv.AzureKeyVaultSecretSpec{
+			Vault: akv.AzureKeyVault{
+				Object: akv.AzureKeyVaultObject{
+					Type:        akv.AzureKeyVaultObjectTypeMultiKeyValueSecret,
+					ContentType: akv.AzureKeyVaultObjectContentTypeYaml,
+				},
+			},
+		},
+	}
+
+	res, err := c.getSecretFromKeyVault(akvs)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(res) != 2 {
+		t.Error("expected secret with two keys")
+	}
+
+	key, ok := res["someKey"]
+	if !ok {
+		t.Error("expected key 'someKey'")
+	}
+
+	if string(key) != "someValue" {
+		t.Error("expected value of key 'someKey' to be 'someValue'")
+	}
+
+	key, ok = res["someOtherKey"]
+	if !ok {
+		t.Error("expected key 'someOtherKey'")
+	}
+
+	if string(key) != "someOtherValue" {
+		t.Error("expected value of key 'someOtherKey' to be 'someOtherValue'")
+	}
+}
+
+func TestSyncAzureKeyVaultMultiKeyVauleDoesNotAllowOutputSecretType(t *testing.T) {
+	c := &Controller{
+		vaultService: &fakeVault.AkvsService{
+			FakeSecret: fakeYamlSecret,
+		},
+	}
+
+	akvs := &akv.AzureKeyVaultSecret{
+		Spec: akv.AzureKeyVaultSecretSpec{
+			Vault: akv.AzureKeyVault{
+				Object: akv.AzureKeyVaultObject{
+					Type:        akv.AzureKeyVaultObjectTypeMultiKeyValueSecret,
+					ContentType: akv.AzureKeyVaultObjectContentTypeYaml,
+				},
+			},
+			Output: akv.AzureKeyVaultOutput{
+				Secret: akv.AzureKeyVaultOutputSecret{
+					Type: corev1.SecretTypeDockercfg,
+				},
+			},
+		},
+	}
+
+	res, err := c.getSecretFromKeyVault(akvs)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(res) != 2 {
+		t.Error("expected secret with two keys")
+	}
+
+	key, ok := res["someKey"]
+	if !ok {
+		t.Error("expected key 'someKey'")
+	}
+
+	if string(key) != "someValue" {
+		t.Error("expected value of key 'someKey' to be 'someValue'")
+	}
+
+	key, ok = res["someOtherKey"]
+	if !ok {
+		t.Error("expected key 'someOtherKey'")
+	}
+
+	if string(key) != "someOtherValue" {
+		t.Error("expected value of key 'someOtherKey' to be 'someOtherValue'")
 	}
 }
