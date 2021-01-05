@@ -19,77 +19,95 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strconv"
+	"sync"
+	"time"
 
-	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azurekeyvault/client"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
 	whhttp "github.com/slok/kubewebhook/pkg/http"
 	internalLog "github.com/slok/kubewebhook/pkg/log"
 	"github.com/slok/kubewebhook/pkg/observability/metrics"
 	whcontext "github.com/slok/kubewebhook/pkg/webhook/context"
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
+	"k8s.io/client-go/tools/clientcmd"
+	jsonlogs "k8s.io/component-base/logs/json"
+	"k8s.io/klog/v2"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 const (
-	dockerHubHost      = "index.docker.io"
-	oldDockerHubHost   = "docker.io"
-	injectorDir        = "/azure-keyvault/"
-	injectorExecutable = "azure-keyvault-env"
-	clientCertDir      = "/client-cert/"
+	dockerHubHost           = "index.docker.io"
+	oldDockerHubHost        = "docker.io"
+	injectorExecutable      = "azure-keyvault-env"
+	clientCertDir           = "/var/client-cert/"
+	initContainerVolumeName = "azure-keyvault-env"
 )
 
 type azureKeyVaultConfig struct {
-	port                string
-	caPort              string
-	customAuth          bool
-	namespace           string
-	aadPodBindingLabel  string
-	dockerPullTimeout   int
-	cloudConfigHostPath string
-	serveMetrics        bool
-	metricsPort         string
-	certFile            string
-	keyFile             string
-	caFile              string
-	useAuthService      bool
-	// nameLocallyOverrideAuthService string
-	authServiceName string
-	authServicePort string
-	kubeClient      *kubernetes.Clientset
-	credentials     vault.AzureKeyVaultCredentials
+	port                         string
+	cloudConfig                  string
+	serveMetrics                 bool
+	httpPort                     string
+	tlsCertFile                  string
+	tlsKeyFile                   string
+	caCert                       []byte
+	caKey                        []byte
+	authType                     string
+	useAuthService               bool
+	dockerImageInspectionTimeout int
+	useAksCredentialsWithAcr     bool
+	authServiceName              string
+	authServicePort              string
+	authServicePortInternal      string
+	kubeClient                   *kubernetes.Clientset
+	credentials                  credentialprovider.AzureKeyVaultCredentials
+	versionEnvImage              string
+	kubeconfig                   string
+	masterURL                    string
+	injectorDir                  string
+}
+
+type cmdParams struct {
+	version         string
+	versionEnvImage string
+	kubeconfig      string
+	masterURL       string
+	cloudConfig     string
+	logFormat       string
 }
 
 var config azureKeyVaultConfig
+var params cmdParams
 
 var (
 	podsMutatedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "akv2k8s_pod_mutations_total",
 		Help: "The total number of pods mutated",
 	})
-)
 
-var (
 	podsInspectedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "akv2k8s_pod_inspections_total",
 		Help: "The total number of pods inspected, including mutated",
 	})
-)
 
-var (
 	podsMutatedFailedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "akv2k8s_pod_mutations_failed_total",
 		Help: "The total number of attempted pod mutations that failed",
@@ -98,62 +116,53 @@ var (
 
 const envVarReplacementKey = "@azurekeyvault"
 
-func setLogLevel(logLevel string) {
-	if logLevel == "" {
-		logLevel = log.InfoLevel.String()
-	}
-
-	logrusLevel, err := log.ParseLevel(logLevel)
-	if err != nil {
-		log.Fatalf("error setting log level: %s", err.Error())
-	}
-	log.SetLevel(logrusLevel)
-}
+// func setLogFormat(logFormat string) {
+// 	switch logFormat {
+// 	case "fmt":
+// 		log.SetFormatter(&log.TextFormatter{
+// 			DisableColors: true,
+// 			FullTimestamp: true,
+// 		})
+// 	case "json":
+// 		log.SetFormatter(&log.JSONFormatter{})
+// 	default:
+// 		log.Warnf("Log format %s not supported - using default fmt", logFormat)
+// 	}
+// }
 
 func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 	req := whcontext.GetAdmissionRequest(ctx)
-	config.namespace = req.Namespace
 	var pod *corev1.Pod
 
 	switch v := obj.(type) {
 	case *corev1.Pod:
-		log.Infof("found pod to mutate in namespace '%s'", config.namespace)
+		klog.InfoS("found pod to mutate", "pod", klog.KRef(req.Namespace, req.Name))
 		pod = v
 	default:
 		return false, nil
 	}
 
 	podsInspectedCounter.Inc()
-	err := mutatePodSpec(pod)
 
+	err := mutatePodSpec(pod, req.Namespace, req.UID)
 	if err != nil {
+		klog.ErrorS(err, "failed to mutate", "pod", klog.KRef(req.Namespace, req.Name))
 		podsMutatedFailedCounter.Inc()
 	}
 
 	return false, err
 }
 
-func initConfig() {
-	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
-	viper.SetDefault("custom_docker_pull_timeout", 20)
-	viper.SetDefault("use_auth_service", true)
-	viper.SetDefault("cloud_config_host_path", "/etc/kubernetes/azure.json")
-	viper.SetDefault("metrics_port", "80")
-	viper.SetDefault("port", "443")
-
-	viper.AutomaticEnv()
-}
-
 func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, recorder metrics.Recorder, logger internalLog.Logger) http.Handler {
 	webhook, err := mutating.NewWebhook(config, mutator, nil, nil, logger)
 	if err != nil {
-		log.Errorf("error creating webhook: %s", err)
+		klog.ErrorS(err, "error creating webhook")
 		os.Exit(1)
 	}
 
 	handler, err := whhttp.HandlerFor(webhook)
 	if err != nil {
-		log.Errorf("error creating webhook: %s", err)
+		klog.ErrorS(err, "error creating webhook")
 		os.Exit(1)
 	}
 
@@ -164,13 +173,12 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		vars := mux.Vars(r)
 		pod := podData{
-			name:          vars["pod"],
-			namespace:     vars["namespace"],
-			remoteAddress: r.RemoteAddr,
+			name:      vars["pod"],
+			namespace: vars["namespace"],
 		}
 
 		if pod.name == "" || pod.namespace == "" {
-			log.Errorf("failed to parse url parameters, pod='%s', namespace='%s'", pod.name, pod.namespace)
+			klog.InfoS("failed to parse url parameters", "pod", pod.name, "namespace", pod.namespace)
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
@@ -178,7 +186,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		err := authorize(config.kubeClient, pod)
 
 		if err != nil {
-			log.Errorf("failed to authorize request: %+v", err)
+			klog.ErrorS(err, "failed to authorize request", "pod", pod.name, "namespace", pod.namespace)
 			http.Error(w, "", http.StatusForbidden)
 			return
 		}
@@ -186,14 +194,15 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 
-		log.Infof("served oauth token to '%s/%s' at address '%s'", pod.namespace, pod.name, r.RemoteAddr)
-
 		if err := json.NewEncoder(w).Encode(config.credentials); err != nil {
-			log.Errorf("failed to json encode token, error: %+v", err)
+			klog.ErrorS(err, "failed to json encode token", "pod", pod.name, "namespace", pod.namespace)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			klog.InfoS("served oauth token", "pod", pod.name, "namespace", pod.namespace)
 		}
+
 	} else {
-		log.Error("invalid request method")
+		klog.InfoS("invalid request method")
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 	}
 }
@@ -206,105 +215,262 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleCACert(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		caCert, err := ioutil.ReadFile(config.caFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		w.Write(caCert)
-	} else {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-	}
+func initConfig() {
+	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
+	viper.SetDefault("docker_image_inspection_timeout", 20)
+	viper.SetDefault("docker_image_inspection_use_acs_credentials", true)
+	viper.SetDefault("auth_type", "cloudConfig")
+	viper.SetDefault("use_auth_service", true)
+	viper.SetDefault("metrics_enabled", false)
+	viper.SetDefault("port_http", "80")
+	viper.SetDefault("port", "443")
+	viper.SetDefault("webhook_auth_service_port", "8443")
+	viper.SetDefault("webhook_auth_service_port_internal", "8443")
+	viper.SetDefault("env_injector_exec_dir", "/azure-keyvault/")
+	viper.AutomaticEnv()
 }
 
-func serveCA() {
-	log.Infof("CA cert at http://%s:", config.metricsPort)
-
-	caMux := http.NewServeMux()
-	caMux.HandleFunc("/ca", handleCACert)
-	err := http.ListenAndServe(fmt.Sprintf(":%s", config.caPort), caMux)
-	if err != nil {
-		log.Fatalf("error serving ca cert: %s", err)
-	}
+func init() {
+	flag.StringVar(&params.version, "version", "", "Version of this component.")
+	flag.StringVar(&params.versionEnvImage, "versionenvimage", "", "Version of the env image component.")
+	flag.StringVar(&params.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&params.masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&params.cloudConfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
+	flag.StringVar(&params.logFormat, "logging-format", "text", "Log format - text or json.")
 }
 
 func main() {
-	fmt.Fprintln(os.Stdout, "initializing config...")
-	initConfig()
-	fmt.Fprintln(os.Stdout, "config initialized")
+	klog.InitFlags(nil)
+	defer klog.Flush()
 
-	logLevel := viper.GetString("LOG_LEVEL")
-	setLogLevel(logLevel)
+	flag.Parse()
+
+	initConfig()
+
+	if params.logFormat == "json" {
+		klog.SetLogger(jsonlogs.JSONLogger)
+	}
+
+	akv2k8s.Version = params.version
+
+	// logFormat := viper.GetString("log_format")
+	// setLogFormat(logFormat)
+
+	akv2k8s.LogVersion()
 
 	config = azureKeyVaultConfig{
-		port:                viper.GetString("port"),
-		customAuth:          viper.GetBool("custom_auth"),
-		dockerPullTimeout:   viper.GetInt("custom_docker_pull_timeout"),
-		serveMetrics:        viper.GetBool("metrics_enabled"),
-		metricsPort:         viper.GetString("metrics_port"),
-		certFile:            viper.GetString("tls_cert_file"),
-		keyFile:             viper.GetString("tls_private_key_file"),
-		caFile:              viper.GetString("tls_ca_file"),
-		useAuthService:      viper.GetBool("use_auth_service"),
-		authServiceName:     viper.GetString("webhook_auth_service"),
-		authServicePort:     viper.GetString("webhook_auth_service_port"),
-		cloudConfigHostPath: viper.GetString("cloud_config_host_path"),
+		port:                         viper.GetString("port"),
+		httpPort:                     viper.GetString("port_http"),
+		authType:                     viper.GetString("auth_type"),
+		serveMetrics:                 viper.GetBool("metrics_enabled"),
+		tlsCertFile:                  fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.crt"),
+		tlsKeyFile:                   fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.key"),
+		useAuthService:               viper.GetBool("use_auth_service"),
+		authServiceName:              viper.GetString("webhook_auth_service"),
+		authServicePort:              viper.GetString("webhook_auth_service_port"),
+		authServicePortInternal:      viper.GetString("webhook_auth_service_port_internal"),
+		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
+		useAksCredentialsWithAcr:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
+		injectorDir:                  viper.GetString("env_injector_exec_dir"),
+		versionEnvImage:              params.versionEnvImage,
+		cloudConfig:                  params.cloudConfig,
 	}
+
+	activeSettings := []interface{}{
+		"webhookPort", config.port,
+		"serveMetrics", config.serveMetrics,
+		"authType", config.authType,
+		"useAuthService", config.useAuthService,
+		"useAksCredsWithAcr", config.useAksCredentialsWithAcr,
+		"dockerInspectionTimeout", config.dockerImageInspectionTimeout,
+		"cloudConfigPath", config.cloudConfig,
+	}
+
+	if config.useAuthService {
+		activeSettings = append(activeSettings,
+			"authServiceName", config.authServiceName,
+			"authServicePort", config.authServicePort,
+			"authServiceInternalPort", config.authServicePortInternal)
+	}
+
+	klog.InfoS("active settings", activeSettings...)
 
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
 
-	internalLogger := &internalLog.Std{Debug: logLevel == "debug" || logLevel == "trace"}
+	logLevel := flag.Lookup("v").Value.String()
+	klogLevel, err := strconv.Atoi(logLevel)
+	if err != nil {
+		klog.ErrorS(err, "failed to parse log level")
+		klogLevel = 2
+	}
+
+	internalLogger := &internalLog.Std{Debug: klogLevel >= 4}
 	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, metricsRecorder, internalLogger)
 
-	var err error
-	if config.customAuth {
-		config.credentials, err = vault.NewAzureKeyVaultCredentialsFromEnvironment()
-		if err != nil {
-			log.Fatal(err)
+	if config.useAuthService {
+		caCertDir := viper.GetString("ca_cert_dir")
+		if caCertDir == "" {
+			klog.InfoS("missing env var - must exist to use auth service", "env", "CA_CERT_DIR")
+			os.Exit(1)
 		}
-	} else {
-		config.credentials, err = vault.NewAzureKeyVaultCredentialsFromCloudConfig(config.cloudConfigHostPath)
+
+		caCertFile := filepath.Join(caCertDir, "tls.crt")
+		caKeyFile := filepath.Join(caCertDir, "tls.key")
+
+		config.caCert, err = ioutil.ReadFile(caCertFile)
 		if err != nil {
-			log.Fatal(err)
+			klog.ErrorS(err, "failed to read pem file for ca cert", "file", caCertFile)
+			os.Exit(1)
+		}
+
+		config.caKey, err = ioutil.ReadFile(caKeyFile)
+		if err != nil {
+			klog.ErrorS(err, "failed to read pem file for ca key", "file", caKeyFile)
+			os.Exit(1)
 		}
 	}
 
-	cfg, err := rest.InClusterConfig()
+	if config.authType != "cloudConfig" {
+		klog.V(4).InfoS("not using cloudConfig for auth - looking for azure key vault credentials in envrionment")
+		cProvider, err := credentialprovider.NewFromEnvironment()
+		if err != nil {
+			klog.ErrorS(err, "failed to create credentials provider from environment for azure key vault")
+			os.Exit(1)
+		}
+
+		config.credentials, err = cProvider.GetAzureKeyVaultCredentials()
+		if err != nil {
+			klog.ErrorS(err, "failed to get credentials for azure key vault")
+			os.Exit(1)
+		}
+
+	} else {
+		klog.V(4).InfoS("using cloudConfig for auth - reading credentials", "file", config.cloudConfig)
+		f, err := os.Open(config.cloudConfig)
+		if err != nil {
+			klog.ErrorS(err, "failed to read azure config", "file", config.cloudConfig)
+			os.Exit(1)
+		}
+		defer f.Close()
+
+		cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
+		if err != nil {
+			klog.ErrorS(err, "failed to create cloud config provider for azure key vault", "file", config.cloudConfig)
+			os.Exit(1)
+		}
+
+		config.credentials, err = cloudCnfProvider.GetAzureKeyVaultCredentials()
+		if err != nil {
+			klog.ErrorS(err, "failed to get azure key vault credentials", "file", config.cloudConfig)
+			os.Exit(1)
+		}
+	}
+
+	klog.V(4).InfoS("checking credentials by getting authorizer from credentials")
+	_, err = config.credentials.Authorizer()
 	if err != nil {
-		log.Fatalf("failed to get kubernetes in cluster config, error: %+v", err)
+		klog.ErrorS(err, "failed to get authorizer from azure key vault credentials")
+		os.Exit(1)
+	}
+
+	cfg, err := clientcmd.BuildConfigFromFlags(params.masterURL, params.kubeconfig)
+	if err != nil {
+		klog.ErrorS(err, "failed to build kube config", "master", params.masterURL, "kubeconfig", params.kubeconfig)
+		os.Exit(1)
 	}
 
 	config.kubeClient, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
-		log.Fatalf("Error building kubernetes clientset: %s", err.Error())
+		klog.ErrorS(err, "failed to build kube clientset", "master", params.masterURL, "kubeconfig", params.kubeconfig)
+		os.Exit(1)
 	}
 
-	log.Infof("Serving unencrypted traffic at http://:%s", config.metricsPort)
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
 
 	httpMux := http.NewServeMux()
+	httpURL := fmt.Sprintf(":%s", config.httpPort)
+
 	if config.serveMetrics {
 		httpMux.Handle("/metrics", promhttp.Handler())
+		klog.InfoS("serving metrics endpoint", "path", fmt.Sprintf("%s/metrics", httpURL))
 	}
-	httpMux.HandleFunc("/ca", handleCACert)
 	httpMux.HandleFunc("/healthz", healthHandler)
+	klog.InfoS("serving health endpoint", "path", fmt.Sprintf("%s/healthz", httpURL))
 
 	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%s", config.metricsPort), httpMux)
+		err := http.ListenAndServe(httpURL, httpMux)
 		if err != nil {
-			log.Fatalf("error serving on port %s: %s", config.metricsPort, err)
+			klog.ErrorS(err, "error serving metrics", "port", httpURL)
+			os.Exit(1)
 		}
+		wg.Done()
 	}()
 
 	router := mux.NewRouter()
-	router.Handle("/pods", podHandler)
-	router.HandleFunc("/auth/{namespace}/{pod}", authHandler)
-	router.HandleFunc("/healthz", healthHandler)
+	tlsURL := fmt.Sprintf(":%s", config.port)
 
-	log.Infof("Serving TLS encrypted traffic at https://:%s", config.port)
-	err = http.ListenAndServeTLS(fmt.Sprintf(":%s", config.port), config.certFile, config.keyFile, router)
-	if err != nil {
-		log.Fatalf("error serving webhook: %+v", err)
+	router.Handle("/pods", podHandler)
+	klog.InfoS("serving encrypted webhook endpoint", "path", fmt.Sprintf("%s/pods", tlsURL))
+
+	router.HandleFunc("/healthz", healthHandler)
+	klog.InfoS("serving encrypted healthz endpoint", "path", fmt.Sprintf("%s/healthz", tlsURL))
+
+	if config.useAuthService {
+		wg.Add(1)
+		authURL := fmt.Sprintf(":%s", config.authServicePortInternal)
+		authRouter := mux.NewRouter()
+
+		authRouter.HandleFunc("/auth/{namespace}/{pod}", authHandler)
+		authServer := createServerWithMTLS(config.caCert, authRouter, authURL)
+		klog.InfoS("serving encrypted auth endpoint", "path", fmt.Sprintf("%s/auth", authURL))
+
+		go func() {
+			err := authServer.ListenAndServeTLS(config.tlsCertFile, config.tlsKeyFile)
+			if err != nil {
+				klog.ErrorS(err, "error serving auth", "port", authURL)
+				os.Exit(1)
+			}
+			wg.Done()
+		}()
+	}
+
+	go func() {
+		server := createServer(router, tlsURL, nil)
+		err := server.ListenAndServeTLS(config.tlsCertFile, config.tlsKeyFile)
+		if err != nil {
+			klog.ErrorS(err, "error serving endpoint", "port", tlsURL)
+			os.Exit(1)
+		}
+		wg.Done()
+	}()
+
+	wg.Wait()
+}
+
+func createServerWithMTLS(caCert []byte, router http.Handler, url string) *http.Server {
+	clientCertPool := x509.NewCertPool()
+	clientCertPool.AppendCertsFromPEM(caCert)
+
+	tlsConfig := &tls.Config{
+		ClientAuth:               tls.RequireAndVerifyClientCert,
+		ClientCAs:                clientCertPool,
+		PreferServerCipherSuites: true,
+		MinVersion:               tls.VersionTLS12,
+	}
+
+	tlsConfig.BuildNameToCertificate()
+
+	return createServer(router, url, tlsConfig)
+}
+
+func createServer(router http.Handler, url string, tlsConfig *tls.Config) *http.Server {
+	return &http.Server{
+		Addr:         url,
+		TLSConfig:    tlsConfig,
+		Handler:      router,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
 	}
 }

@@ -24,6 +24,7 @@ package azurekeyvault
 import (
 	v1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions/azurekeyvault/v1"
 	v1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions/azurekeyvault/v1alpha1"
+	v2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions/azurekeyvault/v2beta1"
 	internalinterfaces "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/informers/externalversions/internalinterfaces"
 )
 
@@ -33,6 +34,8 @@ type Interface interface {
 	V1alpha1() v1alpha1.Interface
 	// V1 provides access to shared informers for resources in V1.
 	V1() v1.Interface
+	// V2beta1 provides access to shared informers for resources in V2beta1.
+	V2beta1() v2beta1.Interface
 }
 
 type group struct {
@@ -54,4 +57,9 @@ func (g *group) V1alpha1() v1alpha1.Interface {
 // V1 returns a new v1.Interface.
 func (g *group) V1() v1.Interface {
 	return v1.New(g.factory, g.namespace, g.tweakListOptions)
+}
+
+// V2beta1 returns a new v2beta1.Interface.
+func (g *group) V2beta1() v2beta1.Interface {
+	return v2beta1.New(g.factory, g.namespace, g.tweakListOptions)
 }

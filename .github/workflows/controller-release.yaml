@@ -1,0 +1,26 @@
+name: Release Controller
+
+on:
+  push:
+    tags:
+    - 'controller-[0-9]+.[0-9]+.[0-9]+**'
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@master
+      
+    - name: Version
+      run: make print-v-controller
+
+    - name: Pull images from private repo
+      run: |
+        echo "${{ secrets.PRIVATE_REGISTRY_PASSWORD }}" | docker login -u ${{ secrets.PRIVATE_REGISTRY_USERNAME }} --password-stdin dokken.azurecr.io
+        make pull-controller
+
+    - name: Push images to public repo
+      run: |
+        echo "${{ secrets.PUBLIC_REGISTRY_PASSWORD }}" | docker login -u ${{ secrets.PUBLIC_REGISTRY_USERNAME }} --password-stdin
+        make release-controller DOCKER_RELEASE_TAG=${GITHUB_REF##*/}
+        

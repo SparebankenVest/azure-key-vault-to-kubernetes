@@ -22,8 +22,11 @@ limitations under the License.
 package versioned
 
 import (
-	azurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
-	azurekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
+	"fmt"
+
+	keyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
+	keyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
+	keyvaultv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -31,34 +34,33 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	AzurekeyvaultV1alpha1() azurekeyvaultv1alpha1.AzurekeyvaultV1alpha1Interface
-	AzurekeyvaultV1() azurekeyvaultv1.AzurekeyvaultV1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Azurekeyvault() azurekeyvaultv1.AzurekeyvaultV1Interface
+	KeyvaultV1alpha1() keyvaultv1alpha1.KeyvaultV1alpha1Interface
+	KeyvaultV1() keyvaultv1.KeyvaultV1Interface
+	KeyvaultV2beta1() keyvaultv2beta1.KeyvaultV2beta1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	azurekeyvaultV1alpha1 *azurekeyvaultv1alpha1.AzurekeyvaultV1alpha1Client
-	azurekeyvaultV1       *azurekeyvaultv1.AzurekeyvaultV1Client
+	keyvaultV1alpha1 *keyvaultv1alpha1.KeyvaultV1alpha1Client
+	keyvaultV1       *keyvaultv1.KeyvaultV1Client
+	keyvaultV2beta1  *keyvaultv2beta1.KeyvaultV2beta1Client
 }
 
-// AzurekeyvaultV1alpha1 retrieves the AzurekeyvaultV1alpha1Client
-func (c *Clientset) AzurekeyvaultV1alpha1() azurekeyvaultv1alpha1.AzurekeyvaultV1alpha1Interface {
-	return c.azurekeyvaultV1alpha1
+// KeyvaultV1alpha1 retrieves the KeyvaultV1alpha1Client
+func (c *Clientset) KeyvaultV1alpha1() keyvaultv1alpha1.KeyvaultV1alpha1Interface {
+	return c.keyvaultV1alpha1
 }
 
-// AzurekeyvaultV1 retrieves the AzurekeyvaultV1Client
-func (c *Clientset) AzurekeyvaultV1() azurekeyvaultv1.AzurekeyvaultV1Interface {
-	return c.azurekeyvaultV1
+// KeyvaultV1 retrieves the KeyvaultV1Client
+func (c *Clientset) KeyvaultV1() keyvaultv1.KeyvaultV1Interface {
+	return c.keyvaultV1
 }
 
-// Deprecated: Azurekeyvault retrieves the default version of AzurekeyvaultClient.
-// Please explicitly pick a version.
-func (c *Clientset) Azurekeyvault() azurekeyvaultv1.AzurekeyvaultV1Interface {
-	return c.azurekeyvaultV1
+// KeyvaultV2beta1 retrieves the KeyvaultV2beta1Client
+func (c *Clientset) KeyvaultV2beta1() keyvaultv2beta1.KeyvaultV2beta1Interface {
+	return c.keyvaultV2beta1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -70,18 +72,27 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 }
 
 // NewForConfig creates a new Clientset for the given config.
+// If config's RateLimiter is not set and QPS and Burst are acceptable,
+// NewForConfig will generate a rate-limiter in configShallowCopy.
 func NewForConfig(c *rest.Config) (*Clientset, error) {
 	configShallowCopy := *c
 	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
+		if configShallowCopy.Burst <= 0 {
+			return nil, fmt.Errorf("burst is required to be greater than 0 when RateLimiter is not set and QPS is set to greater than 0")
+		}
 		configShallowCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configShallowCopy.QPS, configShallowCopy.Burst)
 	}
 	var cs Clientset
 	var err error
-	cs.azurekeyvaultV1alpha1, err = azurekeyvaultv1alpha1.NewForConfig(&configShallowCopy)
+	cs.keyvaultV1alpha1, err = keyvaultv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
-	cs.azurekeyvaultV1, err = azurekeyvaultv1.NewForConfig(&configShallowCopy)
+	cs.keyvaultV1, err = keyvaultv1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
+	cs.keyvaultV2beta1, err = keyvaultv2beta1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -97,8 +108,9 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.azurekeyvaultV1alpha1 = azurekeyvaultv1alpha1.NewForConfigOrDie(c)
-	cs.azurekeyvaultV1 = azurekeyvaultv1.NewForConfigOrDie(c)
+	cs.keyvaultV1alpha1 = keyvaultv1alpha1.NewForConfigOrDie(c)
+	cs.keyvaultV1 = keyvaultv1.NewForConfigOrDie(c)
+	cs.keyvaultV2beta1 = keyvaultv2beta1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -107,8 +119,9 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.azurekeyvaultV1alpha1 = azurekeyvaultv1alpha1.New(c)
-	cs.azurekeyvaultV1 = azurekeyvaultv1.New(c)
+	cs.keyvaultV1alpha1 = keyvaultv1alpha1.New(c)
+	cs.keyvaultV1 = keyvaultv1.New(c)
+	cs.keyvaultV2beta1 = keyvaultv2beta1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

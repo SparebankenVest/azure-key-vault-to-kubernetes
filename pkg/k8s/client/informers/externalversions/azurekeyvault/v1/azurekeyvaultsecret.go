@@ -22,6 +22,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	time "time"
 
 	azurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
@@ -64,13 +65,13 @@ func NewFilteredAzureKeyVaultSecretInformer(client versioned.Interface, namespac
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AzurekeyvaultV1().AzureKeyVaultSecrets(namespace).List(options)
+				return client.KeyvaultV1().AzureKeyVaultSecrets(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AzurekeyvaultV1().AzureKeyVaultSecrets(namespace).Watch(options)
+				return client.KeyvaultV1().AzureKeyVaultSecrets(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&azurekeyvaultv1.AzureKeyVaultSecret{},

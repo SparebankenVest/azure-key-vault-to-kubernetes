@@ -23,10 +23,12 @@ package fake
 
 import (
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
-	azurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
-	fakeazurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1/fake"
-	azurekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
-	fakeazurekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1/fake"
+	keyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
+	fakekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1/fake"
+	keyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
+	fakekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1/fake"
+	keyvaultv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1"
+	fakekeyvaultv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -46,7 +48,7 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 		}
 	}
 
-	cs := &Clientset{}
+	cs := &Clientset{tracker: o}
 	cs.discovery = &fakediscovery.FakeDiscovery{Fake: &cs.Fake}
 	cs.AddReactor("*", "*", testing.ObjectReaction(o))
 	cs.AddWatchReactor("*", func(action testing.Action) (handled bool, ret watch.Interface, err error) {
@@ -68,25 +70,30 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 type Clientset struct {
 	testing.Fake
 	discovery *fakediscovery.FakeDiscovery
+	tracker   testing.ObjectTracker
 }
 
 func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	return c.discovery
 }
 
+func (c *Clientset) Tracker() testing.ObjectTracker {
+	return c.tracker
+}
+
 var _ clientset.Interface = &Clientset{}
 
-// AzurekeyvaultV1alpha1 retrieves the AzurekeyvaultV1alpha1Client
-func (c *Clientset) AzurekeyvaultV1alpha1() azurekeyvaultv1alpha1.AzurekeyvaultV1alpha1Interface {
-	return &fakeazurekeyvaultv1alpha1.FakeAzurekeyvaultV1alpha1{Fake: &c.Fake}
+// KeyvaultV1alpha1 retrieves the KeyvaultV1alpha1Client
+func (c *Clientset) KeyvaultV1alpha1() keyvaultv1alpha1.KeyvaultV1alpha1Interface {
+	return &fakekeyvaultv1alpha1.FakeKeyvaultV1alpha1{Fake: &c.Fake}
 }
 
-// AzurekeyvaultV1 retrieves the AzurekeyvaultV1Client
-func (c *Clientset) AzurekeyvaultV1() azurekeyvaultv1.AzurekeyvaultV1Interface {
-	return &fakeazurekeyvaultv1.FakeAzurekeyvaultV1{Fake: &c.Fake}
+// KeyvaultV1 retrieves the KeyvaultV1Client
+func (c *Clientset) KeyvaultV1() keyvaultv1.KeyvaultV1Interface {
+	return &fakekeyvaultv1.FakeKeyvaultV1{Fake: &c.Fake}
 }
 
-// Azurekeyvault retrieves the AzurekeyvaultV1Client
-func (c *Clientset) Azurekeyvault() azurekeyvaultv1.AzurekeyvaultV1Interface {
-	return &fakeazurekeyvaultv1.FakeAzurekeyvaultV1{Fake: &c.Fake}
+// KeyvaultV2beta1 retrieves the KeyvaultV2beta1Client
+func (c *Clientset) KeyvaultV2beta1() keyvaultv2beta1.KeyvaultV2beta1Interface {
+	return &fakekeyvaultv2beta1.FakeKeyvaultV2beta1{Fake: &c.Fake}
 }
