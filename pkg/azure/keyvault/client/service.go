@@ -40,11 +40,11 @@ type Service interface {
 }
 
 type azureKeyVaultService struct {
-	credentials credentialprovider.AzureKeyVaultCredentials
+	credentials *credentialprovider.AzureKeyVaultCredentials
 }
 
 // NewService creates a new AzureKeyVaultService
-func NewService(credentials credentialprovider.AzureKeyVaultCredentials) Service {
+func NewService(credentials *credentialprovider.AzureKeyVaultCredentials) Service {
 	return &azureKeyVaultService{
 		credentials: credentials,
 	}
@@ -121,7 +121,7 @@ func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, opt
 		return nil, fmt.Errorf("failed to get certificate from azure key vault, error: %+v", err)
 	}
 
-	if options != nil && options.ExportPrivateKey {
+	if options.ExportPrivateKey {
 		if !*certBundle.Policy.KeyProperties.Exportable {
 			return nil, fmt.Errorf("cannot export private key because key is not exportable in azure key vault")
 		}

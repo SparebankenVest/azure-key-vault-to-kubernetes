@@ -30,32 +30,27 @@ const (
 	vmTypeStandard = "standard"
 )
 
-type AzureKeyVaultCredentials interface {
-	Authorizer() (autorest.Authorizer, error)
-	Endpoint(keyVaultName string) string
-}
-
 // AzureKeyVaultCredentials has credentials needed to authenticate with azure key vault.
 // These credentials will never expire
-type keyVaultCredentials struct {
+type AzureKeyVaultCredentials struct {
 	ClientID        string
 	Token           *adal.ServicePrincipalToken
 	EndpointPartial string
 }
 
 // Authorizer gets an Authorizer from credentials
-func (c *keyVaultCredentials) Authorizer() (autorest.Authorizer, error) {
+func (c AzureKeyVaultCredentials) Authorizer() (autorest.Authorizer, error) {
 	return createAuthorizerFromServicePrincipalToken(c.Token)
 }
 
 // Endpoint takes the name of the keyvault and creates a correct andpoint url
-func (c *keyVaultCredentials) Endpoint(keyVaultName string) string {
+func (c AzureKeyVaultCredentials) Endpoint(keyVaultName string) string {
 	return fmt.Sprintf(c.EndpointPartial, keyVaultName)
 }
 
 // MarshalJSON will get a fresh oauth token from the service principal token and serialize.
 // This token will expire after the default oauth token lifetime for the service principal.
-func (c *keyVaultCredentials) MarshalJSON() ([]byte, error) {
+func (c AzureKeyVaultCredentials) MarshalJSON() ([]byte, error) {
 	err := c.Token.Refresh()
 	if err != nil {
 		return nil, fmt.Errorf("failed to refresh token before marshalling, error: %+v", err)
@@ -68,7 +63,7 @@ func (c *keyVaultCredentials) MarshalJSON() ([]byte, error) {
 }
 
 // GetAzureKeyVaultCredentials will get Azure credentials
-func (c *UserAssignedManagedIdentityProvider) GetAzureKeyVaultCredentials(azureIdentity string, hostname string) (AzureKeyVaultCredentials, error) {
+func (c UserAssignedManagedIdentityProvider) GetAzureKeyVaultCredentials(azureIdentity string, hostname string) (*AzureKeyVaultCredentials, error) {
 	err := c.aadClient.Init()
 	if err != nil {
 		return nil, err
@@ -103,14 +98,14 @@ func (c *UserAssignedManagedIdentityProvider) GetAzureKeyVaultCredentials(azureI
 		return nil, err
 	}
 
-	return &keyVaultCredentials{
+	return &AzureKeyVaultCredentials{
 		Token:           token,
 		EndpointPartial: endpoint,
 	}, nil
 }
 
 // GetAzureKeyVaultCredentials will get Azure credentials
-func (c CloudConfigCredentialProvider) GetAzureKeyVaultCredentials() (AzureKeyVaultCredentials, error) {
+func (c CloudConfigCredentialProvider) GetAzureKeyVaultCredentials() (*AzureKeyVaultCredentials, error) {
 	resourceSplit := strings.SplitAfterN(c.environment.ResourceIdentifiers.KeyVault, "https://", 2)
 	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
 
@@ -119,14 +114,14 @@ func (c CloudConfigCredentialProvider) GetAzureKeyVaultCredentials() (AzureKeyVa
 		return nil, err
 	}
 
-	return &keyVaultCredentials{
+	return &AzureKeyVaultCredentials{
 		Token:           token,
 		EndpointPartial: endpoint,
 	}, nil
 }
 
 // GetAzureKeyVaultCredentials will get Azure credentials
-func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (AzureKeyVaultCredentials, error) {
+func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (*AzureKeyVaultCredentials, error) {
 	resourceSplit := strings.SplitAfterN(c.envSettings.Environment.ResourceIdentifiers.KeyVault, "https://", 2)
 	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
 

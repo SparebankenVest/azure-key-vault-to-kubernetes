@@ -34,6 +34,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
+	"github.com/spf13/pflag"
 
 	aadProvider "github.com/Azure/aad-pod-identity/pkg/cloudprovider"
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
@@ -42,6 +43,9 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 )
+
+var flagConfigFile = pflag.String("azure-container-registry-config", "",
+	"Path to the file containing Azure container registry configuration information.")
 
 const (
 	maxReadLength = 10 * 1 << 20 // 10MB
@@ -268,7 +272,7 @@ func getServicePrincipalTokenFromMSI(userAssignedIdentityID string, resource str
 	}
 
 	if len(userAssignedIdentityID) > 0 {
-		klog.V(4).InfoS("azure: using User Assigned MSI ID to retrieve access token", "id", userAssignedIdentityID, "url", msiEndpoint)
+		klog.V(4).InfoS("azure: using managed identity extension to retrieve access token", "id", userAssignedIdentityID)
 		token, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(msiEndpoint, resource, userAssignedIdentityID)
 		if err != nil {
 			return nil, fmt.Errorf("failed getting user assigned msi token from endpoint '%s': %+v", msiEndpoint, err)

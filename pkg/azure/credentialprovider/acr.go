@@ -23,7 +23,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
 	dockerTypes "github.com/docker/docker/api/types"
-	"istio.io/pkg/log"
 	"k8s.io/klog/v2"
 )
 
@@ -42,11 +41,11 @@ func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*dockerT
 	}
 
 	if c.config.UseManagedIdentityExtension {
-		log.Debug("using managed identity for acr credentials")
+		klog.V(4).Info("using managed identity for acr credentials")
 		loginServer := parseACRLoginServerFromImage(image, c.environment)
 
 		if loginServer == "" {
-			log.Debugf("image(%s) is not from ACR, skip MSI authentication", image)
+			klog.V(4).InfoS("image is not from ACR, skip MSI authentication", "image", image)
 		} else {
 			token, err := getServicePrincipalTokenFromCloudConfig(c.config, c.environment, c.environment.ServiceManagementEndpoint)
 			if err != nil {
@@ -54,7 +53,7 @@ func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*dockerT
 			}
 
 			if managedCred, err := getACRDockerEntryFromARMToken(c.config.TenantID, *c.environment, token, loginServer); err == nil {
-				log.Debugf("found acr gredentials for %s", loginServer)
+				klog.V(4).InfoS("found acr gredentials", "url", loginServer)
 				return managedCred, nil
 			}
 		}
@@ -82,7 +81,7 @@ func (c EnvironmentCredentialProvider) GetAcrCredentials(image string) (*dockerT
 	loginServer := parseACRLoginServerFromImage(image, &c.envSettings.Environment)
 
 	if loginServer == "" {
-		log.Debugf("image(%s) is not from ACR, skipping authentication", image)
+		klog.V(4).InfoS("image is not from acr, skip msi auth", "image", image)
 	} else {
 		managedCred, err := getACRDockerEntryFromARMToken(creds.tenantID, c.envSettings.Environment, creds.token, loginServer)
 		if err != nil {
@@ -125,7 +124,7 @@ func getACRDockerEntryFromARMToken(tenantID string, env azure.Environment, token
 		return nil, fmt.Errorf("failed to receive challenge: %s", err)
 	}
 
-	log.Debug("exchanging an acr refresh_token")
+	klog.V(4).Info("exchanging an acr refresh_token")
 	registryRefreshToken, err := performTokenExchange(loginServer, directive, tenantID, armAccessToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform token exchange: %s", err)

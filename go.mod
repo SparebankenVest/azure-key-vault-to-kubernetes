@@ -17,16 +17,19 @@ require (
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
+	github.com/sirupsen/logrus v1.6.0
 	github.com/slok/kubewebhook v0.4.0
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	gopkg.in/yaml.v2 v2.3.0
+	istio.io/pkg v0.0.0-20210201164122-c885290aa5be
 	k8s.io/api v0.19.3
 	k8s.io/apimachinery v0.19.3
 	k8s.io/client-go v0.19.3
 	k8s.io/component-base v0.19.3
-	k8s.io/klog/v2 v2.3.1-0.20201028104956-52c62e3b70a9
+	k8s.io/klog/v2 v2.4.0
 	kmodules.xyz/client-go v0.0.0-20200521013203-6fe0a448d053
 	sigs.k8s.io/yaml v1.2.0
 )

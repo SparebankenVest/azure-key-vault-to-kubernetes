@@ -91,7 +91,7 @@ func createPod(name string, namespace string, multipleContainers bool) *corev1.P
 
 	podSpec := corev1.PodSpec{
 		InitContainers: []corev1.Container{
-			corev1.Container{
+			{
 				Name: "copy-azurekeyvault-env",
 			},
 		},

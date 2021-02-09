@@ -78,22 +78,21 @@ type azureKeyVaultConfig struct {
 	authServicePort              string
 	authServicePortInternal      string
 	kubeClient                   *kubernetes.Clientset
-	credentials                  credentialprovider.AzureKeyVaultCredentials
 	versionEnvImage              string
 	kubeconfig                   string
 	masterURL                    string
 	injectorDir                  string
+	credentials                  credentialprovider.Credentials
+	credentialProvider           credentialprovider.CredentialProvider
 }
 
 type cmdParams struct {
-	version            string
-	versionEnvImage    string
-	kubeconfig         string
-	masterURL          string
-	cloudConfig        string
-	logFormat          string
-	credentials        credentialprovider.Credentials
-	credentialProvider credentialprovider.CredentialProvider
+	version         string
+	versionEnvImage string
+	kubeconfig      string
+	masterURL       string
+	cloudConfig     string
+	logFormat       string
 }
 
 var config azureKeyVaultConfig
