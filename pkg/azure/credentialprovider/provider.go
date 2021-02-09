@@ -38,6 +38,8 @@ import (
 
 	aadProvider "github.com/Azure/aad-pod-identity/pkg/cloudprovider"
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
+	version "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
+	dockerTypes "github.com/docker/docker/api/types"
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/yaml"
 )
@@ -49,7 +51,13 @@ const (
 	maxReadLength = 10 * 1 << 20 // 10MB
 )
 
-// CloudConfigCredentialProvider provides credentials for Azure using the cloud config file
+type CredentialProvider interface {
+	GetAzureKeyVaultCredentials() (*AzureKeyVaultCredentials, error)
+	GetAcrCredentials(image string) (*dockerTypes.AuthConfig, error)
+	IsAcrRegistry(image string) bool
+}
+
+// UserAssignedManagedIdentityProvider provides credentials for Azure using managed identity
 type UserAssignedManagedIdentityProvider struct {
 	config      *AzureCloudConfig
 	environment *azure.Environment
@@ -66,6 +74,24 @@ type CloudConfigCredentialProvider struct {
 // EnvironmentCredentialProvider provides credentials for Azure using environment vars
 type EnvironmentCredentialProvider struct {
 	envSettings *azureAuth.EnvironmentSettings
+	// environment *azure.Environment
+}
+
+func FakeCloudConfigProvider() CloudConfigCredentialProvider {
+	return CloudConfigCredentialProvider{
+		config: &AzureCloudConfig{
+			AADClientID:     "abc",
+			AADClientSecret: "abc",
+		},
+	}
+}
+
+func FakeEnvironmentCredentialProvider() EnvironmentCredentialProvider {
+	return EnvironmentCredentialProvider{
+		envSettings: &azureAuth.EnvironmentSettings{
+			Environment: azure.Environment{},
+		},
+	}
 }
 
 // Credentials has credentials needed to authenticate with azure key vault.
@@ -76,7 +102,22 @@ type Credentials interface {
 
 type credentials struct {
 	Token           *adal.ServicePrincipalToken
+	ClientID        string
 	EndpointPartial string
+}
+
+type azureToken struct {
+	clientID string
+	tenantID string
+	token    *adal.ServicePrincipalToken
+}
+
+func init() {
+	err := adal.AddToUserAgent(version.GetUserAgent())
+	if err != nil {
+		// shouldn't fail ever
+		panic(err)
+	}
 }
 
 func NewUserAssignedManagedIdentityProvider(azureConfigFile string) (*UserAssignedManagedIdentityProvider, error) {
@@ -91,7 +132,7 @@ func NewUserAssignedManagedIdentityProvider(azureConfigFile string) (*UserAssign
 }
 
 // NewFromCloudConfig parses the specified configFile and returns a CloudConfigCredentialProvider
-func NewFromCloudConfig(configReader io.Reader) (*CloudConfigCredentialProvider, error) {
+func NewFromCloudConfig(configReader io.Reader) (CredentialProvider, error) {
 	config, err := ParseConfig(configReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed reading cloud config, error: %+v", err)
@@ -148,6 +189,71 @@ func (c credentials) MarshalJSON() ([]byte, error) {
 		OAuthToken:      c.Token.OAuthToken(),
 		EndpointPartial: c.EndpointPartial,
 	})
+}
+
+func getCredentials(envSettings *azureAuth.EnvironmentSettings, resource string) (*azureToken, error) {
+	// ClientID / Secret
+	if creds, err := envSettings.GetClientCredentials(); err == nil {
+		creds.AADEndpoint = envSettings.Environment.ActiveDirectoryEndpoint
+		creds.Resource = resource
+
+		token, err := creds.ServicePrincipalToken()
+		if err != nil {
+			return nil, err
+		}
+
+		return &azureToken{
+			token:    token,
+			clientID: creds.ClientID,
+			tenantID: creds.TenantID,
+		}, nil
+	}
+
+	// Certificate
+	if creds, err := envSettings.GetClientCertificate(); err == nil {
+		creds.AADEndpoint = envSettings.Environment.ActiveDirectoryEndpoint
+		creds.Resource = resource
+
+		token, err := creds.ServicePrincipalToken()
+		if err != nil {
+			return nil, err
+		}
+
+		return &azureToken{
+			token:    token,
+			clientID: creds.ClientID,
+			tenantID: creds.TenantID,
+		}, nil
+	}
+
+	// Username / Password
+	if creds, err := envSettings.GetUsernamePassword(); err == nil {
+		creds.AADEndpoint = envSettings.Environment.ActiveDirectoryEndpoint
+		creds.Resource = resource
+
+		token, err := creds.ServicePrincipalToken()
+		if err != nil {
+			return nil, err
+		}
+
+		return &azureToken{
+			token:    token,
+			clientID: creds.ClientID,
+			tenantID: creds.TenantID,
+		}, nil
+	}
+
+	msi := envSettings.GetMSI()
+
+	token, err := getServicePrincipalTokenFromMSI(msi.ClientID, resource)
+	if err != nil {
+		return nil, err
+	}
+
+	return &azureToken{
+		token:    token,
+		clientID: msi.ClientID,
+	}, nil
 }
 
 func getServicePrincipalTokenFromMSI(userAssignedIdentityID string, resource string) (*adal.ServicePrincipalToken, error) {

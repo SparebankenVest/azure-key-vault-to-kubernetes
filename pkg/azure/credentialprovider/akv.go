@@ -125,76 +125,15 @@ func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (*AzureKeyV
 	resourceSplit := strings.SplitAfterN(c.envSettings.Environment.ResourceIdentifiers.KeyVault, "https://", 2)
 	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
 
-	akvCreds := &AzureKeyVaultCredentials{
+	azureToken, err := getCredentials(c.envSettings, c.envSettings.Environment.ResourceIdentifiers.KeyVault)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AzureKeyVaultCredentials{
+		ClientID:        azureToken.clientID,
+		Token:           azureToken.token,
 		EndpointPartial: endpoint,
-	}
+	}, nil
 
-	// ClientID / Secret
-	if creds, err := c.envSettings.GetClientCredentials(); err == nil {
-		creds.AADEndpoint = c.envSettings.Environment.ActiveDirectoryEndpoint
-		creds.Resource = c.envSettings.Environment.ResourceIdentifiers.KeyVault
-
-		token, err := creds.ServicePrincipalToken()
-		if err != nil {
-			return nil, err
-		}
-
-		akvCreds.ClientID = creds.ClientID
-		akvCreds.Token = token
-		return akvCreds, nil
-	}
-
-	// Certificate
-	if creds, err := c.envSettings.GetClientCertificate(); err == nil {
-		creds.AADEndpoint = c.envSettings.Environment.ActiveDirectoryEndpoint
-		creds.Resource = c.envSettings.Environment.ResourceIdentifiers.KeyVault
-
-		token, err := creds.ServicePrincipalToken()
-		if err != nil {
-			return nil, err
-		}
-		akvCreds.ClientID = creds.ClientID
-		akvCreds.Token = token
-		return akvCreds, nil
-	}
-
-	// Username / Password
-	if creds, err := c.envSettings.GetUsernamePassword(); err == nil {
-		creds.AADEndpoint = c.envSettings.Environment.ActiveDirectoryEndpoint
-		creds.Resource = c.envSettings.Environment.ResourceIdentifiers.KeyVault
-
-		token, err := creds.ServicePrincipalToken()
-		if err != nil {
-			return nil, err
-		}
-		akvCreds.ClientID = creds.ClientID
-		akvCreds.Token = token
-		return akvCreds, nil
-	}
-
-	msi := c.envSettings.GetMSI()
-	msiEndpoint, err := adal.GetMSIVMEndpoint()
-	if err != nil {
-		return nil, err
-	}
-
-	// User-Assigned Managed Identity
-	if msi.ClientID != "" {
-		token, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(msiEndpoint, c.envSettings.Environment.ResourceIdentifiers.KeyVault, msi.ClientID)
-		if err != nil {
-			return nil, err
-		}
-		akvCreds.ClientID = msi.ClientID
-		akvCreds.Token = token
-		return akvCreds, nil
-	}
-
-	// System-Assigned Managed Identity
-	token, err := adal.NewServicePrincipalTokenFromMSI(msiEndpoint, c.envSettings.Environment.ResourceIdentifiers.KeyVault)
-	if err != nil {
-		return nil, err
-	}
-	akvCreds.ClientID = "msi"
-	akvCreds.Token = token
-	return akvCreds, nil
 }

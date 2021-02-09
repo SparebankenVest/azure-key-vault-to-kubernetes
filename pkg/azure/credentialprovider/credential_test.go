@@ -59,6 +59,11 @@ import (
 // 	}
 // }
 
+func TestIntegrationACRTokenAuth(t *testing.T) {
+	akv2k8sTesting.EnsureIntegrationEnvironment(t)
+
+}
+
 func TestIntegrationAuthFromUserAssignedManagedIdentity(t *testing.T) {
 	akv2k8sTesting.EnsureIntegrationEnvironment(t)
 

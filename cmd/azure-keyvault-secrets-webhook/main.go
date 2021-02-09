@@ -71,6 +71,7 @@ type azureKeyVaultConfig struct {
 	caBundleConfigMapName        string
 	kubeClient                   *kubernetes.Clientset
 	credentials                  credentialprovider.Credentials
+	credentialProvider           credentialprovider.CredentialProvider
 }
 
 var config azureKeyVaultConfig
@@ -287,6 +288,7 @@ func main() {
 			log.Fatal(fmt.Errorf("failed to create credentials provider for azure key vault, error %+v", err))
 		}
 
+		config.credentialProvider = cProvider
 		config.credentials, err = cProvider.GetAzureKeyVaultCredentials()
 		if err != nil {
 			log.Fatal(fmt.Errorf("failed to get credentials for azure key vault, error %+v", err))
@@ -305,6 +307,7 @@ func main() {
 			log.Fatalf("Failed reading azure config from %s, error: %+v", config.cloudConfigHostPath, err)
 		}
 
+		config.credentialProvider = cloudCnfProvider
 		config.credentials, err = cloudCnfProvider.GetAzureKeyVaultCredentials()
 		if err != nil {
 			log.Fatal(err)
