@@ -22,7 +22,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"emperror.dev/errors"
@@ -46,7 +45,7 @@ type ContainerInfo struct {
 }
 
 // Collect reads information from k8s and load them into the structure
-func (k *ContainerInfo) Collect(container *corev1.Container, podSpec *corev1.PodSpec, cloudConfigPath string) error {
+func (k *ContainerInfo) Collect(container *corev1.Container, podSpec *corev1.PodSpec, credentialProvider credentialprovider.CredentialProvider) error {
 	k.Image = k.fixDockerHubImage(container.Image)
 
 	var err error
@@ -79,12 +78,12 @@ func (k *ContainerInfo) Collect(container *corev1.Container, podSpec *corev1.Pod
 		k.RegistryAddress = fmt.Sprintf("https://%s", registryName)
 	}
 
-	// Clean registry from image
-	k.Image = strings.TrimPrefix(k.Image, fmt.Sprintf("%s/", k.RegistryName))
+	// // Clean registry from image
+	// k.Image = strings.TrimPrefix(k.Image, fmt.Sprintf("%s/", k.RegistryName))
 
 	if !found {
 		// if still no credentials and it is an ACR image, try to get credentials from Azure
-		if found, err = getAcrCredentials(k, cloudConfigPath); err != nil {
+		if found, err = getAcrCredentials(k, credentialProvider); err != nil {
 			return err
 		}
 
@@ -123,26 +122,9 @@ func (k *ContainerInfo) checkImagePullSecret(namespace string, secret string) (b
 	return found, err
 }
 
-func getAcrCredentials(k *ContainerInfo, cloudConfigPath string) (bool, error) {
-	//Check if cloud config file exists
-	_, err := os.Stat(cloudConfigPath)
-	if err != nil {
-		return false, nil
-	}
-
-	f, err := os.Open(cloudConfigPath)
-	if err != nil {
-		return false, fmt.Errorf("Failed reading azure config from %s, error: %w", cloudConfigPath, err)
-	}
-	defer f.Close()
-
-	cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
-	if err != nil {
-		return false, fmt.Errorf("Failed reading azure config from %s, error: %w", cloudConfigPath, err)
-	}
-
-	if cloudCnfProvider.IsAcrRegistry(k.RegistryAddress) {
-		cred, err := cloudCnfProvider.GetAcrCredentials(k.Image)
+func getAcrCredentials(k *ContainerInfo, credentialProvider credentialprovider.CredentialProvider) (bool, error) {
+	if credentialProvider.IsAcrRegistry(k.Image) {
+		cred, err := credentialProvider.GetAcrCredentials(k.Image)
 		if err != nil {
 			return false, fmt.Errorf("failed getting azure acr credentials, error: %w", err)
 		}

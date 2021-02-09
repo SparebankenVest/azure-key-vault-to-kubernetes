@@ -86,12 +86,14 @@ type azureKeyVaultConfig struct {
 }
 
 type cmdParams struct {
-	version         string
-	versionEnvImage string
-	kubeconfig      string
-	masterURL       string
-	cloudConfig     string
-	logFormat       string
+	version            string
+	versionEnvImage    string
+	kubeconfig         string
+	masterURL          string
+	cloudConfig        string
+	logFormat          string
+	credentials        credentialprovider.Credentials
+	credentialProvider credentialprovider.CredentialProvider
 }
 
 var config azureKeyVaultConfig
@@ -339,6 +341,7 @@ func main() {
 			os.Exit(1)
 		}
 
+		config.credentialProvider = cProvider
 		config.credentials, err = cProvider.GetAzureKeyVaultCredentials()
 		if err != nil {
 			klog.ErrorS(err, "failed to get credentials for azure key vault")
@@ -360,6 +363,7 @@ func main() {
 			os.Exit(1)
 		}
 
+		config.credentialProvider = cloudCnfProvider
 		config.credentials, err = cloudCnfProvider.GetAzureKeyVaultCredentials()
 		if err != nil {
 			klog.ErrorS(err, "failed to get azure key vault credentials", "file", config.cloudConfig)

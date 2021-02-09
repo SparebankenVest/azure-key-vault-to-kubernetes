@@ -145,7 +145,10 @@ func performTokenExchange(
 		"grant_type":    []string{"access_token_refresh_token"},
 		"access_token":  []string{accessToken},
 		"refresh_token": []string{accessToken},
-		"tenant":        []string{tenant},
+	}
+
+	if tenant != "" {
+		data["tenant"] = []string{tenant}
 	}
 
 	var realmURL *url.URL

@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"emperror.dev/errors"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	dockerTypes "github.com/docker/docker/api/types"
 	"github.com/heroku/docker-registry-client/registry"
 	imagev1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -35,10 +36,10 @@ type DockerCreds struct {
 }
 
 // GetImageConfig returns entrypoint and command of container
-func GetImageConfig(clientset kubernetes.Interface, namespace string, container *corev1.Container, podSpec *corev1.PodSpec, cloudConfigPath string) (*imagev1.ImageConfig, error) {
+func GetImageConfig(clientset kubernetes.Interface, namespace string, container *corev1.Container, podSpec *corev1.PodSpec, credentialProvider credentialprovider.CredentialProvider) (*imagev1.ImageConfig, error) {
 	containerInfo := ContainerInfo{Namespace: namespace, clientset: clientset}
 
-	err := containerInfo.Collect(container, podSpec, cloudConfigPath)
+	err := containerInfo.Collect(container, podSpec, credentialProvider)
 	if err != nil {
 		return nil, err
 	}

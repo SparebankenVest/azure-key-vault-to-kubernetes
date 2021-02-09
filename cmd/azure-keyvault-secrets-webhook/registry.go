@@ -33,7 +33,7 @@ func getContainerCmd(clientset kubernetes.Interface, container *corev1.Container
 	if len(cmd) == 0 {
 		klog.V(4).InfoS("no cmd override in kubernetes for container, checking docker image configuration for entrypoint and cmd", "image", container.Image, "container", klog.KRef(namespace, container.Name))
 
-		imgConfig, err := registry.GetImageConfig(clientset, namespace, container, podSpec, config.cloudConfig)
+		imgConfig, err := registry.GetImageConfig(clientset, config.namespace, container, podSpec, config.credentialProvider)
 		if err != nil {
 			return nil, err
 		}
