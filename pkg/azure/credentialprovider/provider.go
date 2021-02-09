@@ -86,12 +86,15 @@ func FakeCloudConfigProvider() CloudConfigCredentialProvider {
 	}
 }
 
-func FakeEnvironmentCredentialProvider() EnvironmentCredentialProvider {
-	return EnvironmentCredentialProvider{
-		envSettings: &azureAuth.EnvironmentSettings{
-			Environment: azure.Environment{},
-		},
+func FakeEnvironmentCredentialProvider() (EnvironmentCredentialProvider, error) {
+	envSettings, err := azureAuth.GetSettingsFromEnvironment()
+	if err != nil {
+		return EnvironmentCredentialProvider{}, fmt.Errorf("failed getting settings from environment, err: %+v", err)
 	}
+
+	return EnvironmentCredentialProvider{
+		envSettings: &envSettings,
+	}, nil
 }
 
 // Credentials has credentials needed to authenticate with azure key vault.
