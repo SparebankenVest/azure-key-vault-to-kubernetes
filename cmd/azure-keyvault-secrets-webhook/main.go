@@ -276,6 +276,8 @@ func main() {
 		cloudConfig:                  params.cloudConfig,
 	}
 
+	logLevel := flag.Lookup("v").Value.String()
+
 	activeSettings := []interface{}{
 		"webhookPort", config.port,
 		"serveMetrics", config.serveMetrics,
@@ -284,6 +286,7 @@ func main() {
 		"useAksCredsWithAcr", config.useAksCredentialsWithAcr,
 		"dockerInspectionTimeout", config.dockerImageInspectionTimeout,
 		"cloudConfigPath", config.cloudConfig,
+		"logLevel", logLevel,
 	}
 
 	if config.useAuthService {
@@ -298,8 +301,7 @@ func main() {
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
 
-	// logLevel := flag.Lookup("v").Value.String()
-	klogLevel, err := strconv.Atoi(params.logLevel)
+	klogLevel, err := strconv.Atoi(logLevel)
 	if err != nil {
 		klog.ErrorS(err, "failed to parse log level")
 		klogLevel = 2
