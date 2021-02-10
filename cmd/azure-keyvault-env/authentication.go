@@ -101,9 +101,12 @@ func getCredentials(useAuthService bool, authServiceAddress string, clientCertDi
 
 		var creds *credentialprovider.AzureKeyVaultCredentials
 		err = json.NewDecoder(res.Body).Decode(&creds)
-
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode body, error %+v", err)
+		}
+
+		if creds.Token == nil {
+			return nil, fmt.Errorf("token received is nil")
 		}
 
 		klog.InfoS("successfully received oauth token")
