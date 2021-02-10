@@ -42,6 +42,7 @@ type ContainerInfo struct {
 	Image            string
 	RegistryUsername string
 	RegistryPassword string
+	IsAcrRegistry    string
 }
 
 // Collect reads information from k8s and load them into the structure

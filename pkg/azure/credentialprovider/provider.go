@@ -52,7 +52,7 @@ const (
 )
 
 type CredentialProvider interface {
-	GetAzureKeyVaultCredentials() (*AzureKeyVaultCredentials, error)
+	GetAzureKeyVaultCredentials() (AzureKeyVaultCredentials, error)
 	GetAcrCredentials(image string) (*dockerTypes.AuthConfig, error)
 	IsAcrRegistry(image string) bool
 }

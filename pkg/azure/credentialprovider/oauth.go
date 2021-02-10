@@ -49,3 +49,7 @@ func (c OAuthCredentials) Endpoint(keyVaultName string) string {
 func (c OAuthCredentials) Authorizer() (autorest.Authorizer, error) {
 	return createAuthorizerFromOAuthToken(c.OAuthToken)
 }
+
+func (c OAuthCredentials) MarshalJSON() ([]byte, error) {
+	return []byte{}, nil
+}

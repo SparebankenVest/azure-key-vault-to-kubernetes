@@ -18,7 +18,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -62,7 +61,7 @@ func createHTTPClientWithTrustedCAAndMtls(caCert, clientCert, clientKey []byte) 
 	return tlsClient, nil
 }
 
-func getCredentials(useAuthService bool, authServiceAddress string, clientCertDir string) (*credentialprovider.AzureKeyVaultCredentials, error) {
+func getCredentials(useAuthService bool, authServiceAddress string, clientCertDir string) (credentialprovider.AzureKeyVaultCredentials, error) {
 	if useAuthService {
 		// caCert, clientCert, clientKey []byte
 		caCert, err := ioutil.ReadFile(path.Join(clientCertDir, "ca.crt"))
@@ -100,17 +99,10 @@ func getCredentials(useAuthService bool, authServiceAddress string, clientCertDi
 			return nil, fmt.Errorf("failed to get credentials, %s", res.Status)
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
-		klog.InfoS("received body from auth service", "body", body)
-
-		var creds *credentialprovider.AzureKeyVaultCredentials
-		err = json.NewDecoder(bytes.NewReader(body)).Decode(&creds)
+		var creds *credentialprovider.OAuthCredentials
+		err = json.NewDecoder(res.Body).Decode(&creds)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode body, error %+v", err)
-		}
-
-		if creds.Token == nil {
-			return nil, fmt.Errorf("token received is nil")
 		}
 
 		klog.InfoS("successfully received oauth token")

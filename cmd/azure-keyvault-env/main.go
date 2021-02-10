@@ -221,6 +221,7 @@ func main() {
 	}
 
 	creds, err := getCredentials(config.useAuthService, config.authServiceAddress, config.clientCertDir)
+
 	if err != nil {
 		klog.V(4).InfoS("failed to get credentials, will retry", "retryTimes", config.retryTimes)
 		err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
