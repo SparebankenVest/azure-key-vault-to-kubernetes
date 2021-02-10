@@ -19,6 +19,7 @@ package registry
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -51,6 +52,10 @@ func GetImageConfig(clientset kubernetes.Interface, namespace string, container 
 // GetImageBlob download image blob from registry
 func getImageBlob(container ContainerInfo) (*imagev1.ImageConfig, error) {
 	imageName, reference := parseContainerImage(container.Image)
+
+	if container.RegistryUsername == "" {
+		return nil, fmt.Errorf("No user provided to authenticate with docker registry")
+	}
 
 	hub, err := registry.New(container.RegistryAddress, container.RegistryUsername, container.RegistryPassword)
 	if err != nil {

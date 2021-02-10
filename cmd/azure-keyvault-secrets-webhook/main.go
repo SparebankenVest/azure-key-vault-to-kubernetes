@@ -93,6 +93,7 @@ type cmdParams struct {
 	masterURL       string
 	cloudConfig     string
 	logFormat       string
+	logLevel        string
 }
 
 var config azureKeyVaultConfig
@@ -238,6 +239,7 @@ func init() {
 	flag.StringVar(&params.masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&params.cloudConfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
 	flag.StringVar(&params.logFormat, "logging-format", "text", "Log format - text or json.")
+	flag.StringVar(&params.logLevel, "v", "4", "Log level.")
 }
 
 func main() {
@@ -299,8 +301,8 @@ func main() {
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
 
-	logLevel := flag.Lookup("v").Value.String()
-	klogLevel, err := strconv.Atoi(logLevel)
+	// logLevel := flag.Lookup("v").Value.String()
+	klogLevel, err := strconv.Atoi(params.logLevel)
 	if err != nil {
 		klog.ErrorS(err, "failed to parse log level")
 		klogLevel = 2
