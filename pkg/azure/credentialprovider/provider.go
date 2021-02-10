@@ -333,6 +333,10 @@ func getServicePrincipalTokenFromCloudConfig(config *AzureCloudConfig, env *azur
 }
 
 func createAuthorizerFromServicePrincipalToken(token *adal.ServicePrincipalToken) (autorest.Authorizer, error) {
+	if token == nil {
+		return nil, fmt.Errorf("token is nil")
+	}
+
 	err := token.Refresh()
 	if err != nil {
 		return nil, err
