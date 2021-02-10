@@ -78,8 +78,8 @@ func (k *ContainerInfo) Collect(container *corev1.Container, podSpec *corev1.Pod
 		k.RegistryAddress = fmt.Sprintf("https://%s", registryName)
 	}
 
-	// // Clean registry from image
-	// k.Image = strings.TrimPrefix(k.Image, fmt.Sprintf("%s/", k.RegistryName))
+	// Clean registry from image
+	k.Image = strings.TrimPrefix(k.Image, fmt.Sprintf("%s/", k.RegistryName))
 
 	if !found {
 		// if still no credentials and it is an ACR image, try to get credentials from Azure
