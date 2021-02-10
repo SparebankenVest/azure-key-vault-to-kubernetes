@@ -123,7 +123,7 @@ func (k *ContainerInfo) checkImagePullSecret(namespace string, secret string) (b
 }
 
 func getAcrCredentials(k *ContainerInfo, credentialProvider credentialprovider.CredentialProvider) (bool, error) {
-	if credentialProvider.IsAcrRegistry(k.Image) {
+	if credentialProvider.IsAcrRegistry(k.RegistryAddress) {
 		cred, err := credentialProvider.GetAcrCredentials(k.Image)
 		if err != nil {
 			return false, fmt.Errorf("failed getting azure acr credentials, error: %w", err)
