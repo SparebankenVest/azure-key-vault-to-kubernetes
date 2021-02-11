@@ -44,6 +44,7 @@ import (
 	whcontext "github.com/slok/kubewebhook/pkg/webhook/context"
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
@@ -146,7 +147,17 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 
 	podsInspectedCounter.Inc()
 
-	err := mutatePodSpec(pod, req.Namespace, req.UID)
+	kubeConfig, err := rest.InClusterConfig()
+	if err != nil {
+		return false, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(kubeConfig)
+	if err != nil {
+		return false, err
+	}
+
+	err = mutatePodSpec(clientset, pod, req.Namespace, req.UID)
 	if err != nil {
 		klog.ErrorS(err, "failed to mutate", "pod", klog.KRef(req.Namespace, req.Name))
 		podsMutatedFailedCounter.Inc()
@@ -156,7 +167,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 }
 
 func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, recorder metrics.Recorder, logger internalLog.Logger) http.Handler {
-	webhook, err := mutating.NewWebhook(config, mutator, nil, nil, logger)
+	webhook, err := mutating.NewWebhook(config, mutator, nil, recorder, logger)
 	if err != nil {
 		klog.ErrorS(err, "error creating webhook")
 		os.Exit(1)

@@ -33,7 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 )
 
@@ -278,20 +277,22 @@ func createAuthServicePodSecret(pod *corev1.Pod, namespace string, mutationID ty
 	return secret, nil
 }
 
-func mutatePodSpec(pod *corev1.Pod, namespace string, mutationID types.UID) error {
+func mutatePodSpec(clientset kubernetes.Interface, pod *corev1.Pod, namespace string, mutationID types.UID) error {
 	podSpec := &pod.Spec
 
-	kubeConfig, err := rest.InClusterConfig()
-	if err != nil {
-		return err
-	}
+	// kubeConfig, err := rest.InClusterConfig()
+	// if err != nil {
+	// 	return err
+	// }
 
-	clientset, err := kubernetes.NewForConfig(kubeConfig)
-	if err != nil {
-		return err
-	}
+	// clientset, err := kubernetes.NewForConfig(kubeConfig)
+	// if err != nil {
+	// 	return err
+	// }
 
 	var authServiceSecret *corev1.Secret
+	var err error
+
 	if config.useAuthService {
 		authServiceSecret, err = createAuthServicePodSecret(pod, namespace, mutationID, config.caCert, config.caKey)
 		if err != nil {
