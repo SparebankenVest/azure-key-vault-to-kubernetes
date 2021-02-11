@@ -30,7 +30,7 @@ const (
 
 func TestTransformWithTrim(t *testing.T) {
 	secretSpec := akvsv1.AzureKeyVaultOutput{
-		Transforms: []string{"trim"},
+		Transform: []string{"trim"},
 	}
 
 	transformator, err := CreateTransformator(&secretSpec)
@@ -47,7 +47,7 @@ func TestTransformWithTrim(t *testing.T) {
 
 func TestTransformWithBase64Decode(t *testing.T) {
 	secretSpec := akvsv1.AzureKeyVaultOutput{
-		Transforms: []string{"base64decode"},
+		Transform: []string{"base64decode"},
 	}
 
 	transformator, err := CreateTransformator(&secretSpec)
@@ -65,7 +65,7 @@ func TestTransformWithBase64Decode(t *testing.T) {
 
 func TestTransformWithBase64Encode(t *testing.T) {
 	secretSpec := akvsv1.AzureKeyVaultOutput{
-		Transforms: []string{"base64encode"},
+		Transform: []string{"base64encode"},
 	}
 
 	transformator, err := CreateTransformator(&secretSpec)
@@ -83,7 +83,7 @@ func TestTransformWithBase64Encode(t *testing.T) {
 
 func TestTransformWithAll(t *testing.T) {
 	secretSpec := akvsv1.AzureKeyVaultOutput{
-		Transforms: []string{"base64encode", "base64decode", "trim"},
+		Transform: []string{"base64encode", "base64decode", "trim"},
 	}
 
 	transformator, err := CreateTransformator(&secretSpec)
@@ -101,7 +101,7 @@ func TestTransformWithAll(t *testing.T) {
 
 func TestTransformUnknown(t *testing.T) {
 	secretSpec := akvsv1.AzureKeyVaultOutput{
-		Transforms: []string{"nonexistant"},
+		Transform: []string{"nonexistant"},
 	}
 
 	_, err := CreateTransformator(&secretSpec)

@@ -64,8 +64,8 @@ func (in *AzureKeyVaultObject) DeepCopy() *AzureKeyVaultObject {
 func (in *AzureKeyVaultOutput) DeepCopyInto(out *AzureKeyVaultOutput) {
 	*out = *in
 	out.Secret = in.Secret
-	if in.Transforms != nil {
-		in, out := &in.Transforms, &out.Transforms
+	if in.Transform != nil {
+		in, out := &in.Transform, &out.Transform
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}

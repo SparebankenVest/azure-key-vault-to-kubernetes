@@ -98,7 +98,7 @@ type AzureKeyVaultOutput struct {
 	Secret    AzureKeyVaultOutputSecret    `json:"secret"`
 	ConfigMap AzureKeyVaultOutputConfigMap `json:"configMap"`
 	// +optional
-	Transforms []string `json:"transforms,omitempty"`
+	Transform []string `json:"transform,omitempty"`
 }
 
 // AzureKeyVaultOutputSecret has information needed to output
