@@ -42,16 +42,17 @@ const (
 )
 
 type podWebHook struct {
-	clientset         kubernetes.Interface
-	namespace         string
-	mutationID        types.UID
-	authServiceSecret *corev1.Secret
-	injectorDir       string
-	useAuthService    bool
-	authServiceName   string
-	authServicePort   string
-	caCert            []byte
-	caKey             []byte
+	clientset                 kubernetes.Interface
+	namespace                 string
+	mutationID                types.UID
+	authServiceSecret         *corev1.Secret
+	injectorDir               string
+	useAuthService            bool
+	authServiceName           string
+	authServicePort           string
+	authServiceValidationPort string
+	caCert                    []byte
+	caKey                     []byte
 }
 
 // This init-container copies a program to /azure-keyvault/ and
@@ -226,7 +227,11 @@ func (p podWebHook) mutateContainers(containers []corev1.Container, podSpec *cor
 				},
 				{
 					Name:  "ENV_INJECTOR_AUTH_SERVICE",
-					Value: fmt.Sprintf("%s.%s.svc:%s", p.authServiceName, p.currentNamespace(), p.authServicePort),
+					Value: fmt.Sprintf("https://%s.%s.svc:%s", p.authServiceName, p.currentNamespace(), p.authServicePort),
+				},
+				{
+					Name:  "ENV_INJECTOR_AUTH_SERVICE_VALIDATION",
+					Value: fmt.Sprintf("http://%s.%s.svc:%s", p.authServiceName, p.currentNamespace(), p.authServiceValidationPort),
 				},
 			}...)
 		}

@@ -146,15 +146,16 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 	}
 
 	wh := podWebHook{
-		clientset:       clientset,
-		namespace:       req.Namespace,
-		mutationID:      req.UID,
-		injectorDir:     config.injectorDir,
-		useAuthService:  config.useAuthService,
-		authServiceName: config.authServiceName,
-		authServicePort: config.authServicePort,
-		caCert:          config.caCert,
-		caKey:           config.caKey,
+		clientset:                 clientset,
+		namespace:                 req.Namespace,
+		mutationID:                req.UID,
+		injectorDir:               config.injectorDir,
+		useAuthService:            config.useAuthService,
+		authServiceName:           config.authServiceName,
+		authServicePort:           config.authServicePort,
+		authServiceValidationPort: config.httpPort,
+		caCert:                    config.caCert,
+		caKey:                     config.caKey,
 	}
 
 	err = wh.mutatePodSpec(pod)

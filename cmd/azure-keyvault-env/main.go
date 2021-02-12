@@ -42,16 +42,17 @@ const (
 )
 
 type injectorConfig struct {
-	namespace              string
-	podName                string
-	clientCertDir          string
-	retryTimes             int
-	waitTimeBetweenRetries int
-	useAuthService         bool
-	skipArgsValidation     bool
-	authServiceAddress     string
-	signatureB64           string
-	pubKeyBase64           string
+	namespace                    string
+	podName                      string
+	clientCertDir                string
+	retryTimes                   int
+	waitTimeBetweenRetries       int
+	useAuthService               bool
+	skipArgsValidation           bool
+	authServiceAddress           string
+	authServiceValidationAddress string
+	signatureB64                 string
+	pubKeyBase64                 string
 }
 
 var config injectorConfig
@@ -172,16 +173,17 @@ func main() {
 	klog.InfoS("azure key vault env injector initializing")
 
 	config = injectorConfig{
-		namespace:              viper.GetString("env_injector_pod_namespace"),
-		podName:                viper.GetString("env_injector_pod_name"),
-		clientCertDir:          viper.GetString("env_injector_client_cert_dir"),
-		retryTimes:             viper.GetInt("env_injector_retries"),
-		waitTimeBetweenRetries: viper.GetInt("env_injector_wait_before_retry"),
-		useAuthService:         viper.GetBool("env_injector_use_auth_service"),
-		skipArgsValidation:     viper.GetBool("env_injector_skip_args_validation"),
-		authServiceAddress:     viper.GetString("env_injector_auth_service"),
-		signatureB64:           viper.GetString("env_injector_args_signature"),
-		pubKeyBase64:           viper.GetString("env_injector_args_key"),
+		namespace:                    viper.GetString("env_injector_pod_namespace"),
+		podName:                      viper.GetString("env_injector_pod_name"),
+		clientCertDir:                viper.GetString("env_injector_client_cert_dir"),
+		retryTimes:                   viper.GetInt("env_injector_retries"),
+		waitTimeBetweenRetries:       viper.GetInt("env_injector_wait_before_retry"),
+		useAuthService:               viper.GetBool("env_injector_use_auth_service"),
+		skipArgsValidation:           viper.GetBool("env_injector_skip_args_validation"),
+		authServiceAddress:           viper.GetString("env_injector_auth_service"),
+		authServiceValidationAddress: viper.GetString("env_injector_auth_service_validation"),
+		signatureB64:                 viper.GetString("env_injector_args_signature"),
+		pubKeyBase64:                 viper.GetString("env_injector_args_key"),
 	}
 
 	requiredEnvVars := map[string]string{
@@ -220,12 +222,12 @@ func main() {
 		klog.InfoS("found original container command", "cmd", origCommand, "args", origArgs)
 	}
 
-	creds, err := getCredentials(config.useAuthService, config.authServiceAddress, config.clientCertDir)
+	creds, err := getCredentials(config.useAuthService, config.authServiceValidationAddress, config.authServiceAddress, config.clientCertDir)
 
 	if err != nil {
 		klog.V(4).InfoS("failed to get credentials, will retry", "retryTimes", config.retryTimes)
 		err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
-			creds, err = getCredentials(config.useAuthService, config.authServiceAddress, config.clientCertDir)
+			creds, err = getCredentials(config.useAuthService, config.authServiceValidationAddress, config.authServiceAddress, config.clientCertDir)
 			if err != nil {
 				return err
 			}
