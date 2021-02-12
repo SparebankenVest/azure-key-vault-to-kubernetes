@@ -64,10 +64,15 @@ const (
 )
 
 type azureKeyVaultConfig struct {
-	port                         string
+	httpPort         string
+	httpPortExternal string
+	tlsPort          string
+	tlsPortExternal  string
+	mtlsPort         string
+	mtlsPortExternal string
+
 	cloudConfig                  string
 	serveMetrics                 bool
-	httpPort                     string
 	tlsCertFile                  string
 	tlsKeyFile                   string
 	caCert                       []byte
@@ -77,8 +82,6 @@ type azureKeyVaultConfig struct {
 	dockerImageInspectionTimeout int
 	useAksCredentialsWithAcr     bool
 	authServiceName              string
-	authServicePort              string
-	authServicePortInternal      string
 	kubeClient                   *kubernetes.Clientset
 	versionEnvImage              string
 	kubeconfig                   string
@@ -152,8 +155,8 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 		injectorDir:               config.injectorDir,
 		useAuthService:            config.useAuthService,
 		authServiceName:           config.authServiceName,
-		authServicePort:           config.authServicePort,
-		authServiceValidationPort: config.httpPort,
+		authServicePort:           config.mtlsPortExternal,
+		authServiceValidationPort: config.httpPortExternal,
 		caCert:                    config.caCert,
 		caKey:                     config.caKey,
 	}
@@ -350,16 +353,16 @@ func main() {
 	akv2k8s.LogVersion()
 
 	config = azureKeyVaultConfig{
-		port:                         viper.GetString("port"),
-		httpPort:                     viper.GetString("port_http"),
+		tlsPort:                      viper.GetString("tls_port"),
+		mtlsPortExternal:             viper.GetString("mtls_port_external"),
+		mtlsPort:                     viper.GetString("mtls_port"),
+		httpPort:                     viper.GetString("http_port"),
 		authType:                     viper.GetString("auth_type"),
 		serveMetrics:                 viper.GetBool("metrics_enabled"),
 		tlsCertFile:                  fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.crt"),
 		tlsKeyFile:                   fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.key"),
 		useAuthService:               viper.GetBool("use_auth_service"),
 		authServiceName:              viper.GetString("webhook_auth_service"),
-		authServicePort:              viper.GetString("webhook_auth_service_port"),
-		authServicePortInternal:      viper.GetString("webhook_auth_service_port_internal"),
 		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
 		useAksCredentialsWithAcr:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
 		injectorDir:                  viper.GetString("env_injector_exec_dir"),
@@ -376,7 +379,8 @@ func main() {
 	config.klogLevel = klogLevel
 
 	activeSettings := []interface{}{
-		"webhookPort", config.port,
+		"httpPort", config.httpPort,
+		"tlsPort", config.tlsPort,
 		"serveMetrics", config.serveMetrics,
 		"authType", config.authType,
 		"useAuthService", config.useAuthService,
@@ -389,8 +393,8 @@ func main() {
 	if config.useAuthService {
 		activeSettings = append(activeSettings,
 			"authServiceName", config.authServiceName,
-			"authServicePort", config.authServicePort,
-			"authServiceInternalPort", config.authServicePortInternal)
+			"mtlsPortExternal", config.mtlsPortExternal,
+			"mtlsPort", config.mtlsPort)
 	}
 
 	klog.InfoS("active settings", activeSettings...)
@@ -504,7 +508,7 @@ func createTLSEndpoint(wg *sync.WaitGroup) {
 	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, metricsRecorder, internalLogger)
 
 	router := mux.NewRouter()
-	tlsURL := fmt.Sprintf(":%s", config.port)
+	tlsURL := fmt.Sprintf(":%s", config.tlsPort)
 
 	router.Handle("/pods", podHandler)
 	klog.InfoS("serving encrypted webhook endpoint", "path", fmt.Sprintf("%s/pods", tlsURL))
@@ -550,7 +554,7 @@ func createHTTPEndpoint(wg *sync.WaitGroup) {
 func createMTLSEndpoint(wg *sync.WaitGroup) {
 	if config.useAuthService {
 		wg.Add(1)
-		authURL := fmt.Sprintf(":%s", config.authServicePortInternal)
+		authURL := fmt.Sprintf(":%s", config.mtlsPort)
 		authRouter := mux.NewRouter()
 
 		authRouter.HandleFunc("/auth/{namespace}/{pod}", authHandler)
