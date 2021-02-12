@@ -61,34 +61,88 @@ func createHTTPClientWithTrustedCAAndMtls(caCert, clientCert, clientKey []byte) 
 	return tlsClient, nil
 }
 
+func createMtlsClient(clientCertDir string) (*http.Client, error) {
+	// caCert, clientCert, clientKey []byte
+	caCert, err := ioutil.ReadFile(path.Join(clientCertDir, "ca.crt"))
+	if err != nil {
+		return nil, err
+	}
+
+	clientCert, err := ioutil.ReadFile(path.Join(clientCertDir, "tls.crt"))
+	if err != nil {
+		return nil, err
+	}
+
+	clientKey, err := ioutil.ReadFile(path.Join(clientCertDir, "tls.key"))
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := createHTTPClientWithTrustedCAAndMtls(caCert, clientCert, clientKey)
+	if err != nil {
+		klog.ErrorS(err, "failed to download ca cert")
+		os.Exit(1)
+	}
+
+	return client, nil
+}
+
 func getCredentials(useAuthService bool, authServiceAddress string, clientCertDir string) (credentialprovider.AzureKeyVaultCredentials, error) {
 	if useAuthService {
-		// caCert, clientCert, clientKey []byte
-		caCert, err := ioutil.ReadFile(path.Join(clientCertDir, "ca.crt"))
+		startupCACert, err := ioutil.ReadFile(path.Join(clientCertDir, "ca.crt"))
 		if err != nil {
 			return nil, err
 		}
 
-		clientCert, err := ioutil.ReadFile(path.Join(clientCertDir, "tls.crt"))
+		validationUrl := fmt.Sprintf("http://%s/auth/%s/%s", authServiceAddress, config.namespace, config.podName)
+		klog.InfoS("checking if current auth service credentials are stale", "url", validationUrl)
+
+		stale := false
+		res, err := http.DefaultClient.Get(validationUrl)
 		if err != nil {
-			return nil, err
+			klog.ErrorS(err, "checking for stale auth service credentials failed", "url", validationUrl)
+			os.Exit(1)
+		}
+		defer res.Body.Close()
+		if res.StatusCode == http.StatusOK {
+			klog.InfoS("auth service credentials for this pod are up to date and should be valid", "url", validationUrl)
+		} else if res.StatusCode == http.StatusAccepted {
+			klog.InfoS("auth service credentials for this pod were stale, but are now updated by the auth service - it can take some time before the pod gets updated with the new secret", "url", validationUrl)
+			stale = true
 		}
 
-		clientKey, err := ioutil.ReadFile(path.Join(clientCertDir, "tls.key"))
-		if err != nil {
-			return nil, err
+		if stale {
+			klog.InfoS("checking if credentials are updated", "retryTimes", 20)
+			err = retry(20, time.Second*5, func() error {
+				currentCACert, err := ioutil.ReadFile(path.Join(clientCertDir, "ca.crt"))
+				if err != nil {
+					return err
+				}
+
+				if string(startupCACert) == string(currentCACert) {
+					return fmt.Errorf("")
+				}
+
+				klog.InfoS("secret updated - good to go!")
+				return nil
+			})
+
+			if err != nil {
+				klog.ErrorS(err, "credentials was never updated", "failedTimes", 20)
+				os.Exit(1)
+			}
 		}
 
-		client, err := createHTTPClientWithTrustedCAAndMtls(caCert, clientCert, clientKey)
+		client, err := createMtlsClient(clientCertDir)
 		if err != nil {
-			klog.ErrorS(err, "failed to download ca cert")
+			klog.ErrorS(err, "failed to create mtls http client")
 			os.Exit(1)
 		}
 
 		url := fmt.Sprintf("https://%s/auth/%s/%s", authServiceAddress, config.namespace, config.podName)
 		klog.InfoS("requesting azure key vault oauth token", "url", url)
 
-		res, err := client.Get(url)
+		res, err = client.Get(url)
 		if err != nil {
 			klog.ErrorS(err, "request token failed", "url", url)
 			os.Exit(1)
