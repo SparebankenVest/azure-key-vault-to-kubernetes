@@ -222,7 +222,7 @@ func main() {
 		klog.InfoS("found original container command", "cmd", origCommand, "args", origArgs)
 	}
 
-	creds, err := getCredentials(config.useAuthService, config.authServiceValidationAddress, config.authServiceAddress, config.clientCertDir)
+	creds, err := getCredentials(config.useAuthService, config.authServiceAddress, config.authServiceValidationAddress, config.clientCertDir)
 
 	if err != nil {
 		klog.V(4).InfoS("failed to get credentials, will retry", "retryTimes", config.retryTimes)
