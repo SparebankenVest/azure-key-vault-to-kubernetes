@@ -315,16 +315,19 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func initConfig() {
+	viper.SetDefault("http_port", "8080")
+	viper.SetDefault("http_port_external", "80")
+	viper.SetDefault("tls_port", "8443")
+	viper.SetDefault("tls_port_external", "443")
+	viper.SetDefault("mtls_port", "9443")
+	viper.SetDefault("mtls_port_external", "9443")
+
 	viper.SetDefault("azurekeyvault_env_image", "spvest/azure-keyvault-env:latest")
 	viper.SetDefault("docker_image_inspection_timeout", 20)
 	viper.SetDefault("docker_image_inspection_use_acs_credentials", true)
 	viper.SetDefault("auth_type", "cloudConfig")
 	viper.SetDefault("use_auth_service", true)
 	viper.SetDefault("metrics_enabled", false)
-	viper.SetDefault("port_http", "80")
-	viper.SetDefault("port", "443")
-	viper.SetDefault("webhook_auth_service_port", "8443")
-	viper.SetDefault("webhook_auth_service_port_internal", "8443")
 	viper.SetDefault("env_injector_exec_dir", "/azure-keyvault/")
 	viper.AutomaticEnv()
 }
@@ -353,10 +356,13 @@ func main() {
 	akv2k8s.LogVersion()
 
 	config = azureKeyVaultConfig{
-		tlsPort:                      viper.GetString("tls_port"),
-		mtlsPortExternal:             viper.GetString("mtls_port_external"),
-		mtlsPort:                     viper.GetString("mtls_port"),
-		httpPort:                     viper.GetString("http_port"),
+		httpPort:         viper.GetString("http_port"),
+		httpPortExternal: viper.GetString("http_port_external"),
+		tlsPort:          viper.GetString("tls_port"),
+		tlsPortExternal:  viper.GetString("tls_port_external"),
+		mtlsPortExternal: viper.GetString("mtls_port_external"),
+		mtlsPort:         viper.GetString("mtls_port"),
+
 		authType:                     viper.GetString("auth_type"),
 		serveMetrics:                 viper.GetBool("metrics_enabled"),
 		tlsCertFile:                  fmt.Sprintf("%s/%s", viper.GetString("tls_cert_dir"), "tls.crt"),
