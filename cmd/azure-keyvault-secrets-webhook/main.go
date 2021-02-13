@@ -254,7 +254,22 @@ func authValidateHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		secretName := fmt.Sprintf("akv2k8s-%s", pod.name)
+		runningPod, err := config.kubeClient.CoreV1().Pods(pod.namespace).Get(context.TODO(), pod.name, metav1.GetOptions{})
+		if err != nil {
+			klog.ErrorS(err, "failed to read pod", "pod", pod.name, "namespace", pod.namespace)
+			http.Error(w, "", http.StatusBadRequest)
+			return
+		}
+
+		uid := types.UID(pod.name)
+		newSecret, err := createAuthServicePodSecret(runningPod, pod.namespace, uid, config.caCert, config.caKey)
+		if err != nil {
+			klog.ErrorS(err, "failed to create secret", "pod", pod.name, "namespace", pod.namespace)
+			http.Error(w, "", http.StatusBadRequest)
+			return
+		}
+
+		secretName := newSecret.Name
 		secret, err := config.kubeClient.CoreV1().Secrets(pod.namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 		if err != nil {
 			klog.ErrorS(err, "failed to read secret", "pod", pod.name, "namespace", pod.namespace)
@@ -265,21 +280,6 @@ func authValidateHandler(w http.ResponseWriter, r *http.Request) {
 		if string(secret.Data["ca.crt"]) == string(config.caCert) {
 			w.WriteHeader(http.StatusOK)
 		} else {
-			runningPod, err := config.kubeClient.CoreV1().Pods(pod.namespace).Get(context.TODO(), pod.name, metav1.GetOptions{})
-			if err != nil {
-				klog.ErrorS(err, "failed to read pod", "pod", pod.name, "namespace", pod.namespace)
-				http.Error(w, "", http.StatusBadRequest)
-				return
-			}
-
-			uid := types.UID(pod.name)
-			newSecret, err := createAuthServicePodSecret(runningPod, pod.namespace, uid, config.caCert, config.caKey)
-			if err != nil {
-				klog.ErrorS(err, "failed to create secret", "pod", pod.name, "namespace", pod.namespace)
-				http.Error(w, "", http.StatusBadRequest)
-				return
-			}
-
 			_, err = config.kubeClient.CoreV1().Secrets(pod.namespace).Update(context.TODO(), newSecret, metav1.UpdateOptions{})
 			if err != nil {
 				klog.ErrorS(err, "failed to update secret", "pod", pod.name, "namespace", pod.namespace)
