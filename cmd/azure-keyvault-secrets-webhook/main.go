@@ -50,6 +50,7 @@ import (
 	"k8s.io/klog/v2"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -269,21 +270,35 @@ func authValidateHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		notFound := false
 		secretName := newSecret.Name
 		secret, err := config.kubeClient.CoreV1().Secrets(pod.namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 		if err != nil {
-			klog.ErrorS(err, "failed to read secret", "pod", pod.name, "namespace", pod.namespace)
-			http.Error(w, "", http.StatusBadRequest)
-			return
+			if errors.IsNotFound(err) {
+				notFound = true
+				klog.InfoS("secret not found", "secret", secretName, "namespace", pod.namespace)
+			} else {
+				klog.ErrorS(err, "failed to read secret", "secret", secretName, "namespace", pod.namespace)
+				http.Error(w, "", http.StatusBadRequest)
+				return
+			}
 		}
 
-		if string(secret.Data["ca.crt"]) == string(config.caCert) {
+		if notFound {
+			_, err = config.kubeClient.CoreV1().Secrets(pod.namespace).Create(context.TODO(), newSecret, metav1.CreateOptions{})
+			if err != nil {
+				klog.ErrorS(err, "failed to create secret", "pod", pod.name, "namespace", pod.namespace)
+				http.Error(w, "", http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusCreated)
+		} else if string(secret.Data["ca.crt"]) == string(config.caCert) {
 			w.WriteHeader(http.StatusOK)
 		} else {
 			_, err = config.kubeClient.CoreV1().Secrets(pod.namespace).Update(context.TODO(), newSecret, metav1.UpdateOptions{})
 			if err != nil {
 				klog.ErrorS(err, "failed to update secret", "pod", pod.name, "namespace", pod.namespace)
-				http.Error(w, "", http.StatusBadRequest)
+				http.Error(w, "", http.StatusInternalServerError)
 				return
 			}
 			w.WriteHeader(http.StatusCreated)
