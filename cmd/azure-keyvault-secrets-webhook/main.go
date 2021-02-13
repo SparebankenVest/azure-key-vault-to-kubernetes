@@ -386,7 +386,12 @@ func main() {
 
 	activeSettings := []interface{}{
 		"httpPort", config.httpPort,
+		"httpPortExternal", config.httpPortExternal,
 		"tlsPort", config.tlsPort,
+		"tlsPortExternal", config.tlsPortExternal,
+		"mtlsPort", config.mtlsPort,
+		"mtlsPortExternal", config.mtlsPortExternal,
+
 		"serveMetrics", config.serveMetrics,
 		"authType", config.authType,
 		"useAuthService", config.useAuthService,
@@ -543,6 +548,8 @@ func createHTTPEndpoint(wg *sync.WaitGroup) {
 	}
 
 	httpMux.HandleFunc("/auth/{namespace}/{pod}", authValidateHandler)
+	klog.InfoS("serving auth validation endpoint", "path", fmt.Sprintf("%s/auth/{namespace}/{pod}", httpURL))
+
 	httpMux.HandleFunc("/healthz", healthHandler)
 	klog.InfoS("serving health endpoint", "path", fmt.Sprintf("%s/healthz", httpURL))
 
