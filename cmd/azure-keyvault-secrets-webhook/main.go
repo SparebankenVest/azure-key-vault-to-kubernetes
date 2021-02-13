@@ -512,6 +512,32 @@ func getCredentials() {
 	}
 }
 
+func createHTTPEndpoint(wg *sync.WaitGroup) {
+	router := mux.NewRouter()
+	httpURL := fmt.Sprintf(":%s", config.httpPort)
+
+	if config.serveMetrics {
+		router.Handle("/metrics", promhttp.Handler())
+		klog.InfoS("serving metrics endpoint", "path", fmt.Sprintf("%s/metrics", httpURL))
+	}
+
+	router.HandleFunc("/auth/{namespace}/{pod}", authValidateHandler)
+	klog.InfoS("serving auth validation endpoint", "path", fmt.Sprintf("%s/auth/{namespace}/{pod}", httpURL))
+
+	router.HandleFunc("/healthz", healthHandler)
+	klog.InfoS("serving health endpoint", "path", fmt.Sprintf("%s/healthz", httpURL))
+
+	go func() {
+		err := http.ListenAndServe(httpURL, router)
+		if err != nil {
+			klog.ErrorS(err, "error serving metrics", "port", httpURL)
+			os.Exit(1)
+		}
+		wg.Done()
+	}()
+
+}
+
 func createTLSEndpoint(wg *sync.WaitGroup) {
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
@@ -536,32 +562,6 @@ func createTLSEndpoint(wg *sync.WaitGroup) {
 		}
 		wg.Done()
 	}()
-}
-
-func createHTTPEndpoint(wg *sync.WaitGroup) {
-	httpMux := http.NewServeMux()
-	httpURL := fmt.Sprintf(":%s", config.httpPort)
-
-	if config.serveMetrics {
-		httpMux.Handle("/metrics", promhttp.Handler())
-		klog.InfoS("serving metrics endpoint", "path", fmt.Sprintf("%s/metrics", httpURL))
-	}
-
-	httpMux.HandleFunc("/auth/{namespace}/{pod}", authValidateHandler)
-	klog.InfoS("serving auth validation endpoint", "path", fmt.Sprintf("%s/auth/{namespace}/{pod}", httpURL))
-
-	httpMux.HandleFunc("/healthz", healthHandler)
-	klog.InfoS("serving health endpoint", "path", fmt.Sprintf("%s/healthz", httpURL))
-
-	go func() {
-		err := http.ListenAndServe(httpURL, httpMux)
-		if err != nil {
-			klog.ErrorS(err, "error serving metrics", "port", httpURL)
-			os.Exit(1)
-		}
-		wg.Done()
-	}()
-
 }
 
 func createMTLSEndpoint(wg *sync.WaitGroup) {
