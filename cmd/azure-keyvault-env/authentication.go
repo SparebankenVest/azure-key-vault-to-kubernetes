@@ -98,15 +98,19 @@ func getCredentials(useAuthService bool, authServiceAddress string, authServiceV
 		klog.InfoS("checking if current auth service credentials are stale", "url", validationUrl)
 
 		stale := false
-		res, err := http.DefaultClient.Get(validationUrl)
+		valClient := &http.Client{
+			Timeout: time.Second * 10,
+		}
+		valRes, err := valClient.Get(validationUrl)
 		if err != nil {
 			klog.ErrorS(err, "checking for stale auth service credentials failed", "url", validationUrl)
 			os.Exit(1)
 		}
-		defer res.Body.Close()
-		if res.StatusCode == http.StatusOK {
+		defer valRes.Body.Close()
+
+		if valRes.StatusCode == http.StatusOK {
 			klog.InfoS("auth service credentials for this pod are up to date and should be valid", "url", validationUrl)
-		} else if res.StatusCode == http.StatusAccepted {
+		} else if valRes.StatusCode == http.StatusAccepted {
 			klog.InfoS("auth service credentials for this pod were stale, but are now updated by the auth service - it can take some time before the pod gets updated with the new secret", "url", validationUrl)
 			stale = true
 		} else {
@@ -145,7 +149,7 @@ func getCredentials(useAuthService bool, authServiceAddress string, authServiceV
 		url := fmt.Sprintf("%s/auth/%s/%s", authServiceAddress, config.namespace, config.podName)
 		klog.InfoS("requesting azure key vault oauth token", "url", url)
 
-		res, err = client.Get(url)
+		res, err := client.Get(url)
 		if err != nil {
 			klog.ErrorS(err, "request token failed", "url", url)
 			os.Exit(1)
