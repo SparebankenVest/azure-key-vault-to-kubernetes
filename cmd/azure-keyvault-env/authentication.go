@@ -103,23 +103,22 @@ func getCredentials(useAuthService bool, authServiceAddress string, authServiceV
 		}
 		valRes, err := valClient.Get(validationUrl)
 		if err != nil {
-			klog.ErrorS(err, "checking for stale auth service credentials failed", "url", validationUrl)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed to check for stale credentials: %w", err)
 		}
 		defer valRes.Body.Close()
 
 		if valRes.StatusCode == http.StatusOK {
-			klog.InfoS("auth service credentials for this pod are up to date and should be valid", "url", validationUrl)
+			klog.InfoS("auth service credentials ok", "url", validationUrl)
 		} else if valRes.StatusCode == http.StatusAccepted {
-			klog.InfoS("auth service credentials for this pod were stale, but are now updated by the auth service - it can take some time before the pod gets updated with the new secret", "url", validationUrl)
+			klog.InfoS("auth service credentials were stale, but now updated - expect some time before the pod gets updated with the new secret", "url", validationUrl)
 			stale = true
 		} else {
-			klog.ErrorS(err, "checking for stale auth service credentials failed", "url", validationUrl)
-			os.Exit(1)
+			klog.ErrorS(nil, "failed to validate credentials", "url", validationUrl, "status", valRes.Status, "statusCode", valRes.StatusCode)
+			return nil, fmt.Errorf("failed to validate credentials, got http status code %v", valRes.StatusCode)
 		}
 
 		if stale {
-			klog.InfoS("checking if credentials are updated", "retryTimes", 20)
+			klog.InfoS("checking for updated credentials", "retryTimes", 20)
 			err = retry(20, time.Second*5, func() error {
 				currentCACert, err := ioutil.ReadFile(path.Join(clientCertDir, "ca.crt"))
 				if err != nil {
@@ -127,23 +126,21 @@ func getCredentials(useAuthService bool, authServiceAddress string, authServiceV
 				}
 
 				if string(startupCACert) == string(currentCACert) {
-					return fmt.Errorf("")
+					return fmt.Errorf("credentials are still stale")
 				}
 
-				klog.InfoS("secret updated - good to go!")
+				klog.InfoS("credentials updated - good to go!")
 				return nil
 			})
 
 			if err != nil {
-				klog.ErrorS(err, "credentials was never updated", "failedTimes", 20)
-				os.Exit(1)
+				return nil, fmt.Errorf("credentials was never updated, failedTimes: %v, err: %w", 20, err)
 			}
 		}
 
 		client, err := createMtlsClient(clientCertDir)
 		if err != nil {
-			klog.ErrorS(err, "failed to create mtls http client")
-			os.Exit(1)
+			return nil, fmt.Errorf("failed to create mtls http client, err: %w", err)
 		}
 
 		url := fmt.Sprintf("%s/auth/%s/%s", authServiceAddress, config.namespace, config.podName)
@@ -152,18 +149,19 @@ func getCredentials(useAuthService bool, authServiceAddress string, authServiceV
 		res, err := client.Get(url)
 		if err != nil {
 			klog.ErrorS(err, "request token failed", "url", url)
-			os.Exit(1)
+			return nil, fmt.Errorf("request token failed, err: %w", err)
 		}
 		defer res.Body.Close()
 
 		if res.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("failed to get credentials, %s", res.Status)
+			klog.ErrorS(err, "failed to get credentials", "url", url, "status", res.Status, "statusCode", res.StatusCode)
+			return nil, fmt.Errorf("request token failed with status code %v", res.StatusCode)
 		}
 
 		var creds *credentialprovider.OAuthCredentials
 		err = json.NewDecoder(res.Body).Decode(&creds)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode body, error %+v", err)
+			return nil, fmt.Errorf("failed to decode body, error %w", err)
 		}
 
 		klog.InfoS("successfully received oauth token")
@@ -172,12 +170,12 @@ func getCredentials(useAuthService bool, authServiceAddress string, authServiceV
 
 	provider, err := credentialprovider.NewFromEnvironment()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create credentials provider for azure key vault, error %+v", err)
+		return nil, fmt.Errorf("failed to create credentials provider for azure key vault, error: %w", err)
 	}
 
 	creds, err := provider.GetAzureKeyVaultCredentials()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get credentials for azure key vault, error %+v", err)
+		return nil, fmt.Errorf("failed to get credentials for azure key vault, error: %w", err)
 	}
 	return creds, nil
 }
