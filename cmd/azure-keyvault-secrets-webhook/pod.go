@@ -233,6 +233,10 @@ func (p podWebHook) mutateContainers(containers []corev1.Container, podSpec *cor
 					Name:  "ENV_INJECTOR_AUTH_SERVICE_VALIDATION",
 					Value: fmt.Sprintf("http://%s.%s.svc:%s", p.authServiceName, p.currentNamespace(), p.authServiceValidationPort),
 				},
+				{
+					Name:  "ENV_INJECTOR_AUTH_SERVICE_SECRET",
+					Value: p.authServiceSecret.Name,
+				},
 			}...)
 		}
 

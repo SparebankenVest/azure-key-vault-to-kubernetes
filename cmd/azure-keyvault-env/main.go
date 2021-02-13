@@ -51,6 +51,7 @@ type injectorConfig struct {
 	skipArgsValidation           bool
 	authServiceAddress           string
 	authServiceValidationAddress string
+	authServiceSecret            string
 	signatureB64                 string
 	pubKeyBase64                 string
 }
@@ -182,6 +183,7 @@ func main() {
 		skipArgsValidation:           viper.GetBool("env_injector_skip_args_validation"),
 		authServiceAddress:           viper.GetString("env_injector_auth_service"),
 		authServiceValidationAddress: viper.GetString("env_injector_auth_service_validation"),
+		authServiceSecret:            viper.GetString("env_injector_auth_service_secret"),
 		signatureB64:                 viper.GetString("env_injector_args_signature"),
 		pubKeyBase64:                 viper.GetString("env_injector_args_key"),
 	}

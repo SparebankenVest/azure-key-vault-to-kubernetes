@@ -225,21 +225,15 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type validationPayload struct {
-	ca string
-}
-
-type validationRes struct {
-	caValid            bool
-	awaitNewClientCert bool
-}
-
 func authValidateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		vars := mux.Vars(r)
+		qParams := r.URL.Query()
+
 		pod := podData{
-			name:      vars["pod"],
-			namespace: vars["namespace"],
+			name:       vars["pod"],
+			namespace:  vars["namespace"],
+			authSecret: qParams.Get("secret"),
 		}
 
 		if pod.name == "" || pod.namespace == "" {
@@ -269,16 +263,17 @@ func authValidateHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
+		// set secret name explicit, and not use generated name
+		newSecret.Name = pod.authSecret
 
 		notFound := false
-		secretName := newSecret.Name
-		secret, err := config.kubeClient.CoreV1().Secrets(pod.namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+		secret, err := config.kubeClient.CoreV1().Secrets(pod.namespace).Get(context.TODO(), pod.authSecret, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				notFound = true
-				klog.InfoS("secret not found", "secret", secretName, "namespace", pod.namespace)
+				klog.InfoS("secret not found", "secret", pod.authSecret, "namespace", pod.namespace)
 			} else {
-				klog.ErrorS(err, "failed to read secret", "secret", secretName, "namespace", pod.namespace)
+				klog.ErrorS(err, "failed to read secret", "secret", pod.authSecret, "namespace", pod.namespace)
 				http.Error(w, "", http.StatusBadRequest)
 				return
 			}

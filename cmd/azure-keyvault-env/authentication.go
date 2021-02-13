@@ -94,7 +94,7 @@ func getCredentials(useAuthService bool, authServiceAddress string, authServiceV
 			return nil, err
 		}
 
-		validationUrl := fmt.Sprintf("%s/auth/%s/%s", authServiceValidationAddress, config.namespace, config.podName)
+		validationUrl := fmt.Sprintf("%s/auth/%s/%s?secret=%s", authServiceValidationAddress, config.namespace, config.podName, config.authServiceSecret)
 		klog.InfoS("checking if current auth service credentials are stale", "url", validationUrl)
 
 		stale := false
@@ -109,7 +109,7 @@ func getCredentials(useAuthService bool, authServiceAddress string, authServiceV
 
 		if valRes.StatusCode == http.StatusOK {
 			klog.InfoS("auth service credentials ok", "url", validationUrl)
-		} else if valRes.StatusCode == http.StatusAccepted {
+		} else if valRes.StatusCode == http.StatusCreated {
 			klog.InfoS("auth service credentials were stale, but now updated - expect some time before the pod gets updated with the new secret", "url", validationUrl)
 			stale = true
 		} else {
