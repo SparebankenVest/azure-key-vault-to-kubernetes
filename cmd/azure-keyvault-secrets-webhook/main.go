@@ -81,7 +81,6 @@ type azureKeyVaultConfig struct {
 	authType                     string
 	useAuthService               bool
 	dockerImageInspectionTimeout int
-	useAksCredentialsWithAcr     bool
 	authServiceName              string
 	kubeClient                   *kubernetes.Clientset
 	versionEnvImage              string
@@ -120,6 +119,36 @@ var (
 	podsMutatedFailedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "akv2k8s_pod_mutations_failed_total",
 		Help: "The total number of attempted pod mutations that failed",
+	})
+
+	authRequestsCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "akv2k8s_auth_requests_total",
+		Help: "The total number of successful auth requests",
+	})
+
+	authRequestsFailures = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "akv2k8s_auth_requests_failed_total",
+		Help: "The total number failed auth requests",
+	})
+
+	authValidationCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "akv2k8s_auth_validations_total",
+		Help: "The total number of successful auth validations",
+	})
+
+	authValidationFailures = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "akv2k8s_auth_validations_failed_total",
+		Help: "The total number of failed auth validations",
+	})
+
+	containerImageInspectionCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "akv2k8s_container_inspections_total",
+		Help: "The total number of inspected container images",
+	})
+
+	containerImageInspectionFailures = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "akv2k8s_container_inspections_failed_total",
+		Help: "The total number of failed container images inspections",
 	})
 )
 
@@ -188,6 +217,8 @@ func handlerFor(config mutating.WebhookConfig, mutator mutating.MutatorFunc, rec
 }
 
 func authHandler(w http.ResponseWriter, r *http.Request) {
+	authRequestsCounter.Inc()
+
 	if r.Method == "GET" {
 		vars := mux.Vars(r)
 		pod := podData{
@@ -198,6 +229,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		if pod.name == "" || pod.namespace == "" {
 			klog.InfoS("failed to parse url parameters", "pod", pod.name, "namespace", pod.namespace)
 			http.Error(w, "", http.StatusBadRequest)
+			authRequestsFailures.Inc()
 			return
 		}
 
@@ -206,6 +238,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			klog.ErrorS(err, "failed to authorize request", "pod", pod.name, "namespace", pod.namespace)
 			http.Error(w, "", http.StatusForbidden)
+			authRequestsFailures.Inc()
 			return
 		}
 
@@ -218,8 +251,8 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			klog.InfoS("served oauth token", "pod", pod.name, "namespace", pod.namespace)
 		}
-
 	} else {
+		authRequestsFailures.Inc()
 		klog.InfoS("invalid request method")
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 	}
@@ -238,6 +271,12 @@ func authValidateHandler(w http.ResponseWriter, r *http.Request) {
 
 		if pod.name == "" || pod.namespace == "" {
 			klog.InfoS("failed to parse url parameters", "pod", pod.name, "namespace", pod.namespace)
+			http.Error(w, "", http.StatusBadRequest)
+			return
+		}
+
+		if pod.authSecret == "" {
+			klog.InfoS("failed to parse query parameters", "secret", pod.authSecret, "pod", pod.name, "namespace", pod.namespace)
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
@@ -380,7 +419,6 @@ func main() {
 		useAuthService:               viper.GetBool("use_auth_service"),
 		authServiceName:              viper.GetString("webhook_auth_service"),
 		dockerImageInspectionTimeout: viper.GetInt("docker_image_inspection_timeout"),
-		useAksCredentialsWithAcr:     viper.GetBool("docker_image_inspection_use_acs_credentials"),
 		injectorDir:                  viper.GetString("env_injector_exec_dir"),
 		versionEnvImage:              params.versionEnvImage,
 		cloudConfig:                  params.cloudConfig,
@@ -405,7 +443,6 @@ func main() {
 		"serveMetrics", config.serveMetrics,
 		"authType", config.authType,
 		"useAuthService", config.useAuthService,
-		"useAksCredsWithAcr", config.useAksCredentialsWithAcr,
 		"dockerInspectionTimeout", config.dockerImageInspectionTimeout,
 		"cloudConfigPath", config.cloudConfig,
 		"logLevel", logLevel,
