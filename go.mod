@@ -13,6 +13,7 @@ require (
 	github.com/appscode/jsonpatch v0.0.0-20180911074601-5af499cf01c8 // indirect
 	github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
 	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/google/go-cmp v0.5.2
 	github.com/gorilla/mux v1.7.4
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
