@@ -47,7 +47,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 
 			if c.akvsHasOutputDefined(akvs) {
 				klog.V(4).InfoS("adding to queue", "azurekeyvaultsecret", klog.KObj(akvs))
-				syncCounter.WithLabelValues("add", "AzureKeyVaultSecret")
+				syncCounter.WithLabelValues("add", "AzureKeyVaultSecret").Inc()
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
 			}
 		},
@@ -67,14 +67,14 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			// If akvs has not changed and has secret output, add to akv queue to check if secret has changed in akv
 			if newAkvs.ResourceVersion == oldAkvs.ResourceVersion && c.akvsHasOutputDefined(newAkvs) {
 				klog.V(4).InfoS("adding to azure key vault queue to check if secret has changed in azure key vault", "azurekeyvaultsecret", klog.KObj(newAkvs))
-				syncCounter.WithLabelValues("update", "AzureKeyVault")
+				syncCounter.WithLabelValues("update", "AzureKeyVault").Inc()
 				queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), new)
 				return
 			}
 
 			if c.akvsHasOutputDefined(newAkvs) || c.akvsHasOutputDefined(oldAkvs) {
 				klog.V(4).InfoS("azurekeyvaultsecret changed - adding to queue", "azurekeyvaultsecret", klog.KObj(newAkvs))
-				syncCounter.WithLabelValues("update", "AzureKeyVaultSecret")
+				syncCounter.WithLabelValues("update", "AzureKeyVaultSecret").Inc()
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), new)
 			}
 		},
@@ -87,7 +87,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 
 			if c.akvsHasOutputDefined(akvs) {
 				klog.V(4).InfoS("azurekeyvaultsecret deleted - adding to queue", "azurekeyvaultsecret", klog.KObj(akvs))
-				syncCounter.WithLabelValues("delete", "AzureKeyVaultSecret")
+				syncCounter.WithLabelValues("delete", "AzureKeyVaultSecret").Inc()
 				queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
 
 				err = c.deleteKubernetesValues(akvs)
