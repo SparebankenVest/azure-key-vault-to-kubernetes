@@ -69,10 +69,7 @@ func initConfig() {
 	viper.AutomaticEnv()
 }
 
-func main() {
-	klog.InitFlags(nil)
-	defer klog.Flush()
-
+func init() {
 	flag.CommandLine = flag.NewFlagSet("akv2k8s controller", flag.ExitOnError)
 
 	flag.StringVar(&logFormat, "logging-format", "text", "Log format - text or json.")
@@ -80,6 +77,11 @@ func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&cloudconfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
+}
+
+func main() {
+	klog.InitFlags(nil)
+	defer klog.Flush()
 
 	flag.Parse()
 	initConfig()
