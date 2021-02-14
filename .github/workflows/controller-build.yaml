@@ -38,6 +38,17 @@ jobs:
       with:
         build-make-action: image-controller
 
+    - name: Bump version and push tag
+      id: tag_version
+      uses: mathieudutour/github-tag-action@v5.1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        dry_run: true
+
+    - name: Output version
+      run: |
+        echo "Next version ${{ steps.tag_version.outputs.new_tag }}"
+
     - name: Push
       uses: ./.github/actions/push
       with:
