@@ -8,21 +8,21 @@ import (
 
 	akv2k8sTesting "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/testing"
 	auth "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
-	akvs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
+	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func secret(name string, keyVaultName string, secretName string) *akvs.AzureKeyVaultSecret {
-	return &akvs.AzureKeyVaultSecret{
-		TypeMeta: metav1.TypeMeta{APIVersion: akvs.SchemeGroupVersion.String()},
+func newAzureKeyVaultSecret(name string, keyVaultName string, secretName string) *akv.AzureKeyVaultSecret {
+	return &akv.AzureKeyVaultSecret{
+		TypeMeta: metav1.TypeMeta{APIVersion: akv.SchemeGroupVersion.String()},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
 		},
-		Spec: akvs.AzureKeyVaultSecretSpec{
-			Vault: akvs.AzureKeyVault{
+		Spec: akv.AzureKeyVaultSecretSpec{
+			Vault: akv.AzureKeyVault{
 				Name: keyVaultName,
-				Object: akvs.AzureKeyVaultObject{
+				Object: akv.AzureKeyVaultObject{
 					Name: secretName,
 					Type: "secret",
 				},
@@ -89,7 +89,7 @@ func TestIntegrationGetSecret(t *testing.T) {
 	}
 
 	srvc := NewService(creds)
-	akvSecret := secret("mySecret", "akv2k8s-test", "my-secret")
+	akvSecret := newAzureKeyVaultSecret("mySecret", "akv2k8s-test", "my-secret")
 
 	secret, err := srvc.GetSecret(&akvSecret.Spec.Vault)
 	if err != nil {
@@ -116,7 +116,7 @@ func TestIntegrationEnvironmentGetSecret(t *testing.T) {
 	}
 
 	srvc := NewService(creds)
-	akvSecret := secret("mySecret", "akv2k8s-test", "my-secret")
+	akvSecret := newAzureKeyVaultSecret("mySecret", "akv2k8s-test", "my-secret")
 
 	secret, err := srvc.GetSecret(&akvSecret.Spec.Vault)
 	if err != nil {

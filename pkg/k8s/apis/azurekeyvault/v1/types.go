@@ -86,7 +86,7 @@ const (
 type AzureKeyVaultOutput struct {
 	Secret AzureKeyVaultOutputSecret `json:"secret"`
 	// +optional
-	Transforms []string `json:"transforms,omitempty"`
+	Transform []string `json:"transform,omitempty"`
 }
 
 // AzureKeyVaultOutputSecret has information needed to output
@@ -94,9 +94,9 @@ type AzureKeyVaultOutput struct {
 type AzureKeyVaultOutputSecret struct {
 	Name string `json:"name"`
 	// +optional
-	Type    corev1.SecretType `json:"type,omitempty"`
-	DataKey string            `json:"dataKey"`
-	ChainOrder string		  `json:"chainOrder"`
+	Type       corev1.SecretType `json:"type,omitempty"`
+	DataKey    string            `json:"dataKey"`
+	ChainOrder string            `json:"chainOrder"`
 }
 
 // AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource

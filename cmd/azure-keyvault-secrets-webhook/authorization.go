@@ -9,9 +9,10 @@ import (
 )
 
 type podData struct {
-	name      string
-	namespace string
-	token     string
+	name       string
+	namespace  string
+	token      string
+	authSecret string
 }
 
 func authorize(clientset kubernetes.Interface, podData podData) error {

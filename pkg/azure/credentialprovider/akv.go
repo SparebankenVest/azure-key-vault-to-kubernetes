@@ -30,32 +30,32 @@ const (
 	vmTypeStandard = "standard"
 )
 
+// AzureKeyVaultCredentials has credentials needed to authenticate with azure key vault.
+// These credentials will never expire
 type AzureKeyVaultCredentials interface {
 	Authorizer() (autorest.Authorizer, error)
 	Endpoint(keyVaultName string) string
 }
 
-// AzureKeyVaultCredentials has credentials needed to authenticate with azure key vault.
-// These credentials will never expire
-type keyVaultCredentials struct {
+type azureKeyVaultCredentials struct {
 	ClientID        string
 	Token           *adal.ServicePrincipalToken
 	EndpointPartial string
 }
 
 // Authorizer gets an Authorizer from credentials
-func (c *keyVaultCredentials) Authorizer() (autorest.Authorizer, error) {
+func (c azureKeyVaultCredentials) Authorizer() (autorest.Authorizer, error) {
 	return createAuthorizerFromServicePrincipalToken(c.Token)
 }
 
 // Endpoint takes the name of the keyvault and creates a correct andpoint url
-func (c *keyVaultCredentials) Endpoint(keyVaultName string) string {
+func (c azureKeyVaultCredentials) Endpoint(keyVaultName string) string {
 	return fmt.Sprintf(c.EndpointPartial, keyVaultName)
 }
 
 // MarshalJSON will get a fresh oauth token from the service principal token and serialize.
 // This token will expire after the default oauth token lifetime for the service principal.
-func (c *keyVaultCredentials) MarshalJSON() ([]byte, error) {
+func (c azureKeyVaultCredentials) MarshalJSON() ([]byte, error) {
 	err := c.Token.Refresh()
 	if err != nil {
 		return nil, fmt.Errorf("failed to refresh token before marshalling, error: %+v", err)
@@ -68,7 +68,7 @@ func (c *keyVaultCredentials) MarshalJSON() ([]byte, error) {
 }
 
 // GetAzureKeyVaultCredentials will get Azure credentials
-func (c *UserAssignedManagedIdentityProvider) GetAzureKeyVaultCredentials(azureIdentity string, hostname string) (AzureKeyVaultCredentials, error) {
+func (c UserAssignedManagedIdentityProvider) GetAzureKeyVaultCredentials(azureIdentity string, hostname string) (AzureKeyVaultCredentials, error) {
 	err := c.aadClient.Init()
 	if err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ func (c *UserAssignedManagedIdentityProvider) GetAzureKeyVaultCredentials(azureI
 		return nil, err
 	}
 
-	return &keyVaultCredentials{
+	return &azureKeyVaultCredentials{
 		Token:           token,
 		EndpointPartial: endpoint,
 	}, nil
@@ -119,7 +119,7 @@ func (c CloudConfigCredentialProvider) GetAzureKeyVaultCredentials() (AzureKeyVa
 		return nil, err
 	}
 
-	return &keyVaultCredentials{
+	return azureKeyVaultCredentials{
 		Token:           token,
 		EndpointPartial: endpoint,
 	}, nil
@@ -130,76 +130,15 @@ func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (AzureKeyVa
 	resourceSplit := strings.SplitAfterN(c.envSettings.Environment.ResourceIdentifiers.KeyVault, "https://", 2)
 	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
 
-	akvCreds := &keyVaultCredentials{
+	azureToken, err := getCredentials(c.envSettings, c.envSettings.Environment.ResourceIdentifiers.KeyVault)
+	if err != nil {
+		return nil, err
+	}
+
+	return azureKeyVaultCredentials{
+		ClientID:        azureToken.clientID,
+		Token:           azureToken.token,
 		EndpointPartial: endpoint,
-	}
+	}, nil
 
-	// ClientID / Secret
-	if creds, err := c.envSettings.GetClientCredentials(); err == nil {
-		creds.AADEndpoint = c.envSettings.Environment.ActiveDirectoryEndpoint
-		creds.Resource = c.envSettings.Environment.ResourceIdentifiers.KeyVault
-
-		token, err := creds.ServicePrincipalToken()
-		if err != nil {
-			return nil, err
-		}
-
-		akvCreds.ClientID = creds.ClientID
-		akvCreds.Token = token
-		return akvCreds, nil
-	}
-
-	// Certificate
-	if creds, err := c.envSettings.GetClientCertificate(); err == nil {
-		creds.AADEndpoint = c.envSettings.Environment.ActiveDirectoryEndpoint
-		creds.Resource = c.envSettings.Environment.ResourceIdentifiers.KeyVault
-
-		token, err := creds.ServicePrincipalToken()
-		if err != nil {
-			return nil, err
-		}
-		akvCreds.ClientID = creds.ClientID
-		akvCreds.Token = token
-		return akvCreds, nil
-	}
-
-	// Username / Password
-	if creds, err := c.envSettings.GetUsernamePassword(); err == nil {
-		creds.AADEndpoint = c.envSettings.Environment.ActiveDirectoryEndpoint
-		creds.Resource = c.envSettings.Environment.ResourceIdentifiers.KeyVault
-
-		token, err := creds.ServicePrincipalToken()
-		if err != nil {
-			return nil, err
-		}
-		akvCreds.ClientID = creds.ClientID
-		akvCreds.Token = token
-		return akvCreds, nil
-	}
-
-	msi := c.envSettings.GetMSI()
-	msiEndpoint, err := adal.GetMSIVMEndpoint()
-	if err != nil {
-		return nil, err
-	}
-
-	// User-Assigned Managed Identity
-	if msi.ClientID != "" {
-		token, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(msiEndpoint, c.envSettings.Environment.ResourceIdentifiers.KeyVault, msi.ClientID)
-		if err != nil {
-			return nil, err
-		}
-		akvCreds.ClientID = msi.ClientID
-		akvCreds.Token = token
-		return akvCreds, nil
-	}
-
-	// System-Assigned Managed Identity
-	token, err := adal.NewServicePrincipalTokenFromMSI(msiEndpoint, c.envSettings.Environment.ResourceIdentifiers.KeyVault)
-	if err != nil {
-		return nil, err
-	}
-	akvCreds.ClientID = "msi"
-	akvCreds.Token = token
-	return akvCreds, nil
 }

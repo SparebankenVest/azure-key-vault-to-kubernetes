@@ -32,7 +32,7 @@ func CreateTransformator(spec *akvs.AzureKeyVaultOutput) (*Transformator, error)
 		}, nil
 	}
 
-	for _, transform := range spec.Transforms {
+	for _, transform := range spec.Transform {
 		switch transform {
 		case "trim":
 			transforms = append(transforms, &TrimHandler{})

@@ -50,6 +50,8 @@ else
 	endif
 endif
 
+##asdf
+
 GO_BUILD_OPTIONS := --tags "netgo osusergo" -ldflags "-s -X $(COMPONENT_VAR)=$(COMPONENT) -X $(GIT_VAR)=$(GIT_TAG) -X $(BUILD_DATE_VAR)=$(BUILD_DATE) -extldflags '-static'"
 
 $(TOOLS_DIR)/golangci-lint: $(TOOLS_MOD_DIR)/go.mod $(TOOLS_MOD_DIR)/go.sum $(TOOLS_MOD_DIR)/tools.go

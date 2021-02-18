@@ -59,6 +59,11 @@ import (
 // 	}
 // }
 
+func TestIntegrationACRTokenAuth(t *testing.T) {
+	akv2k8sTesting.EnsureIntegrationEnvironment(t)
+
+}
+
 func TestIntegrationAuthFromUserAssignedManagedIdentity(t *testing.T) {
 	akv2k8sTesting.EnsureIntegrationEnvironment(t)
 
@@ -78,7 +83,7 @@ func TestIntegrationAuthFromEnvironmentAudience(t *testing.T) {
 		t.Error(err)
 	}
 
-	token := creds.(*keyVaultCredentials).Token
+	token := creds.(azureKeyVaultCredentials).Token
 	err = token.Refresh()
 	if err != nil {
 		t.Error(err)
@@ -146,7 +151,7 @@ func TestIntegrationAuthFromConfigAudience(t *testing.T) {
 		t.Error(err)
 	}
 
-	token := creds.(*keyVaultCredentials).Token
+	token := creds.(azureKeyVaultCredentials).Token
 	err = token.Refresh()
 	if err != nil {
 		t.Error(err)

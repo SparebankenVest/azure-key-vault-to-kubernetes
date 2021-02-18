@@ -20,6 +20,7 @@ package registry
 import (
 	"testing"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -84,7 +85,7 @@ func TestParsingRegistryAddress(t *testing.T) {
 	for _, test := range tests {
 		containerInfo := ContainerInfo{}
 
-		err := containerInfo.Collect(test.container, test.podSpec, "")
+		err := containerInfo.Collect(test.container, test.podSpec, credentialprovider.CloudConfigCredentialProvider{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -92,6 +93,65 @@ func TestParsingRegistryAddress(t *testing.T) {
 		assert.Equal(t, test.registryAddress, containerInfo.RegistryAddress)
 	}
 }
+
+func TestParsingACRImage(t *testing.T) {
+	tests := []struct {
+		container *corev1.Container
+		podSpec   *corev1.PodSpec
+		provider  credentialprovider.CloudConfigCredentialProvider
+	}{
+		{
+			container: &corev1.Container{
+				Image: "akv2k8s.azurecr.io/foo:bar",
+			},
+			podSpec:  &corev1.PodSpec{},
+			provider: credentialprovider.FakeCloudConfigProvider(),
+		},
+	}
+
+	for _, test := range tests {
+		containerInfo := ContainerInfo{}
+
+		err := containerInfo.Collect(test.container, test.podSpec, test.provider)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// assert.Equal(t, test.registryAddress, containerInfo.RegistryAddress)
+	}
+}
+
+// func TestParsingACRImage2(t *testing.T) {
+// 	credProvider, err := credentialprovider.FakeEnvironmentCredentialProvider()
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+
+// 	tests := []struct {
+// 		container *corev1.Container
+// 		podSpec   *corev1.PodSpec
+// 		provider  credentialprovider.EnvironmentCredentialProvider
+// 	}{
+// 		{
+// 			container: &corev1.Container{
+// 				Image: "akv2k8s.azurecr.io/foo:bar",
+// 			},
+// 			podSpec:  &corev1.PodSpec{},
+// 			provider: credProvider,
+// 		},
+// 	}
+
+// 	for _, test := range tests {
+// 		containerInfo := ContainerInfo{}
+
+// 		err := containerInfo.Collect(test.container, test.podSpec, test.provider)
+// 		if err != nil {
+// 			t.Fatal(err)
+// 		}
+
+// 		// assert.Equal(t, test.registryAddress, containerInfo.RegistryAddress)
+// 	}
+// }
 
 func TestParseContainerImage(t *testing.T) {
 	tests := []struct {

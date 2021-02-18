@@ -35,6 +35,9 @@ import (
 	"k8s.io/client-go/tools/record"
 	"kmodules.xyz/client-go/tools/queue"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	akvcs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
 	keyvaultScheme "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/scheme"
@@ -74,6 +77,18 @@ const (
 	MessageAzureKeyVaultSecretSyncedWithAzureKeyVault = "AzureKeyVaultSecret synced to Kubernetes Secret successfully with change from Azure Key Vault"
 
 	ControllerName = "Akv2k8s controller"
+)
+
+var (
+	syncCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "akv2k8s_syncs_total",
+		Help: "The total number of syncs",
+	}, []string{"operation", "object"})
+
+	syncFailures = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "akv2k8s_syncs_failed_total",
+		Help: "The total number of sync failures",
+	}, []string{"operation", "object"})
 )
 
 type NamespaceSelectorLabel struct {

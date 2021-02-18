@@ -22,11 +22,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/spf13/viper"
 
+	"github.com/gorilla/mux"
 	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -37,6 +39,8 @@ import (
 
 	json "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-controller/controller"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
@@ -59,6 +63,8 @@ var (
 
 func initConfig() {
 	viper.SetDefault("auth_type", "azureCloudConfig")
+	viper.SetDefault("metrics_enabled", false)
+	viper.SetDefault("metrics_port", "9000")
 
 	viper.AutomaticEnv()
 }
@@ -89,7 +95,13 @@ func main() {
 	akv2k8s.LogVersion()
 
 	authType := viper.GetString("auth_type")
+	serveMetrics := viper.GetBool("metrics_enabled")
+	metricsPort := viper.GetString("metrics_port")
 	namespace := viper.GetString("namespace")
+
+	if serveMetrics {
+		createMetricsServer(metricsPort)
+	}
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -163,6 +175,33 @@ func main() {
 		options)
 
 	controller.Run(stopCh)
+}
+
+func createMetricsServer(metricsPort string) {
+	router := mux.NewRouter()
+	httpURL := fmt.Sprintf(":%s", metricsPort)
+
+	router.Handle("/metrics", promhttp.Handler())
+	klog.InfoS("serving metrics endpoint", "path", fmt.Sprintf("%s/metrics", httpURL))
+
+	router.HandleFunc("/healthz", healthHandler)
+	klog.InfoS("serving health endpoint", "path", fmt.Sprintf("%s/healthz", httpURL))
+
+	go func() {
+		err := http.ListenAndServe(httpURL, router)
+		if err != nil {
+			klog.ErrorS(err, "error serving metrics", "url", httpURL)
+			os.Exit(1)
+		}
+	}()
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	}
 }
 
 func getCredentialsFromCloudConfig(cloudconfig string) (credentialprovider.AzureKeyVaultCredentials, error) {
