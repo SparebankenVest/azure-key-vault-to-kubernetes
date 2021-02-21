@@ -34,18 +34,12 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/spf13/pflag"
 
 	aadProvider "github.com/Azure/aad-pod-identity/pkg/cloudprovider"
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
-	version "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
-	dockerTypes "github.com/docker/docker/api/types"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 )
-
-var flagConfigFile = pflag.String("azure-container-registry-config", "",
-	"Path to the file containing Azure container registry configuration information.")
 
 const (
 	maxReadLength = 10 * 1 << 20 // 10MB
@@ -53,8 +47,8 @@ const (
 
 type CredentialProvider interface {
 	GetAzureKeyVaultCredentials() (AzureKeyVaultCredentials, error)
-	GetAcrCredentials(image string) (*dockerTypes.AuthConfig, error)
-	IsAcrRegistry(image string) bool
+	// GetAcrCredentials(image string) (*dockerTypes.AuthConfig, error)
+	// IsAcrRegistry(image string) bool
 }
 
 // UserAssignedManagedIdentityProvider provides credentials for Azure using managed identity
@@ -115,13 +109,13 @@ type azureToken struct {
 	token    *adal.ServicePrincipalToken
 }
 
-func init() {
-	err := adal.AddToUserAgent(version.GetUserAgent())
-	if err != nil {
-		// shouldn't fail ever
-		panic(err)
-	}
-}
+// func init() {
+// 	err := adal.AddToUserAgent(version.GetUserAgent())
+// 	if err != nil {
+// 		// shouldn't fail ever
+// 		panic(err)
+// 	}
+// }
 
 func NewUserAssignedManagedIdentityProvider(azureConfigFile string) (*UserAssignedManagedIdentityProvider, error) {
 	aadClient, err := aadProvider.NewCloudProvider(azureConfigFile, 2, time.Second*30)

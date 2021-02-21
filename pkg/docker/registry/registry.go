@@ -28,7 +28,6 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/patrickmn/go-cache"
-	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
@@ -41,7 +40,12 @@ type ImageRegistry interface {
 		clientset kubernetes.Interface,
 		namespace string,
 		container *corev1.Container,
-		podSpec *corev1.PodSpec) (*v1.Config, error)
+		podSpec *corev1.PodSpec,
+		opt ImageRegistryOptions) (*v1.Config, error)
+}
+
+type ImageRegistryOptions struct {
+	SkipVerify bool
 }
 
 // Registry impl
@@ -77,7 +81,8 @@ func (r *Registry) GetImageConfig(
 	client kubernetes.Interface,
 	namespace string,
 	container *corev1.Container,
-	podSpec *corev1.PodSpec) (*v1.Config, error) {
+	podSpec *corev1.PodSpec,
+	opt ImageRegistryOptions) (*v1.Config, error) {
 	allowToCache := IsAllowedToCache(container)
 	if allowToCache {
 		if imageConfig, cacheHit := r.imageCache.Get(container.Image); cacheHit {
@@ -95,15 +100,7 @@ func (r *Registry) GetImageConfig(
 		containerInfo.ImagePullSecrets = append(containerInfo.ImagePullSecrets, imagePullSecret.Name)
 	}
 
-	// The pod imagePullSecrets did not contained any credentials.
-	// Try to find matching registry credentials in the default imagePullSecret if one was provided.
-	// Otherwise cloud credential providers will be tried.
-	if containerInfo.Namespace == "" && len(containerInfo.ImagePullSecrets) == 0 {
-		containerInfo.Namespace = viper.GetString("default_image_pull_secret_namespace")
-		containerInfo.ImagePullSecrets = []string{viper.GetString("default_image_pull_secret")}
-	}
-
-	imageConfig, err := getImageConfig(ctx, client, containerInfo)
+	imageConfig, err := getImageConfig(ctx, client, containerInfo, opt)
 	if imageConfig != nil && allowToCache {
 		r.imageCache.Set(container.Image, imageConfig, cache.DefaultExpiration)
 	}
@@ -112,9 +109,7 @@ func (r *Registry) GetImageConfig(
 }
 
 // getImageConfig download image blob from registry
-func getImageConfig(ctx context.Context, client kubernetes.Interface, container containerInfo) (*v1.Config, error) {
-	registrySkipVerify := viper.GetBool("registry_skip_verify")
-
+func getImageConfig(ctx context.Context, client kubernetes.Interface, container containerInfo, opt ImageRegistryOptions) (*v1.Config, error) {
 	authChain, err := k8schain.New(
 		ctx,
 		client,
@@ -132,7 +127,7 @@ func getImageConfig(ctx context.Context, client kubernetes.Interface, container 
 		remote.WithAuthFromKeychain(authChain),
 	}
 
-	if registrySkipVerify {
+	if opt.SkipVerify {
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint:gosec
 		}
