@@ -27,6 +27,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-secrets-webhook/auth"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/docker/registry"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -45,14 +47,12 @@ type podWebHook struct {
 	clientset                 kubernetes.Interface
 	namespace                 string
 	mutationID                types.UID
-	authServiceSecret         *corev1.Secret
 	injectorDir               string
+	authService               auth.AuthService
 	useAuthService            bool
 	authServiceName           string
 	authServicePort           string
 	authServiceValidationPort string
-	caCert                    []byte
-	caKey                     []byte
 }
 
 // This init-container copies a program to /azure-keyvault/ and
@@ -107,7 +107,7 @@ func (p podWebHook) getVolumes(authSecret *corev1.Secret) []corev1.Volume {
 	return volumes
 }
 
-func (p podWebHook) mutateContainers(containers []corev1.Container, podSpec *corev1.PodSpec) (bool, error) {
+func (p podWebHook) mutateContainers(ctx context.Context, containers []corev1.Container, podSpec *corev1.PodSpec, authServiceSecret *corev1.Secret) (bool, error) {
 	mutated := false
 
 	for i, container := range containers {
@@ -139,7 +139,7 @@ func (p podWebHook) mutateContainers(containers []corev1.Container, podSpec *cor
 			continue
 		}
 
-		autoArgs, err := getContainerCmd(p.clientset, &container, podSpec, p.namespace)
+		autoArgs, err := getContainerCmd(ctx, p.clientset, &container, podSpec, p.namespace, registry.NewRegistry())
 		if err != nil {
 			return false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
 		}
@@ -184,10 +184,10 @@ func (p podWebHook) mutateContainers(containers []corev1.Container, podSpec *cor
 		}...)
 
 		if useAuthService {
-			_, err := p.clientset.CoreV1().Secrets(p.namespace).Create(context.TODO(), p.authServiceSecret, metav1.CreateOptions{})
+			_, err := p.clientset.CoreV1().Secrets(p.namespace).Create(context.TODO(), authServiceSecret, metav1.CreateOptions{})
 			if err != nil {
 				if errors.IsAlreadyExists(err) {
-					_, err = p.clientset.CoreV1().Secrets(p.namespace).Update(context.TODO(), p.authServiceSecret, metav1.UpdateOptions{})
+					_, err = p.clientset.CoreV1().Secrets(p.namespace).Update(context.TODO(), authServiceSecret, metav1.UpdateOptions{})
 					if err != nil {
 						return false, err
 					}
@@ -235,7 +235,7 @@ func (p podWebHook) mutateContainers(containers []corev1.Container, podSpec *cor
 				},
 				{
 					Name:  "ENV_INJECTOR_AUTH_SERVICE_SECRET",
-					Value: p.authServiceSecret.Name,
+					Value: authServiceSecret.Name,
 				},
 			}...)
 		}
@@ -275,70 +275,31 @@ func (p podWebHook) createSigningKeys(autoArgs string, containerName string) (*a
 	}, nil
 }
 
-func createAuthServicePodSecret(pod *corev1.Pod, namespace string, mutationID types.UID, caCert, caKey []byte) (*corev1.Secret, error) {
-	// Create secret containing CA cert and mTLS credentials
-
-	clientCert, err := generateClientCert(mutationID, 24, caCert, caKey)
-	if err != nil {
-		return nil, err
-	}
-
-	value := map[string][]byte{
-		"ca.crt":  clientCert.CA,
-		"tls.crt": clientCert.Crt,
-		"tls.key": clientCert.Key,
-	}
-
-	name := pod.GetName()
-	ownerReferences := pod.GetOwnerReferences()
-	if name == "" {
-		if len(ownerReferences) > 0 {
-			if strings.Contains(ownerReferences[0].Name, "-") {
-				generateNameSlice := strings.Split(ownerReferences[0].Name, "-")
-				name = strings.Join(generateNameSlice[:len(generateNameSlice)-1], "-")
-			} else {
-				name = ownerReferences[0].Name
-			}
-		}
-	}
-
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            fmt.Sprintf("akv2k8s-%s", name),
-			Namespace:       namespace,
-			OwnerReferences: ownerReferences,
-		},
-		Type: corev1.SecretTypeTLS,
-		Data: value,
-	}
-
-	return secret, nil
-}
-
-func (p podWebHook) mutatePodSpec(pod *corev1.Pod) error {
+func (p podWebHook) mutatePodSpec(ctx context.Context, pod *corev1.Pod) error {
+	var authServiceSecret *corev1.Secret
+	var err error
 	podSpec := &pod.Spec
 
 	if p.useAuthService {
-		secret, err := createAuthServicePodSecret(pod, p.namespace, p.mutationID, p.caCert, p.caKey)
+		authServiceSecret, err = p.authService.NewPodSecret(pod, p.namespace, p.mutationID)
 		if err != nil {
 			return err
 		}
-		p.authServiceSecret = secret
 	}
 
-	initContainersMutated, err := p.mutateContainers(podSpec.InitContainers, podSpec)
+	initContainersMutated, err := p.mutateContainers(ctx, podSpec.InitContainers, podSpec, authServiceSecret)
 	if err != nil {
 		return err
 	}
 
-	containersMutated, err := p.mutateContainers(podSpec.Containers, podSpec)
+	containersMutated, err := p.mutateContainers(ctx, podSpec.Containers, podSpec, authServiceSecret)
 	if err != nil {
 		return err
 	}
 
 	if initContainersMutated || containersMutated {
 		podSpec.InitContainers = append(p.getInitContainers(), podSpec.InitContainers...)
-		podSpec.Volumes = append(podSpec.Volumes, p.getVolumes(p.authServiceSecret)...)
+		podSpec.Volumes = append(podSpec.Volumes, p.getVolumes(authServiceSecret)...)
 		klog.InfoS("containers mutated and pod updated with init-container and volumes", "pod", klog.KRef(p.namespace, pod.Name))
 		podsMutatedCounter.Inc()
 	} else {
