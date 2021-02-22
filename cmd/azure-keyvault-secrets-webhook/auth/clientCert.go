@@ -23,6 +23,10 @@ type ClientCertificate struct {
 
 func generateClientCert(mutationID types.UID, validMonths int, caCert, caKey []byte) (*ClientCertificate, error) {
 	klog.V(4).InfoS("creating x509 key pair for ca cert and key")
+
+	klog.V(6).InfoS("ca cert", "pem", string(caCert))
+	klog.V(6).InfoS("ca key", "pem", string(caKey))
+
 	ca, err := tls.X509KeyPair(caCert, caKey)
 	if err != nil {
 		return nil, err
