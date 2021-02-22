@@ -20,7 +20,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"flag"
 	"fmt"
 	"net/http"
@@ -67,12 +66,12 @@ type azureKeyVaultConfig struct {
 	mtlsPort         string
 	mtlsPortExternal string
 
-	cloudConfig                  string
-	serveMetrics                 bool
-	tlsCertFile                  string
-	tlsKeyFile                   string
-	caCert                       []byte
-	caKey                        []byte
+	cloudConfig  string
+	serveMetrics bool
+	tlsCertFile  string
+	tlsKeyFile   string
+	// caCert                       []byte
+	// caKey                        []byte
 	authType                     string
 	useAuthService               bool
 	authService                  *auth.AuthService
@@ -311,9 +310,9 @@ func main() {
 	}
 	config.authService = authService
 
-	createHTTPEndpoint(wg, authService)
-	createMTLSEndpoint(wg, authService)
-	createTLSEndpoint(wg)
+	createHTTPEndpoint(wg, config.httpPort, authService)
+	createMTLSEndpoint(wg, config.mtlsPort, authService)
+	createTLSEndpoint(wg, config.tlsPort, config.tlsCertFile, config.tlsKeyFile)
 
 	wg.Wait()
 
@@ -363,9 +362,9 @@ func validateCredentials(credentials credentialprovider.Credentials) error {
 	return err
 }
 
-func createHTTPEndpoint(wg *sync.WaitGroup, authService *auth.AuthService) {
+func createHTTPEndpoint(wg *sync.WaitGroup, port string, authService *auth.AuthService) {
 	router := mux.NewRouter()
-	httpURL := fmt.Sprintf(":%s", config.httpPort)
+	httpURL := fmt.Sprintf(":%s", port)
 
 	if config.serveMetrics {
 		router.Handle("/metrics", promhttp.Handler())
@@ -389,14 +388,14 @@ func createHTTPEndpoint(wg *sync.WaitGroup, authService *auth.AuthService) {
 
 }
 
-func createTLSEndpoint(wg *sync.WaitGroup) {
+func createTLSEndpoint(wg *sync.WaitGroup, port, tlsCertFile, tlsKeyFile string) {
 	mutator := mutating.MutatorFunc(vaultSecretsMutator)
 	metricsRecorder := metrics.NewPrometheus(prometheus.DefaultRegisterer)
 	internalLogger := &internalLog.Std{Debug: config.klogLevel >= 4}
 	podHandler := handlerFor(mutating.WebhookConfig{Name: "azurekeyvault-secrets-pods", Obj: &corev1.Pod{}}, mutator, metricsRecorder, internalLogger)
 
 	router := mux.NewRouter()
-	tlsURL := fmt.Sprintf(":%s", config.tlsPort)
+	tlsURL := fmt.Sprintf(":%s", port)
 
 	router.Handle("/pods", podHandler)
 	klog.InfoS("serving encrypted webhook endpoint", "path", fmt.Sprintf("%s/pods", tlsURL))
@@ -406,7 +405,7 @@ func createTLSEndpoint(wg *sync.WaitGroup) {
 
 	go func() {
 		server := createServer(router, tlsURL, nil)
-		err := server.ListenAndServeTLS(config.tlsCertFile, config.tlsKeyFile)
+		err := server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
 		if err != nil {
 			klog.ErrorS(err, "error serving endpoint", "port", tlsURL)
 			os.Exit(1)
@@ -415,14 +414,14 @@ func createTLSEndpoint(wg *sync.WaitGroup) {
 	}()
 }
 
-func createMTLSEndpoint(wg *sync.WaitGroup, authService *auth.AuthService) {
+func createMTLSEndpoint(wg *sync.WaitGroup, port string, authService *auth.AuthService) {
 	if config.useAuthService {
 		wg.Add(1)
-		authURL := fmt.Sprintf(":%s", config.mtlsPort)
+		authURL := fmt.Sprintf(":%s", port)
 		authRouter := mux.NewRouter()
 
 		authRouter.HandleFunc("/auth/{namespace}/{pod}", authService.AuthHandler)
-		authServer := createServerWithMTLS(config.caCert, authRouter, authURL)
+		authServer := authService.NewMTLSServer(authRouter, authURL)
 		klog.InfoS("serving encrypted auth endpoint", "path", fmt.Sprintf("%s/auth", authURL))
 
 		go func() {
@@ -434,22 +433,6 @@ func createMTLSEndpoint(wg *sync.WaitGroup, authService *auth.AuthService) {
 			wg.Done()
 		}()
 	}
-}
-
-func createServerWithMTLS(caCert []byte, router http.Handler, url string) *http.Server {
-	clientCertPool := x509.NewCertPool()
-	clientCertPool.AppendCertsFromPEM(caCert)
-
-	tlsConfig := &tls.Config{
-		ClientAuth:               tls.RequireAndVerifyClientCert,
-		ClientCAs:                clientCertPool,
-		PreferServerCipherSuites: true,
-		MinVersion:               tls.VersionTLS12,
-	}
-
-	tlsConfig.BuildNameToCertificate()
-
-	return createServer(router, url, tlsConfig)
 }
 
 func createServer(router http.Handler, url string, tlsConfig *tls.Config) *http.Server {

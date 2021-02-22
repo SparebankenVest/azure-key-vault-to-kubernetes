@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	"github.com/gorilla/mux"
@@ -292,4 +295,26 @@ func (a AuthService) NewPodSecret(pod *corev1.Pod, namespace string, mutationID 
 	}
 
 	return secret, nil
+}
+
+func (a AuthService) NewMTLSServer(router http.Handler, url string) *http.Server {
+	clientCertPool := x509.NewCertPool()
+	clientCertPool.AppendCertsFromPEM(a.caCert)
+
+	tlsConfig := &tls.Config{
+		ClientAuth:               tls.RequireAndVerifyClientCert,
+		ClientCAs:                clientCertPool,
+		PreferServerCipherSuites: true,
+		MinVersion:               tls.VersionTLS12,
+	}
+
+	tlsConfig.BuildNameToCertificate()
+
+	return &http.Server{
+		Addr:         url,
+		TLSConfig:    tlsConfig,
+		Handler:      router,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
 }
