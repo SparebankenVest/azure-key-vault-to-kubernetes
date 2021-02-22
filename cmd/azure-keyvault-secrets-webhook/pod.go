@@ -281,17 +281,20 @@ func (p podWebHook) mutatePodSpec(ctx context.Context, pod *corev1.Pod) error {
 	podSpec := &pod.Spec
 
 	if p.useAuthService {
+		klog.InfoS("creating client certificate to use with auth service", klog.KRef(p.namespace, pod.Name))
 		authServiceSecret, err = p.authService.NewPodSecret(pod, p.namespace, p.mutationID)
 		if err != nil {
 			return err
 		}
 	}
 
+	klog.InfoS("mutate init-containers", klog.KRef(p.namespace, pod.Name))
 	initContainersMutated, err := p.mutateContainers(ctx, podSpec.InitContainers, podSpec, authServiceSecret)
 	if err != nil {
 		return err
 	}
 
+	klog.InfoS("mutate containers", klog.KRef(p.namespace, pod.Name))
 	containersMutated, err := p.mutateContainers(ctx, podSpec.Containers, podSpec, authServiceSecret)
 	if err != nil {
 		return err
