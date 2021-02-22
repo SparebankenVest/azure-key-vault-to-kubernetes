@@ -47,6 +47,8 @@ func NewAuthService(kubeclient kubernetes.Interface, credentials credentialprovi
 
 	caCertFile := filepath.Join(caCertDir, "tls.crt")
 	caKeyFile := filepath.Join(caCertDir, "tls.key")
+	klog.V(4).InfoS("ca cert", "file", caCertFile)
+	klog.V(4).InfoS("ca key", "file", caKeyFile)
 
 	if !fileExists(caCertFile) {
 		klog.InfoS("file does not exist", "file", caCertFile)
@@ -65,10 +67,20 @@ func NewAuthService(kubeclient kubernetes.Interface, credentials credentialprovi
 		return nil, err
 	}
 
+	if len(caCert) == 0 {
+		klog.InfoS("file is empty ", "file", caCertFile)
+		return nil, fmt.Errorf("file %s is empty", caCertFile)
+	}
+
 	caKey, err := ioutil.ReadFile(caKeyFile)
 	if err != nil {
 		klog.ErrorS(err, "failed to read pem file for ca key", "file", caKeyFile)
 		return nil, err
+	}
+
+	if len(caKey) == 0 {
+		klog.InfoS("file is empty ", "file", caKeyFile)
+		return nil, fmt.Errorf("file %s is empty", caKeyFile)
 	}
 
 	return &AuthService{

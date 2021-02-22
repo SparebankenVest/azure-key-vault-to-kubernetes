@@ -305,6 +305,7 @@ func main() {
 	authService, err := auth.NewAuthService(config.kubeClient, config.credentials)
 	if err != nil {
 		klog.ErrorS(err, "failed to create auth service")
+		os.Exit(1)
 	}
 
 	createHTTPEndpoint(wg, authService)
