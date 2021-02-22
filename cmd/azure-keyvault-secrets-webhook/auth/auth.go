@@ -41,6 +41,7 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
+// NewAuthService creates a new authentication service for akv2k8s
 func NewAuthService(kubeclient kubernetes.Interface, credentials credentialprovider.Credentials) (*AuthService, error) {
 	caCertDir := viper.GetString("ca_cert_dir")
 	if caCertDir == "" {
@@ -50,8 +51,8 @@ func NewAuthService(kubeclient kubernetes.Interface, credentials credentialprovi
 
 	caCertFile := filepath.Join(caCertDir, "tls.crt")
 	caKeyFile := filepath.Join(caCertDir, "tls.key")
-	klog.V(4).InfoS("ca cert", "file", caCertFile)
-	klog.V(4).InfoS("ca key", "file", caKeyFile)
+	klog.V(4).InfoS("auth service ca cert", "file", caCertFile)
+	klog.V(4).InfoS("auth service ca key", "file", caKeyFile)
 
 	if !fileExists(caCertFile) {
 		klog.InfoS("file does not exist", "file", caCertFile)
@@ -86,8 +87,6 @@ func NewAuthService(kubeclient kubernetes.Interface, credentials credentialprovi
 		return nil, fmt.Errorf("file %s is empty", caKeyFile)
 	}
 
-	klog.V(6).InfoS("ca cert", "pem", string(caCert))
-
 	return &AuthService{
 		kubeclient:  kubeclient,
 		credentials: credentials,
@@ -118,6 +117,7 @@ var (
 	})
 )
 
+// AuthHandler handles authentiction requests to the Auth Service
 func (a AuthService) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	authRequestsCounter.Inc()
 
@@ -160,6 +160,8 @@ func (a AuthService) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// AuthValidateHandler validates if a pod has valid credentials for authenticating with the Auth Service.
+// If not it will issue a new Secret for the pod to use when authenticating.
 func (a AuthService) AuthValidateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		vars := mux.Vars(r)
@@ -239,24 +241,13 @@ func (a AuthService) AuthValidateHandler(w http.ResponseWriter, r *http.Request)
 			}
 			w.WriteHeader(http.StatusCreated)
 		}
-		// 200 OK      -> CA Cert is the current CA in use
-		// 201 Created -> CA Cert has changed, a new client cert signed by the new CA will be availabe
-
-		// w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-
-		// if err := json.NewEncoder(w).Encode(result); err != nil {
-		// 	klog.ErrorS(err, "failed to json encode token", "pod", pod.name, "namespace", pod.namespace)
-		// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-		// } else {
-		// 	klog.InfoS("served oauth token", "pod", pod.name, "namespace", pod.namespace)
-		// }
-
 	} else {
 		klog.InfoS("invalid request method")
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 	}
 }
 
+// NewPodSecret creates a new Kubernetes Secret with a client certificate needed for authenticating with the AuthService
 func (a AuthService) NewPodSecret(pod *corev1.Pod, namespace string, mutationID types.UID) (*corev1.Secret, error) {
 	// Create secret containing CA cert and mTLS credentials
 
@@ -297,6 +288,7 @@ func (a AuthService) NewPodSecret(pod *corev1.Pod, namespace string, mutationID 
 	return secret, nil
 }
 
+// NewMTLSServer creates a new http server with mtls authentication enabled
 func (a AuthService) NewMTLSServer(router http.Handler, url string) *http.Server {
 	clientCertPool := x509.NewCertPool()
 	clientCertPool.AppendCertsFromPEM(a.caCert)
