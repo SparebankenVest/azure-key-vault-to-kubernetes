@@ -83,6 +83,8 @@ func NewAuthService(kubeclient kubernetes.Interface, credentials credentialprovi
 		return nil, fmt.Errorf("file %s is empty", caKeyFile)
 	}
 
+	klog.V(6).InfoS("ca cert", "pem", string(caCert))
+
 	return &AuthService{
 		kubeclient:  kubeclient,
 		credentials: credentials,
