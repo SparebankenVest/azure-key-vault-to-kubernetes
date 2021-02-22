@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -29,6 +30,14 @@ type AuthService struct {
 	caKey       []byte
 }
 
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
 func NewAuthService(kubeclient kubernetes.Interface, credentials credentialprovider.Credentials) (*AuthService, error) {
 	caCertDir := viper.GetString("ca_cert_dir")
 	if caCertDir == "" {
@@ -38,6 +47,16 @@ func NewAuthService(kubeclient kubernetes.Interface, credentials credentialprovi
 
 	caCertFile := filepath.Join(caCertDir, "tls.crt")
 	caKeyFile := filepath.Join(caCertDir, "tls.key")
+
+	if !fileExists(caCertFile) {
+		klog.InfoS("file does not exist", "file", caCertFile)
+		return nil, fmt.Errorf("file does not exist")
+	}
+
+	if !fileExists(caKeyFile) {
+		klog.InfoS("file does not exist", "file", caKeyFile)
+		return nil, fmt.Errorf("file does not exist")
+	}
 
 	var err error
 	caCert, err := ioutil.ReadFile(caCertFile)
