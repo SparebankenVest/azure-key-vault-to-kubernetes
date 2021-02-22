@@ -48,7 +48,7 @@ type podWebHook struct {
 	namespace                 string
 	mutationID                types.UID
 	injectorDir               string
-	authService               auth.AuthService
+	authService               *auth.AuthService
 	useAuthService            bool
 	authServiceName           string
 	authServicePort           string

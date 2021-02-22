@@ -75,6 +75,7 @@ type azureKeyVaultConfig struct {
 	caKey                        []byte
 	authType                     string
 	useAuthService               bool
+	authService                  *auth.AuthService
 	dockerImageInspectionTimeout int
 	authServiceName              string
 	kubeClient                   *kubernetes.Clientset
@@ -152,6 +153,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 		authServiceName:           config.authServiceName,
 		authServicePort:           config.mtlsPortExternal,
 		authServiceValidationPort: config.httpPortExternal,
+		authService:               config.authService,
 	}
 
 	err := wh.mutatePodSpec(context.Background(), pod)
@@ -307,6 +309,7 @@ func main() {
 		klog.ErrorS(err, "failed to create auth service")
 		os.Exit(1)
 	}
+	config.authService = authService
 
 	createHTTPEndpoint(wg, authService)
 	createMTLSEndpoint(wg, authService)
