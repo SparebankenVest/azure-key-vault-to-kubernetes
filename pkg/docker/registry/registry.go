@@ -20,6 +20,7 @@ package registry
 import (
 	"context"
 	"crypto/tls"
+	"flag"
 	"net/http"
 
 	"emperror.dev/errors"
@@ -33,8 +34,18 @@ import (
 	"k8s.io/klog/v2"
 
 	// need to trigger init method of azure credential provider
-	_ "github.com/vdemeester/k8s-pkg-credentialprovider/azure"
+	credentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider"
+	azurecredentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider/azure"
 )
+
+func init() {
+	flagConfigFile := flag.Lookup("cloudconfig").Value.String()
+
+	credentialprovider.RegisterCredentialProvider(
+		"azure",
+		azurecredentialprovider.NewACRProvider(&flagConfigFile),
+	)
+}
 
 // ImageRegistry is a docker registry
 type ImageRegistry interface {
