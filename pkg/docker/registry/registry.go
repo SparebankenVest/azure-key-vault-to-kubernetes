@@ -33,6 +33,7 @@ import (
 	"k8s.io/klog/v2"
 
 	// need to trigger init method of azure credential provider
+	_ "github.com/vdemeester/k8s-pkg-credentialprovider"
 	_ "github.com/vdemeester/k8s-pkg-credentialprovider/azure"
 )
 
