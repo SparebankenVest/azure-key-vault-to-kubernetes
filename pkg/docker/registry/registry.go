@@ -31,6 +31,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
+
+	// need to trigger init method of azure credential provider
+	_ "github.com/vdemeester/k8s-pkg-credentialprovider/azure"
 )
 
 // ImageRegistry is a docker registry
