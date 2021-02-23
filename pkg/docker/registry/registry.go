@@ -55,7 +55,7 @@ type Registry struct {
 }
 
 // NewRegistry creates and initializes registry
-func NewRegistry(cloudConfigPath string) ImageRegistry {
+func NewRegistry() ImageRegistry {
 	// credentialprovider.RegisterCredentialProvider(
 	// 	"azure",
 	// 	azurecredentialprovider.NewACRProvider(&cloudConfigPath),

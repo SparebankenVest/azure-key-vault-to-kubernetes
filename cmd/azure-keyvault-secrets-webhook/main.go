@@ -86,6 +86,7 @@ type azureKeyVaultConfig struct {
 	credentials                  credentialprovider.Credentials
 	credentialProvider           credentialprovider.CredentialProvider
 	klogLevel                    int
+	registry                     registry.ImageRegistry
 }
 
 type cmdParams struct {
@@ -154,7 +155,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 		authServicePort:           config.mtlsPortExternal,
 		authServiceValidationPort: config.httpPortExternal,
 		authService:               config.authService,
-		registry:                  registry.NewRegistry(config.cloudConfig),
+		registry:                  config.registry,
 	}
 
 	err := wh.mutatePodSpec(context.Background(), pod)
@@ -311,6 +312,7 @@ func main() {
 		os.Exit(1)
 	}
 	config.authService = authService
+	config.registry = registry.NewRegistry()
 
 	createHTTPEndpoint(wg, config.httpPort, authService)
 	createMTLSEndpoint(wg, config.mtlsPort, authService)
