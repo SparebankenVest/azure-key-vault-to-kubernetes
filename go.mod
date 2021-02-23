@@ -14,7 +14,6 @@ require (
 	github.com/google/go-containerregistry v0.4.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20210113221012-4eb508cda163
 	github.com/gorilla/mux v1.7.4
-	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.8.0
@@ -22,12 +21,12 @@ require (
 	github.com/spf13/viper v1.7.1
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.19.3
-	k8s.io/apimachinery v0.19.3
-	k8s.io/client-go v0.19.3
-	k8s.io/component-base v0.19.3
+	k8s.io/api v0.20.2
+	k8s.io/apimachinery v0.20.2
+	k8s.io/client-go v0.20.2
+	k8s.io/component-base v0.20.2
 	k8s.io/klog/v2 v2.4.0
 	kmodules.xyz/client-go v0.0.0-20200521013203-6fe0a448d053
+	sigs.k8s.io/controller-runtime v0.8.2
 	sigs.k8s.io/yaml v1.2.0
-	sigs.k8s.io/controller-runtime v0.6.2
 )
