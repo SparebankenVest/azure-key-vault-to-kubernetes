@@ -312,7 +312,7 @@ func main() {
 		os.Exit(1)
 	}
 	config.authService = authService
-	config.registry = registry.NewRegistry()
+	config.registry = registry.NewRegistry(config.cloudConfig)
 
 	createHTTPEndpoint(wg, config.httpPort, authService)
 	createMTLSEndpoint(wg, config.mtlsPort, authService)

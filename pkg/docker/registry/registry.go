@@ -31,7 +31,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
+
 	// need to trigger init method of azure credential provider
+	credentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider"
+	azurecredentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider/azure"
 )
 
 // ImageRegistry is a docker registry
@@ -55,11 +58,11 @@ type Registry struct {
 }
 
 // NewRegistry creates and initializes registry
-func NewRegistry() ImageRegistry {
-	// credentialprovider.RegisterCredentialProvider(
-	// 	"azure",
-	// 	azurecredentialprovider.NewACRProvider(&cloudConfigPath),
-	// )
+func NewRegistry(cloudConfigPath string) ImageRegistry {
+	credentialprovider.RegisterCredentialProvider(
+		"azure",
+		azurecredentialprovider.NewACRProvider(&cloudConfigPath),
+	)
 
 	return &Registry{
 		imageCache: cache.New(cache.NoExpiration, cache.NoExpiration),
