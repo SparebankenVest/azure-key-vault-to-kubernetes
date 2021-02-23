@@ -41,9 +41,9 @@ import (
 	whcontext "github.com/slok/kubewebhook/pkg/webhook/context"
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
-	"k8s.io/client-go/tools/clientcmd"
 	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
+	kubernetesConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,7 +77,7 @@ type azureKeyVaultConfig struct {
 	authService                  *auth.AuthService
 	dockerImageInspectionTimeout int
 	authServiceName              string
-	kubeClient                   *kubernetes.Clientset
+	kubeClient                   kubernetes.Interface
 	versionEnvImage              string
 	kubeconfig                   string
 	masterURL                    string
@@ -318,10 +318,10 @@ func main() {
 
 }
 
-func newKubeClient() (*kubernetes.Clientset, error) {
-	cfg, err := clientcmd.BuildConfigFromFlags(params.masterURL, params.kubeconfig)
+func newKubeClient() (kubernetes.Interface, error) {
+	cfg, err := kubernetesConfig.GetConfig() //clientcmd.BuildConfigFromFlags(params.masterURL, params.kubeconfig)
 	if err != nil {
-		klog.ErrorS(err, "failed to build kube config", "master", params.masterURL, "kubeconfig", params.kubeconfig)
+		klog.ErrorS(err, "failed to build kube config")
 		os.Exit(1)
 	}
 
