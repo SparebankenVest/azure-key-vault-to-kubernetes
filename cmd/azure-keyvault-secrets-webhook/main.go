@@ -31,6 +31,7 @@ import (
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-secrets-webhook/auth"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/docker/registry"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -153,6 +154,7 @@ func vaultSecretsMutator(ctx context.Context, obj metav1.Object) (bool, error) {
 		authServicePort:           config.mtlsPortExternal,
 		authServiceValidationPort: config.httpPortExternal,
 		authService:               config.authService,
+		registry:                  registry.NewRegistry(config.cloudConfig),
 	}
 
 	err := wh.mutatePodSpec(context.Background(), pod)

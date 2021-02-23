@@ -20,7 +20,6 @@ package registry
 import (
 	"context"
 	"crypto/tls"
-	"flag"
 	"net/http"
 
 	"emperror.dev/errors"
@@ -37,15 +36,6 @@ import (
 	credentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider"
 	azurecredentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider/azure"
 )
-
-func init() {
-	flagConfigFile := flag.Lookup("cloudconfig").Value.String()
-
-	credentialprovider.RegisterCredentialProvider(
-		"azure",
-		azurecredentialprovider.NewACRProvider(&flagConfigFile),
-	)
-}
 
 // ImageRegistry is a docker registry
 type ImageRegistry interface {
@@ -68,7 +58,12 @@ type Registry struct {
 }
 
 // NewRegistry creates and initializes registry
-func NewRegistry() ImageRegistry {
+func NewRegistry(cloudConfigPath string) ImageRegistry {
+	credentialprovider.RegisterCredentialProvider(
+		"azure",
+		azurecredentialprovider.NewACRProvider(&cloudConfigPath),
+	)
+
 	return &Registry{
 		imageCache: cache.New(cache.NoExpiration, cache.NoExpiration),
 	}

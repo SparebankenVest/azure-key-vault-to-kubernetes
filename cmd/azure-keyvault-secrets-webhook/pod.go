@@ -53,6 +53,7 @@ type podWebHook struct {
 	authServiceName           string
 	authServicePort           string
 	authServiceValidationPort string
+	registry                  registry.ImageRegistry
 }
 
 // This init-container copies a program to /azure-keyvault/ and
@@ -139,7 +140,7 @@ func (p podWebHook) mutateContainers(ctx context.Context, containers []corev1.Co
 			continue
 		}
 
-		autoArgs, err := getContainerCmd(ctx, p.clientset, &container, podSpec, p.namespace, registry.NewRegistry())
+		autoArgs, err := getContainerCmd(ctx, p.clientset, &container, podSpec, p.namespace, p.registry)
 		if err != nil {
 			return false, fmt.Errorf("failed to get auto cmd, error: %+v", err)
 		}
