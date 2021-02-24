@@ -37,6 +37,10 @@ import (
 
 	aadProvider "github.com/Azure/aad-pod-identity/pkg/cloudprovider"
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
+	k8sCredentialProvider "github.com/vdemeester/k8s-pkg-credentialprovider"
+
+	// credentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider"
+	// azurecredentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider/azure"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 )
@@ -45,9 +49,17 @@ const (
 	maxReadLength = 10 * 1 << 20 // 10MB
 )
 
+// func init() {
+// 	credentialprovider.RegisterCredentialProvider(
+// 		"akv2k8s",
+// 		azurecredentialprovider.NewACRProvider(&cloudConfigPath),
+// 	)
+
+// }
+
 type CredentialProvider interface {
 	GetAzureKeyVaultCredentials() (AzureKeyVaultCredentials, error)
-	// GetAcrCredentials(image string) (*dockerTypes.AuthConfig, error)
+	GetAcrCredentials(image string) (k8sCredentialProvider.DockerConfigEntry, error)
 	// IsAcrRegistry(image string) bool
 }
 

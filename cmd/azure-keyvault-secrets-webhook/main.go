@@ -20,7 +20,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -41,7 +40,9 @@ import (
 	"github.com/slok/kubewebhook/pkg/observability/metrics"
 	whcontext "github.com/slok/kubewebhook/pkg/webhook/context"
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	k8sCredentialProvider "github.com/vdemeester/k8s-pkg-credentialprovider"
 	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 	kubernetesConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -49,6 +50,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	// force init of azure-container-registry-config flag
+	// _ "github.com/vdemeester/k8s-pkg-credentialprovider/azure"
 )
 
 const (
@@ -213,14 +216,14 @@ func main() {
 	klog.InitFlags(nil)
 	defer klog.Flush()
 
-	flag.StringVar(&params.version, "version", "", "Version of this component.")
-	flag.StringVar(&params.versionEnvImage, "versionenvimage", "", "Version of the env image component.")
-	// flag.StringVar(&params.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	// flag.StringVar(&params.masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&params.cloudConfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
-	flag.StringVar(&params.logFormat, "logging-format", "text", "Log format - text or json.")
+	pflag.StringVar(&params.version, "version", "", "Version of this component.")
+	pflag.StringVar(&params.versionEnvImage, "versionenvimage", "", "Version of the env image component.")
+	// pflag.StringVar(&params.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+	// pflag.StringVar(&params.masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	pflag.StringVar(&params.cloudConfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
+	pflag.StringVar(&params.logFormat, "logging-format", "text", "Log format - text or json.")
 
-	flag.Parse()
+	pflag.Parse()
 
 	initConfig()
 
@@ -252,7 +255,7 @@ func main() {
 		cloudConfig:                  params.cloudConfig,
 	}
 
-	logLevel := flag.Lookup("v").Value.String()
+	logLevel := pflag.Lookup("v").Value.String()
 	klogLevel, err := strconv.Atoi(logLevel)
 	if err != nil {
 		klog.ErrorS(err, "failed to parse log level")
@@ -296,6 +299,9 @@ func main() {
 		klog.ErrorS(err, "failed to get authorizer from azure key vault credentials")
 		os.Exit(1)
 	}
+
+	dockerCred := credentialprovider.NewAcrDockerProvider(config.credentialProvider)
+	k8sCredentialProvider.RegisterCredentialProvider("akv2k8s", dockerCred)
 
 	config.kubeClient, err = newKubeClient()
 	if err != nil {

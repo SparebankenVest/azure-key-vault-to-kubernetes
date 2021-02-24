@@ -17,6 +17,13 @@
 
 package registry
 
+import (
+
+	// force init of azure-container-registry-config flag
+	_ "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
+	_ "github.com/vdemeester/k8s-pkg-credentialprovider/azure"
+)
+
 // func TestParsingRegistryAddress(t *testing.T) {
 // 	tests := []struct {
 // 		container       *corev1.Container
@@ -87,30 +94,31 @@ package registry
 // }
 
 // func TestParsingACRImage(t *testing.T) {
-// 	tests := []struct {
-// 		container *corev1.Container
-// 		podSpec   *corev1.PodSpec
-// 		provider  credentialprovider.CloudConfigCredentialProvider
-// 	}{
-// 		{
-// 			container: &corev1.Container{
-// 				Image: "akv2k8s.azurecr.io/foo:bar",
-// 			},
-// 			podSpec:  &corev1.PodSpec{},
-// 			provider: credentialprovider.FakeCloudConfigProvider(),
+// 	prov := credentialprovider.FakeCloudConfigProvider()
+// 	dockerCred := credentialprovider.NewAcrDockerProvider(prov)
+// 	k8sCredentialProvider.RegisterCredentialProvider("akv2k8s", dockerCred)
+
+// 	sa := &v1.ServiceAccount{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      "default",
+// 			Namespace: "test-ns",
 // 		},
 // 	}
 
-// 	for _, test := range tests {
-// 		containerInfo := ContainerInfo{}
+// 	kubeClient := fake.NewSimpleClientset(sa)
 
-// 		err := containerInfo.Collect(test.container, test.podSpec, test.provider)
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-
-// 		// assert.Equal(t, test.registryAddress, containerInfo.RegistryAddress)
+// 	containerInfo := containerInfo{
+// 		Image:              "dokken.azurecr.io/rabbitmq:3.8.8-management-alpine",
+// 		ImagePullSecrets:   []string{},
+// 		Namespace:          "test-ns",
+// 		ServiceAccountName: "",
 // 	}
+
+// 	_, err := getImageConfig(context.Background(), kubeClient, containerInfo, ImageRegistryOptions{})
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+
 // }
 
 // func TestParsingACRImage2(t *testing.T) {
