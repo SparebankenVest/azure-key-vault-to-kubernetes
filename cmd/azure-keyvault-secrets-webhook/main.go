@@ -20,6 +20,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -40,7 +41,6 @@ import (
 	"github.com/slok/kubewebhook/pkg/observability/metrics"
 	whcontext "github.com/slok/kubewebhook/pkg/webhook/context"
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	k8sCredentialProvider "github.com/vdemeester/k8s-pkg-credentialprovider"
 	jsonlogs "k8s.io/component-base/logs/json"
@@ -216,14 +216,14 @@ func main() {
 	klog.InitFlags(nil)
 	defer klog.Flush()
 
-	pflag.StringVar(&params.version, "version", "", "Version of this component.")
-	pflag.StringVar(&params.versionEnvImage, "versionenvimage", "", "Version of the env image component.")
-	// pflag.StringVar(&params.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	// pflag.StringVar(&params.masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	pflag.StringVar(&params.cloudConfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
-	pflag.StringVar(&params.logFormat, "logging-format", "text", "Log format - text or json.")
+	flag.StringVar(&params.version, "version", "", "Version of this component.")
+	flag.StringVar(&params.versionEnvImage, "versionenvimage", "", "Version of the env image component.")
+	// flag.StringVar(&params.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+	// flag.StringVar(&params.masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&params.cloudConfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
+	flag.StringVar(&params.logFormat, "logging-format", "text", "Log format - text or json.")
 
-	pflag.Parse()
+	flag.Parse()
 
 	initConfig()
 
@@ -255,7 +255,7 @@ func main() {
 		cloudConfig:                  params.cloudConfig,
 	}
 
-	logLevel := pflag.Lookup("v").Value.String()
+	logLevel := flag.Lookup("v").Value.String()
 	klogLevel, err := strconv.Atoi(logLevel)
 	if err != nil {
 		klog.ErrorS(err, "failed to parse log level")
