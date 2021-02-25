@@ -367,8 +367,8 @@ func getCredentials() (credentialprovider.Credentials, credentialprovider.Creden
 }
 
 func validateCredentials(credentials credentialprovider.Credentials) error {
-	klog.V(4).InfoS("checking credentials by getting authorizer from credentials")
-	_, err := config.credentials.Authorizer()
+	klog.V(4).InfoS("checking credentials by getting authorizer")
+	_, err := credentials.Authorizer()
 	return err
 }
 
