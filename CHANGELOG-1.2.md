@@ -7,32 +7,22 @@ The most notable changes in this release are:
 * The Controller support sync to ConfigMap (in addition to Secret)
 * The Controller support several `AzureKeyVaultSecret`-resources pointing to same Secret/ConfigMap as long as they have different output `dataKey`'s
 * The Env Injector's auth service use Mutual TLS authentication (mTLS) to secure credential exchange with Pods
-* Both Controller and Env Injector has optional Promethues metrics
+* Both Controller and Env Injector has optional Prometheus metrics
 * All known stability issues with version 1.1 should be fixed
-
-### General
-
-#### Features
-
-* Prometheus metrcis
-
-#### Other 
-
-* Authentication with Azure refactored and simplyfied
-* Authentication with container regestries refactored and simplyfied
 
 ### Env-Injector
 
 #### Features
 
 * The Env Injector's auth service use Mutual TLS authentication (mTLS) to secure credential exchange with Pods
-* Support for Prometheus metrics
+* #38 - Optionally expose Prometheus metrics
 
 #### Bug Fixes
 
-* #153 - config map deleted by Kubernetes garbage collector - The ConfigMap containing akv2k8s CA certificate is not used in this version. Instead it's injected into a Secret during mutation of the Pod.
-* #151 - secret output transform does not work - The CRD and API were using different key - fixed.
-* #147 - akv2k8s-ca configmap disappears after some hours never to come back - Same as #153
+* #55 - when using aad-pod-identity, env-injector fail to pull image from ACR
+* #147 - akv2k8s-ca ConfigMap disappears after some hours never to come back
+* #151 - secret output transform does not work - The CRD and API were using different key
+* #153 - config map deleted by Kubernetes garbage collector
 
 #### Other
 * The CA Bundle sync is removed, as this is now handled during Pod mutation in the Env-Injector
@@ -40,8 +30,9 @@ The most notable changes in this release are:
 ### Controller
 
 #### Features
-* Support sync to ConfigMap (requires AzureKeyVaultSecret `apiVersion: spv.no/v2beta1`)
-* Optionally expose Prometheus metrcis
+* #18 - Sync to ConfigMap (requires AzureKeyVaultSecret `apiVersion: spv.no/v2beta1`)
+* #36 - Multiple `AzureKeyVaultSecret`-resources can reference the same Secret/ConfigMap as long as they have different output `dataKey`'s
+* #38 - Optionally expose Prometheus metrics
 
 ### Docs
 
@@ -49,15 +40,15 @@ The most notable changes in this release are:
 * New features documented
 * Examples/tutorials updated with latest CRD API version `apiVersion: spv.no/v2beta1`
 * Installation section updated with latests changes
-* Section added for Montoring (logs and metrics)
+* Section added for Monitoring (logs and metrics)
 
 ### Helm Charts
 
-* Standarized all labels, simplified and standarized values - breaking change requires major version bump to 2.0.0
+* Standardized all labels, simplified and standardized values - breaking change requires major version bump to 2.0.0
 * Support `global` values which will effect both the Controller and Env Injector, preventing value duplication
 * Enable Prometheus metrics configuration and `ServiceMonitor` configuration
 * Support adding extra volumes
-* Use ephemeral ports internally by default to avoid running with elevated priveleges   
+* Use ephemeral ports internally by default to avoid running with elevated privileges   
 
 ### Chart and Image versions
 
