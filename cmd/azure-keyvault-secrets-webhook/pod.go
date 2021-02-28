@@ -182,6 +182,22 @@ func (p podWebHook) mutateContainers(ctx context.Context, containers []corev1.Co
 				Name:  "ENV_INJECTOR_USE_AUTH_SERVICE",
 				Value: strconv.FormatBool(useAuthService),
 			},
+			{
+				Name: "ENV_INJECTOR_POD_NAMESPACE",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.namespace",
+					},
+				},
+			},
+			{
+				Name: "ENV_INJECTOR_POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
 		}...)
 
 		if useAuthService {
@@ -209,22 +225,6 @@ func (p podWebHook) mutateContainers(ctx context.Context, containers []corev1.Co
 				{
 					Name:  "ENV_INJECTOR_CLIENT_CERT_DIR",
 					Value: clientCertDir,
-				},
-				{
-					Name: "ENV_INJECTOR_POD_NAMESPACE",
-					ValueFrom: &corev1.EnvVarSource{
-						FieldRef: &corev1.ObjectFieldSelector{
-							FieldPath: "metadata.namespace",
-						},
-					},
-				},
-				{
-					Name: "ENV_INJECTOR_POD_NAME",
-					ValueFrom: &corev1.EnvVarSource{
-						FieldRef: &corev1.ObjectFieldSelector{
-							FieldPath: "metadata.name",
-						},
-					},
 				},
 				{
 					Name:  "ENV_INJECTOR_AUTH_SERVICE",
