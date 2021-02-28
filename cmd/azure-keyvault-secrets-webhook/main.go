@@ -294,8 +294,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var authService *auth.AuthService
-
 	if config.useAuthService {
 		config.credentials, config.credentialProvider, err = getCredentials()
 		if err != nil {
@@ -328,8 +326,8 @@ func main() {
 
 	config.registry = registry.NewRegistry(config.cloudConfig)
 
-	createHTTPEndpoint(wg, config.httpPort, config.useAuthService, authService)
-	createMTLSEndpoint(wg, config.mtlsPort, config.useAuthService, authService)
+	createHTTPEndpoint(wg, config.httpPort, config.useAuthService, config.authService)
+	createMTLSEndpoint(wg, config.mtlsPort, config.useAuthService, config.authService)
 	createTLSEndpoint(wg, config.tlsPort, config.tlsCertFile, config.tlsKeyFile)
 
 	wg.Wait()
