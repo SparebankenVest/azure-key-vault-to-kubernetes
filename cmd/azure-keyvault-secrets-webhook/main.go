@@ -288,40 +288,48 @@ func main() {
 
 	klog.InfoS("active settings", activeSettings...)
 
-	config.credentials, config.credentialProvider, err = getCredentials()
-	if err != nil {
-		klog.ErrorS(err, "failed to get credentials for azure key vault")
-		os.Exit(1)
-	}
-
-	err = validateCredentials(config.credentials)
-	if err != nil {
-		klog.ErrorS(err, "failed to get authorizer from azure key vault credentials")
-		os.Exit(1)
-	}
-
-	dockerCred := credentialprovider.NewAcrDockerProvider(config.credentialProvider)
-	k8sCredentialProvider.RegisterCredentialProvider("akv2k8s", dockerCred)
-
 	config.kubeClient, err = newKubeClient()
 	if err != nil {
 		klog.ErrorS(err, "failed to build kube clientset", "master", params.masterURL, "kubeconfig", params.kubeconfig)
 		os.Exit(1)
 	}
 
+	var authService *auth.AuthService
+
+	if config.useAuthService {
+		config.credentials, config.credentialProvider, err = getCredentials()
+		if err != nil {
+			klog.ErrorS(err, "failed to get credentials for azure key vault")
+			os.Exit(1)
+		}
+
+		err = validateCredentials(config.credentials)
+		if err != nil {
+			klog.ErrorS(err, "failed to get authorizer from azure key vault credentials")
+			os.Exit(1)
+		}
+
+		dockerCred := credentialprovider.NewAcrDockerProvider(config.credentialProvider)
+		k8sCredentialProvider.RegisterCredentialProvider("akv2k8s", dockerCred)
+
+		authService, err := auth.NewAuthService(config.kubeClient, config.credentials)
+		if err != nil {
+			klog.ErrorS(err, "failed to create auth service")
+			os.Exit(1)
+		}
+
+		config.authService = authService
+	} else {
+		klog.InfoS("auth service disabled - azure key vault credentials must be provided manually for each pod", "useAuthService", false)
+	}
+
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
 
-	authService, err := auth.NewAuthService(config.kubeClient, config.credentials)
-	if err != nil {
-		klog.ErrorS(err, "failed to create auth service")
-		os.Exit(1)
-	}
-	config.authService = authService
 	config.registry = registry.NewRegistry(config.cloudConfig)
 
-	createHTTPEndpoint(wg, config.httpPort, authService)
-	createMTLSEndpoint(wg, config.mtlsPort, authService)
+	createHTTPEndpoint(wg, config.httpPort, config.useAuthService, authService)
+	createMTLSEndpoint(wg, config.mtlsPort, config.useAuthService, authService)
 	createTLSEndpoint(wg, config.tlsPort, config.tlsCertFile, config.tlsKeyFile)
 
 	wg.Wait()
@@ -372,7 +380,7 @@ func validateCredentials(credentials credentialprovider.Credentials) error {
 	return err
 }
 
-func createHTTPEndpoint(wg *sync.WaitGroup, port string, authService *auth.AuthService) {
+func createHTTPEndpoint(wg *sync.WaitGroup, port string, useAuthService bool, authService *auth.AuthService) {
 	router := mux.NewRouter()
 	httpURL := fmt.Sprintf(":%s", port)
 
@@ -381,8 +389,10 @@ func createHTTPEndpoint(wg *sync.WaitGroup, port string, authService *auth.AuthS
 		klog.InfoS("serving metrics endpoint", "path", fmt.Sprintf("%s/metrics", httpURL))
 	}
 
-	router.HandleFunc("/auth/{namespace}/{pod}", authService.AuthValidateHandler)
-	klog.InfoS("serving auth validation endpoint", "path", fmt.Sprintf("%s/auth/{namespace}/{pod}", httpURL))
+	if useAuthService {
+		router.HandleFunc("/auth/{namespace}/{pod}", authService.AuthValidateHandler)
+		klog.InfoS("serving auth validation endpoint", "path", fmt.Sprintf("%s/auth/{namespace}/{pod}", httpURL))
+	}
 
 	router.HandleFunc("/healthz", healthHandler)
 	klog.InfoS("serving health endpoint", "path", fmt.Sprintf("%s/healthz", httpURL))
@@ -424,8 +434,8 @@ func createTLSEndpoint(wg *sync.WaitGroup, port, tlsCertFile, tlsKeyFile string)
 	}()
 }
 
-func createMTLSEndpoint(wg *sync.WaitGroup, port string, authService *auth.AuthService) {
-	if config.useAuthService {
+func createMTLSEndpoint(wg *sync.WaitGroup, port string, useAuthService bool, authService *auth.AuthService) {
+	if useAuthService {
 		wg.Add(1)
 		authURL := fmt.Sprintf(":%s", port)
 		authRouter := mux.NewRouter()
