@@ -19,6 +19,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -34,6 +35,7 @@ import (
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 )
 
@@ -124,25 +126,14 @@ func getSecretFromKeyVault(azureKeyVaultSecret *akv.AzureKeyVaultSecret, query s
 func initConfig() {
 	viper.SetDefault("env_injector_retries", 3)
 	viper.SetDefault("env_injector_wait_before_retry", 3)
-	viper.SetDefault("env_injector_custom_auth", false)
 	viper.SetDefault("env_injector_use_auth_service", true)
+
 	viper.SetDefault("env_injector_skip_args_validation", false)
-	viper.SetDefault("env_injector_log_level", "Info")
+	viper.SetDefault("env_injector_log_level", "info")
 	viper.SetDefault("env_injector_log_format", "fmt")
+
 	viper.AutomaticEnv()
 }
-
-// func setLogLevel(logLevel string) {
-// 	if logLevel == "" {
-// 		logLevel = log.InfoLevel.String()
-// 	}
-
-// 	logrusLevel, err := log.ParseLevel(logLevel)
-// 	if err != nil {
-// 		log.Errorf("error setting log level: %s", err.Error())
-// 	}
-// 	log.SetLevel(logrusLevel)
-// }
 
 func validateConfig(requiredEnvVars map[string]string) error {
 	for key, value := range requiredEnvVars {
@@ -154,9 +145,6 @@ func validateConfig(requiredEnvVars map[string]string) error {
 }
 
 func main() {
-	klog.InitFlags(nil)
-	defer klog.Flush()
-
 	initConfig()
 
 	akv2k8s.Version = viper.GetString("version")
@@ -165,34 +153,67 @@ func main() {
 	var origArgs []string
 	var err error
 
-	// logLevel := viper.GetString("env_injector_log_level")
-	// setLogLevel(logLevel)
-	// logFormat := viper.GetString("env_injector_log_format")
-	// formatLogger(logFormat)
+	logFormat := viper.GetString("ENV_INJECTOR_LOG_FORMAT")
+	logLevel := viper.GetString("ENV_INJECTOR_LOG_LEVEL")
+
+	if logFormat == "json" {
+		klog.SetLogger(jsonlogs.JSONLogger)
+	}
+
+	klog.InitFlags(nil)
+	defer klog.Flush()
+
+	if logLevel == "debug" {
+		flag.Set("v", "4")
+	} else if logLevel == "trace" {
+		flag.Set("v", "6")
+	} else {
+		flag.Set("v", "2")
+	}
+
 	akv2k8s.LogVersion()
 
 	klog.InfoS("azure key vault env injector initializing")
 
 	config = injectorConfig{
+		// required
+		signatureB64:   viper.GetString("env_injector_args_signature"),
+		pubKeyBase64:   viper.GetString("env_injector_args_key"),
+		useAuthService: viper.GetBool("env_injector_use_auth_service"),
+
+		// required if auth service
+		clientCertDir:                viper.GetString("env_injector_client_cert_dir"),
 		namespace:                    viper.GetString("env_injector_pod_namespace"),
 		podName:                      viper.GetString("env_injector_pod_name"),
-		clientCertDir:                viper.GetString("env_injector_client_cert_dir"),
-		retryTimes:                   viper.GetInt("env_injector_retries"),
-		waitTimeBetweenRetries:       viper.GetInt("env_injector_wait_before_retry"),
-		useAuthService:               viper.GetBool("env_injector_use_auth_service"),
-		skipArgsValidation:           viper.GetBool("env_injector_skip_args_validation"),
 		authServiceAddress:           viper.GetString("env_injector_auth_service"),
 		authServiceValidationAddress: viper.GetString("env_injector_auth_service_validation"),
 		authServiceSecret:            viper.GetString("env_injector_auth_service_secret"),
-		signatureB64:                 viper.GetString("env_injector_args_signature"),
-		pubKeyBase64:                 viper.GetString("env_injector_args_key"),
+
+		// optional
+		retryTimes:             viper.GetInt("env_injector_retries"),
+		waitTimeBetweenRetries: viper.GetInt("env_injector_wait_before_retry"),
+		skipArgsValidation:     viper.GetBool("env_injector_skip_args_validation"),
 	}
 
 	requiredEnvVars := map[string]string{
-		"env_injector_auth_service":   config.authServiceAddress,
 		"env_injector_args_signature": config.signatureB64,
 		"env_injector_args_key":       config.pubKeyBase64,
 	}
+
+	if config.useAuthService {
+		requiredEnvVars["env_injector_client_cert_dir"] = config.clientCertDir
+		requiredEnvVars["env_injector_pod_namespace"] = config.namespace
+		requiredEnvVars["env_injector_pod_name"] = config.podName
+		requiredEnvVars["env_injector_auth_service"] = config.authServiceAddress
+		requiredEnvVars["env_injector_auth_service_validation"] = config.authServiceValidationAddress
+		requiredEnvVars["env_injector_auth_service_secret"] = config.authServiceSecret
+	}
+
+	// Manual env vars
+	//
+	// env_injector_retries
+	// env_injector_wait_before_retry
+	// env_injector_skip_args_validation
 
 	err = validateConfig(requiredEnvVars)
 	if err != nil {

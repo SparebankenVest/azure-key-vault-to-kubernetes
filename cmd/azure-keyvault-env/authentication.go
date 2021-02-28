@@ -168,6 +168,7 @@ func getCredentials(useAuthService bool, authServiceAddress string, authServiceV
 		return creds, nil
 	}
 
+	// Not using auth service - getting credentials from environment
 	provider, err := credentialprovider.NewFromEnvironment()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create credentials provider for azure key vault, error: %w", err)
