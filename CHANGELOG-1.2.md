@@ -8,6 +8,15 @@
 
 * Make sure authService exists before creating http endpoints
 
+### Chart and Image versions
+
+| Type    |           Component                                   |                Version         |         
+| ------- | ---------------------------------- | -----------------------------|
+| Helm Chart | [akv2k8s](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/akv2k8s) | 2.0.2 |
+| Docker Image | spvest/azure-keyvault-controller | 1.2.0 |
+| Docker Image | spvest/azure-keyvault-webhook | 1.2.2 |
+| Docker Image | spvest/azure-keyvault-env  | 1.2.1 |
+
 ## Version 1.2.1
 
 ### Env-Injector
@@ -22,6 +31,15 @@
 #### Features
 
 * Handle log level and format from env variables using klog
+
+### Chart and Image versions
+
+| Type    |           Component                                   |                Version         |         
+| ------- | ---------------------------------- | -----------------------------|
+| Helm Chart | [akv2k8s](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/akv2k8s) | 2.0.1 |
+| Docker Image | spvest/azure-keyvault-controller | 1.2.0 |
+| Docker Image | spvest/azure-keyvault-webhook | 1.2.1 |
+| Docker Image | spvest/azure-keyvault-env  | 1.2.1 |
 
 ## Version 1.2.0
 
