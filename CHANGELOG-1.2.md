@@ -1,5 +1,30 @@
 # Changelog for Version 1.2
 
+## Version 1.2.2
+
+### Env-Injector
+
+#### Bug Fixes
+
+* Make sure authService exists before creating http endpoints
+
+## Version 1.2.1
+
+### Env-Injector Init Container
+
+#### Features
+
+* Handle log level and format from env variables using klog
+
+#### Bug Fixes
+
+* Ensure Pod Name and Namespace are injected as env vars into Pod when authService is disabled
+* Only create and validate credentials when authService is enabled
+
+### Env-Injector Sidecar Container
+
+#### Bug Fixes
+
 ## Version 1.2.0
 
 The most notable changes in this release are:
