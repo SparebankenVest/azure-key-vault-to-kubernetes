@@ -1,3 +1,8 @@
+---
+title: "Changelog for Version 1.2"
+description: "All changes in version 1.2"
+---
+
 # Changelog for Version 1.2
 
 ## Version 1.2.2
