@@ -10,20 +10,18 @@
 
 ## Version 1.2.1
 
-### Env-Injector Init Container
-
-#### Features
-
-* Handle log level and format from env variables using klog
+### Env-Injector
 
 #### Bug Fixes
 
 * Ensure Pod Name and Namespace are injected as env vars into Pod when authService is disabled
 * Only create and validate credentials when authService is enabled
 
-### Env-Injector Sidecar Container
+### Env-Injector Init Container
 
-#### Bug Fixes
+#### Features
+
+* Handle log level and format from env variables using klog
 
 ## Version 1.2.0
 
