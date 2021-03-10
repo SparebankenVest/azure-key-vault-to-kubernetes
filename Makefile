@@ -149,6 +149,7 @@ crdgen: $(TOOLS_DIR)/controller-gen
 		crd:crdVersions=v1,preserveUnknownFields=false,trivialVersions=true \
   		paths=./pkg/k8s/apis/azurekeyvault/v1alpha1/... \
   		paths=./pkg/k8s/apis/azurekeyvault/v1/... \
+  		paths=./pkg/k8s/apis/azurekeyvault/v2alpha1/... \
   		paths=./pkg/k8s/apis/azurekeyvault/v2beta1/... \
   		output:crd:artifacts:config=./crds
 	mv $(CRDS_DIR)/spv.no_azurekeyvaultsecrets.yaml $(CRDS_DIR)/AzureKeyVaultSecret.yaml
