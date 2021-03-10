@@ -37,6 +37,7 @@ VCS_URL := https://$(PACKAGE)
 
 TOOLS_MOD_DIR := ./tools
 TOOLS_DIR := $(abspath ./.tools)
+CRDS_DIR := $(abspath ./crds)
 
 ifeq ($(OS),Windows_NT)
 	GO_BUILD_MODE = default
@@ -61,6 +62,10 @@ $(TOOLS_DIR)/golangci-lint: $(TOOLS_MOD_DIR)/go.mod $(TOOLS_MOD_DIR)/go.sum $(TO
 $(TOOLS_DIR)/misspell: $(TOOLS_MOD_DIR)/go.mod $(TOOLS_MOD_DIR)/go.sum $(TOOLS_MOD_DIR)/tools.go
 	cd $(TOOLS_MOD_DIR) && \
 	go build -o $(TOOLS_DIR)/misspell github.com/client9/misspell/cmd/misspell
+
+$(TOOLS_DIR)/controller-gen: $(TOOLS_MOD_DIR)/go.mod $(TOOLS_MOD_DIR)/go.sum $(TOOLS_MOD_DIR)/tools.go
+	cd $(TOOLS_MOD_DIR) && \
+	go build -o $(TOOLS_DIR)/controller-gen sigs.k8s.io/controller-tools/cmd/controller-gen
 
 .PHONY: precommit
 precommit: build test lint
@@ -137,6 +142,16 @@ codegen:
 	rm -rf ${GOPATH}/src/k8s.io/code-generator
 	git clone --depth 1 --branch $(KUBERNETES_DEP_VERSION) git@github.com:kubernetes/code-generator.git ${GOPATH}/src/k8s.io/code-generator
 	./hack/update-codegen.sh
+
+.PHONY: crdgen
+crdgen: $(TOOLS_DIR)/controller-gen
+	$(TOOLS_DIR)/controller-gen \
+		crd:crdVersions=v1,preserveUnknownFields=false,trivialVersions=true \
+  		paths=./pkg/k8s/apis/azurekeyvault/v1alpha1/... \
+  		paths=./pkg/k8s/apis/azurekeyvault/v1/... \
+  		paths=./pkg/k8s/apis/azurekeyvault/v2beta1/... \
+  		output:crd:artifacts:config=./crds
+	mv $(CRDS_DIR)/keyvault.azure.spv.no_azurekeyvaultsecrets.yaml $(CRDS_DIR)/AzureKeyVaultSecret.yaml
 
 .PHONY: test
 test: fmtcheck
