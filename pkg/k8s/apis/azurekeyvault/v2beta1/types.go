@@ -74,9 +74,12 @@ type AzureKeyVaultObject struct {
 }
 
 // AzureKeyVaultObjectType defines which Object type to get from Azure Key Vault
+// +kubebuilder:validation:Enum=secret;certificate;key;multi-key-value-secret
 type AzureKeyVaultObjectType string
 
-// AzureKeyVaultObjectContentType defines what content type a secret contains
+// AzureKeyVaultObjectContentType defines what content type a secret contains,
+// only used when type is multi-key-value-secret
+// +kubebuilder:validation:Enum=application/x-json;application/x-yaml
 type AzureKeyVaultObjectContentType string
 
 const (
