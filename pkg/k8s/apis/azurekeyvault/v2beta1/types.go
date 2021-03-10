@@ -63,7 +63,14 @@ type AzureKeyVault struct {
 	Name   string              `json:"name"`
 	Object AzureKeyVaultObject `json:"object"`
 	// +optional
-	AzureIdentity string `json:"azureIdentity,omitempty"`
+	AzureIdentity AzureIdentity `json:"azureIdentity,omitempty"`
+}
+
+// AzureIdentity has information about the azure
+// identity used for Azure Key Vault authentication
+type AzureIdentity struct {
+	// Name of the azureIdentity to use for Azure Key Vault authentication
+	Name string `json:"name"`
 }
 
 // AzureKeyVaultObject has information about the Azure Key Vault
