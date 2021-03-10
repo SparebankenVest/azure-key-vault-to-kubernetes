@@ -48,6 +48,7 @@ type AzureKeyVaultSecretSpec struct {
 // AzureKeyVault contains information needed to get the
 // Azure Key Vault secret from Azure Key Vault
 type AzureKeyVault struct {
+	// Name of the Azure Key Vault
 	Name   string              `json:"name"`
 	Object AzureKeyVaultObject `json:"object"`
 }
@@ -55,10 +56,15 @@ type AzureKeyVault struct {
 // AzureKeyVaultObject has information about the Azure Key Vault
 // object to get from Azure Key Vault
 type AzureKeyVaultObject struct {
-	Name        string                         `json:"name"`
-	Type        AzureKeyVaultObjectType        `json:"type"`
-	Version     string                         `json:"version"`
-	Poll        bool                           `json:"bool"`
+	// The object name in Azure Key Vault
+	Name string                  `json:"name"`
+	Type AzureKeyVaultObjectType `json:"type"`
+	// +optional
+	// The object version in Azure Key Vault
+	Version string `json:"version"`
+	// +optional
+	Poll bool `json:"bool"`
+	// +optional
 	ContentType AzureKeyVaultObjectContentType `json:"contentType"`
 }
 
@@ -93,6 +99,7 @@ const (
 
 // AzureKeyVaultOutput defines output sources, currently only support Secret
 type AzureKeyVaultOutput struct {
+	// +optional
 	Secret AzureKeyVaultOutputSecret `json:"secret"`
 	// +optional
 	Transform []string `json:"transform,omitempty"`
@@ -101,11 +108,18 @@ type AzureKeyVaultOutput struct {
 // AzureKeyVaultOutputSecret has information needed to output
 // a secret from Azure Key Vault to Kubertnetes as a Secret resource
 type AzureKeyVaultOutputSecret struct {
+	// Name for Kubernetes secret
 	Name string `json:"name"`
 	// +optional
-	Type       corev1.SecretType `json:"type,omitempty"`
-	DataKey    string            `json:"dataKey"`
-	ChainOrder string            `json:"chainOrder"`
+	// Type of Secret in Kubernetes
+	Type corev1.SecretType `json:"type,omitempty"`
+	// +optional
+	// The key to use in Kubernetes secret when setting the value from Azure Keyv Vault object data
+	DataKey string `json:"dataKey"`
+	// +optional
+	// By setting chainOrder to ensureserverfirst the server certificate will be moved first in the chain
+	// +kubebuilder:validation:Enum=ensureserverfirst
+	ChainOrder string `json:"chainOrder"`
 }
 
 // AzureKeyVaultSecretStatus is the status for a AzureKeyVaultSecret resource

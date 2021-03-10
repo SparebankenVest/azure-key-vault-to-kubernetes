@@ -59,17 +59,22 @@ type AzureKeyVaultSecretSpec struct {
 // AzureKeyVault contains information needed to get the
 // Azure Key Vault secret from Azure Key Vault
 type AzureKeyVault struct {
-	Name          string              `json:"name"`
-	Object        AzureKeyVaultObject `json:"object"`
-	AzureIdentity string              `json:"azureIdentity"`
+	// Name of the Azure Key Vault
+	Name   string              `json:"name"`
+	Object AzureKeyVaultObject `json:"object"`
+	// +optional
+	AzureIdentity string `json:"azureIdentity,omitempty"`
 }
 
 // AzureKeyVaultObject has information about the Azure Key Vault
 // object to get from Azure Key Vault
 type AzureKeyVaultObject struct {
-	Name        string                         `json:"name"`
-	Type        AzureKeyVaultObjectType        `json:"type"`
-	Version     string                         `json:"version"`
+	// The object name in Azure Key Vault
+	Name string                  `json:"name"`
+	Type AzureKeyVaultObjectType `json:"type"`
+	// The object version in Azure Key Vault
+	Version string `json:"version"`
+	// +optional
 	Poll        bool                           `json:"bool"`
 	ContentType AzureKeyVaultObjectContentType `json:"contentType"`
 }
@@ -103,9 +108,11 @@ const (
 	AzureKeyVaultObjectContentTypeYaml = "application/x-yaml"
 )
 
-// AzureKeyVaultOutput defines output sources, currently only support Secret
+// AzureKeyVaultOutput defines output sources, supports Secret and Configmap
 type AzureKeyVaultOutput struct {
-	Secret    AzureKeyVaultOutputSecret    `json:"secret"`
+	// +optional
+	Secret AzureKeyVaultOutputSecret `json:"secret"`
+	// +optional
 	ConfigMap AzureKeyVaultOutputConfigMap `json:"configMap"`
 	// +optional
 	Transform []string `json:"transform,omitempty"`
@@ -114,19 +121,26 @@ type AzureKeyVaultOutput struct {
 // AzureKeyVaultOutputSecret has information needed to output
 // a secret from Azure Key Vault to Kubertnetes as a Secret resource
 type AzureKeyVaultOutputSecret struct {
+	// Name for Kubernetes secret
 	Name string `json:"name"`
 	// +optional
+	// Type of Secret in Kubernetes
 	Type corev1.SecretType `json:"type,omitempty"`
 	// +optional
+	// The key to use in Kubernetes secret when setting the value from Azure Keyv Vault object data
 	DataKey string `json:"dataKey,omitempty"`
 	// +optional
+	// By setting chainOrder to ensureserverfirst the server certificate will be moved first in the chain
+	// +kubebuilder:validation:Enum=ensureserverfirst
 	ChainOrder string `json:"chainOrder,omitempty"`
 }
 
 // AzureKeyVaultOutputConfigMap has information needed to output
 // a secret from Azure Key Vault to Kubertnetes as a ConfigMap resource
 type AzureKeyVaultOutputConfigMap struct {
-	Name    string `json:"name"`
+	// Name for Kubernetes ConfigMap
+	Name string `json:"name"`
+	// The key to use in Kubernetes ConfigMap when setting the value from Azure Keyv Vault object data
 	DataKey string `json:"dataKey"`
 }
 
