@@ -23,6 +23,7 @@ import (
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:resource:shortName=akvs,categories=all
 // +kubebuilder:printcolumn:name="Vault",type=string,JSONPath=`.spec.vault.name`,description="Which Azure Key Vault this resource is asosiated with"
 // +kubebuilder:printcolumn:name="Vault Object",type=string,JSONPath=`.spec.vault.object.name`,description="Which Azure Key Vault object this resource is asosiated with"
 // +kubebuilder:printcolumn:name="Secret Name",type=string,JSONPath=`.status.secretName`,description="Which Kubernetes Secret this resource is synched with, if any"
