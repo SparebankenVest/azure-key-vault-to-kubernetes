@@ -36,7 +36,7 @@ type AzureKeyVaultSecret struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   AzureKeyVaultSecretSpec   `json:"spec"`
-	Status AzureKeyVaultSecretStatus `json:"status"`
+	Status AzureKeyVaultSecretStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
