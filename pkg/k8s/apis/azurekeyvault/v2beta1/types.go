@@ -79,10 +79,10 @@ type AzureKeyVaultObject struct {
 	// The object name in Azure Key Vault
 	Name string                  `json:"name"`
 	Type AzureKeyVaultObjectType `json:"type"`
+	// +optional
 	// The object version in Azure Key Vault
 	Version string `json:"version"`
 	// +optional
-	Poll        bool                           `json:"bool"`
 	ContentType AzureKeyVaultObjectContentType `json:"contentType"`
 }
 
