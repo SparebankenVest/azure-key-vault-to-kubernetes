@@ -229,21 +229,28 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			klog.InfoS("updating with recent changes from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KRef(akvs.Namespace, akvs.Spec.Output.Secret.Name))
 			existingSecret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Get(context.TODO(), akvs.Spec.Output.Secret.Name, metav1.GetOptions{})
 			if err != nil {
-				return fmt.Errorf("failed to get existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
-			}
+				klog.Infof("existing secret %s not found. Creating new secret.", akvs.Spec.Output.Secret.Name)
+				newSecret := createNewSecret(akvs, secretValue)
+				secret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Create(context.TODO(), newSecret, metav1.CreateOptions{})
+				if err != nil {
+					return fmt.Errorf("failed to create the secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
+				}
 
-			updatedSecret, err := createNewSecretFromExisting(akvs, secretValue, existingSecret)
-			if err != nil {
-				return fmt.Errorf("failed to update existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
-			}
+				secretName = secret.Name
+				klog.InfoS("secret created", "azurekeyvaultsecret", klog.KObj(secret), "secret", klog.KObj(akvs))
+			} else {
+				updatedSecret, err := createNewSecretFromExisting(akvs, secretValue, existingSecret)
+				if err != nil {
+					return fmt.Errorf("failed to update existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
+				}
+				secret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(context.TODO(), updatedSecret, metav1.UpdateOptions{})
+				if err != nil {
+					return fmt.Errorf("failed to update secret, error: %+v", err)
+				}
 
-			secret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(context.TODO(), updatedSecret, metav1.UpdateOptions{})
-			if err != nil {
-				return fmt.Errorf("failed to update secret, error: %+v", err)
+				secretName = secret.Name
+				klog.InfoS("secret changed - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(secret), "secret", klog.KObj(akvs))
 			}
-
-			secretName = secret.Name
-			klog.InfoS("secret changed - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(secret), "secret", klog.KObj(akvs))
 		}
 	}
 
