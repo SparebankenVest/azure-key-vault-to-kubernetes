@@ -230,7 +230,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			existingSecret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Get(context.TODO(), akvs.Spec.Output.Secret.Name, metav1.GetOptions{})
 			var updatedSecret *corev1.Secret
 			if err != nil {
-				klog.InfoS("failed to get existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
+				klog.ErrorS(err, "failed to get existing secret", "secret", akvs.Spec.Output.Secret.Name)
 				updatedSecret = createNewSecret(akvs, secretValue)
 			} else {
 				updatedSecret, err = createNewSecretFromExisting(akvs, secretValue, existingSecret)
