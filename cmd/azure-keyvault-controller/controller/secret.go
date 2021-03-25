@@ -224,7 +224,10 @@ func createNewSecretFromExisting(akvs *akv.AzureKeyVaultSecret, values map[strin
 	if existingSecret.Type != corev1.SecretTypeOpaque {
 		if !isOwnedBy(existingSecret, akvs) {
 			controlledBy := metav1.GetControllerOf(existingSecret)
-			return nil, fmt.Errorf("cannot update existing secret %s/%s of type %s controlled by %s, as this azurekeyvalutsecret %s would overwrite keys", existingSecret.Namespace, existingSecret.Name, existingSecret.Type, controlledBy.Name, akvs.Name)
+			if controlledBy != nil {
+				return nil, fmt.Errorf("cannot update existing secret %s/%s of type %s controlled by %s, as this azurekeyvalutsecret %s would overwrite keys", existingSecret.Namespace, existingSecret.Name, existingSecret.Type, controlledBy.Name, akvs.Name)
+			}
+			return nil, fmt.Errorf("cannot update existing secret %s/%s of type %s not controlled by akv2k8s, as this azurekeyvalutsecret %s would overwrite keys", existingSecret.Namespace, existingSecret.Name, existingSecret.Type, akvs.Name)
 		}
 	}
 
