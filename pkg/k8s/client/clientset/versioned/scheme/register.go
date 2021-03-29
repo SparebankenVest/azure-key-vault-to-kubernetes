@@ -24,6 +24,7 @@ package scheme
 import (
 	keyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
 	keyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1alpha1"
+	keyvaultv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2alpha1"
 	keyvaultv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -38,6 +39,7 @@ var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
 	keyvaultv1alpha1.AddToScheme,
 	keyvaultv1.AddToScheme,
+	keyvaultv2alpha1.AddToScheme,
 	keyvaultv2beta1.AddToScheme,
 }
 
