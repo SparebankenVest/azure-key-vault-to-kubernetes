@@ -6,9 +6,6 @@ COMPONENT_VAR=$(PACKAGE)/pkg/akv2k8s.Component
 GIT_VAR=$(PACKAGE)/pkg/akv2k8s.GitCommit
 BUILD_DATE_VAR := $(PACKAGE)/pkg/akv2k8s.BuildDate
 
-KUBERNETES_VERSION=v1.19.3
-KUBERNETES_DEP_VERSION=v0.19.3
-
 WEBHOOK_BINARY_NAME=azure-keyvault-secrets-webhook
 CONTROLLER_BINARY_NAME=azure-keyvault-controller
 KEYVAULT_ENV_BINARY_NAME=azure-keyvault-env
@@ -137,10 +134,6 @@ fmtcheck:
 
 .PHONY: codegen
 codegen:
-	@echo "Making sure code-generator has correct version of Kubernetes ($(KUBERNETES_DEP_VERSION))"
-	@echo ""
-	rm -rf ${GOPATH}/src/k8s.io/code-generator
-	git clone --depth 1 --branch $(KUBERNETES_DEP_VERSION) git@github.com:kubernetes/code-generator.git ${GOPATH}/src/k8s.io/code-generator
 	./hack/update-codegen.sh
 
 .PHONY: crdgen
