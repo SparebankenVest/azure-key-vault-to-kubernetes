@@ -33,6 +33,7 @@ import (
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`,description="Time since this resource was created"
 
 // AzureKeyVaultSecret is a specification for a AzureKeyVaultSecret resource
+// +kubebuilder:subresource:status
 type AzureKeyVaultSecret struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
