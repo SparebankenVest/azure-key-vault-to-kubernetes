@@ -65,13 +65,13 @@ func NewFilteredAzureKeyVaultSecretInformer(client versioned.Interface, namespac
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.KeyvaultV2beta1().AzureKeyVaultSecrets(namespace).List(context.TODO(), options)
+				return client.SpvV2beta1().AzureKeyVaultSecrets(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.KeyvaultV2beta1().AzureKeyVaultSecrets(namespace).Watch(context.TODO(), options)
+				return client.SpvV2beta1().AzureKeyVaultSecrets(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&azurekeyvaultv2beta1.AzureKeyVaultSecret{},

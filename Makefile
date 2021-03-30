@@ -145,7 +145,7 @@ crdgen: $(TOOLS_DIR)/controller-gen
   		paths=./pkg/k8s/apis/azurekeyvault/v2alpha1/... \
   		paths=./pkg/k8s/apis/azurekeyvault/v2beta1/... \
   		output:crd:artifacts:config=./crds
-	mv $(CRDS_DIR)/keyvault.azure.spv.no_azurekeyvaultsecrets.yaml $(CRDS_DIR)/AzureKeyVaultSecret.yaml
+	mv $(CRDS_DIR)/spv.no_azurekeyvaultsecrets.yaml $(CRDS_DIR)/AzureKeyVaultSecret.yaml
 
 .PHONY: test
 test: fmtcheck

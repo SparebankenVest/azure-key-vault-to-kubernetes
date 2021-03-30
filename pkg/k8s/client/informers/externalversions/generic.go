@@ -58,21 +58,21 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=keyvault.azure.spv.no, Version=v1
+	// Group=spv.no, Version=v1
 	case v1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Keyvault().V1().AzureKeyVaultSecrets().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Spv().V1().AzureKeyVaultSecrets().Informer()}, nil
 
-		// Group=keyvault.azure.spv.no, Version=v1alpha1
+		// Group=spv.no, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Keyvault().V1alpha1().AzureKeyVaultSecrets().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Spv().V1alpha1().AzureKeyVaultSecrets().Informer()}, nil
 
-		// Group=keyvault.azure.spv.no, Version=v2alpha1
+		// Group=spv.no, Version=v2alpha1
 	case v2alpha1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Keyvault().V2alpha1().AzureKeyVaultSecrets().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Spv().V2alpha1().AzureKeyVaultSecrets().Informer()}, nil
 
-		// Group=keyvault.azure.spv.no, Version=v2beta1
+		// Group=spv.no, Version=v2beta1
 	case v2beta1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Keyvault().V2beta1().AzureKeyVaultSecrets().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Spv().V2beta1().AzureKeyVaultSecrets().Informer()}, nil
 
 	}
 

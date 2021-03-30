@@ -60,7 +60,7 @@ type azureKeyVaultSecrets struct {
 }
 
 // newAzureKeyVaultSecrets returns a AzureKeyVaultSecrets
-func newAzureKeyVaultSecrets(c *KeyvaultV2beta1Client, namespace string) *azureKeyVaultSecrets {
+func newAzureKeyVaultSecrets(c *SpvV2beta1Client, namespace string) *azureKeyVaultSecrets {
 	return &azureKeyVaultSecrets{
 		client: c.RESTClient(),
 		ns:     namespace,
