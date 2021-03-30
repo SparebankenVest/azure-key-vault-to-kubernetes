@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // +k8s:deepcopy-gen=package
-// +groupName=keyvault.azure.spv.no
+// +groupName=spv.no
 
 // Package v2alpha1 is the v2alpha1 version of the API.
 package v2alpha1

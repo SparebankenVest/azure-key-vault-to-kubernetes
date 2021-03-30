@@ -24,10 +24,10 @@ package versioned
 import (
 	"fmt"
 
-	keyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
-	keyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
-	keyvaultv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1"
-	keyvaultv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1"
+	spvv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
+	spvv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
+	spvv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1"
+	spvv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -35,40 +35,40 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	KeyvaultV1alpha1() keyvaultv1alpha1.KeyvaultV1alpha1Interface
-	KeyvaultV1() keyvaultv1.KeyvaultV1Interface
-	KeyvaultV2alpha1() keyvaultv2alpha1.KeyvaultV2alpha1Interface
-	KeyvaultV2beta1() keyvaultv2beta1.KeyvaultV2beta1Interface
+	SpvV1alpha1() spvv1alpha1.SpvV1alpha1Interface
+	SpvV1() spvv1.SpvV1Interface
+	SpvV2alpha1() spvv2alpha1.SpvV2alpha1Interface
+	SpvV2beta1() spvv2beta1.SpvV2beta1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	keyvaultV1alpha1 *keyvaultv1alpha1.KeyvaultV1alpha1Client
-	keyvaultV1       *keyvaultv1.KeyvaultV1Client
-	keyvaultV2alpha1 *keyvaultv2alpha1.KeyvaultV2alpha1Client
-	keyvaultV2beta1  *keyvaultv2beta1.KeyvaultV2beta1Client
+	spvV1alpha1 *spvv1alpha1.SpvV1alpha1Client
+	spvV1       *spvv1.SpvV1Client
+	spvV2alpha1 *spvv2alpha1.SpvV2alpha1Client
+	spvV2beta1  *spvv2beta1.SpvV2beta1Client
 }
 
-// KeyvaultV1alpha1 retrieves the KeyvaultV1alpha1Client
-func (c *Clientset) KeyvaultV1alpha1() keyvaultv1alpha1.KeyvaultV1alpha1Interface {
-	return c.keyvaultV1alpha1
+// SpvV1alpha1 retrieves the SpvV1alpha1Client
+func (c *Clientset) SpvV1alpha1() spvv1alpha1.SpvV1alpha1Interface {
+	return c.spvV1alpha1
 }
 
-// KeyvaultV1 retrieves the KeyvaultV1Client
-func (c *Clientset) KeyvaultV1() keyvaultv1.KeyvaultV1Interface {
-	return c.keyvaultV1
+// SpvV1 retrieves the SpvV1Client
+func (c *Clientset) SpvV1() spvv1.SpvV1Interface {
+	return c.spvV1
 }
 
-// KeyvaultV2alpha1 retrieves the KeyvaultV2alpha1Client
-func (c *Clientset) KeyvaultV2alpha1() keyvaultv2alpha1.KeyvaultV2alpha1Interface {
-	return c.keyvaultV2alpha1
+// SpvV2alpha1 retrieves the SpvV2alpha1Client
+func (c *Clientset) SpvV2alpha1() spvv2alpha1.SpvV2alpha1Interface {
+	return c.spvV2alpha1
 }
 
-// KeyvaultV2beta1 retrieves the KeyvaultV2beta1Client
-func (c *Clientset) KeyvaultV2beta1() keyvaultv2beta1.KeyvaultV2beta1Interface {
-	return c.keyvaultV2beta1
+// SpvV2beta1 retrieves the SpvV2beta1Client
+func (c *Clientset) SpvV2beta1() spvv2beta1.SpvV2beta1Interface {
+	return c.spvV2beta1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -92,19 +92,19 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.keyvaultV1alpha1, err = keyvaultv1alpha1.NewForConfig(&configShallowCopy)
+	cs.spvV1alpha1, err = spvv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
-	cs.keyvaultV1, err = keyvaultv1.NewForConfig(&configShallowCopy)
+	cs.spvV1, err = spvv1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
-	cs.keyvaultV2alpha1, err = keyvaultv2alpha1.NewForConfig(&configShallowCopy)
+	cs.spvV2alpha1, err = spvv2alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
-	cs.keyvaultV2beta1, err = keyvaultv2beta1.NewForConfig(&configShallowCopy)
+	cs.spvV2beta1, err = spvv2beta1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -120,10 +120,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.keyvaultV1alpha1 = keyvaultv1alpha1.NewForConfigOrDie(c)
-	cs.keyvaultV1 = keyvaultv1.NewForConfigOrDie(c)
-	cs.keyvaultV2alpha1 = keyvaultv2alpha1.NewForConfigOrDie(c)
-	cs.keyvaultV2beta1 = keyvaultv2beta1.NewForConfigOrDie(c)
+	cs.spvV1alpha1 = spvv1alpha1.NewForConfigOrDie(c)
+	cs.spvV1 = spvv1.NewForConfigOrDie(c)
+	cs.spvV2alpha1 = spvv2alpha1.NewForConfigOrDie(c)
+	cs.spvV2beta1 = spvv2beta1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -132,10 +132,10 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.keyvaultV1alpha1 = keyvaultv1alpha1.New(c)
-	cs.keyvaultV1 = keyvaultv1.New(c)
-	cs.keyvaultV2alpha1 = keyvaultv2alpha1.New(c)
-	cs.keyvaultV2beta1 = keyvaultv2beta1.New(c)
+	cs.spvV1alpha1 = spvv1alpha1.New(c)
+	cs.spvV1 = spvv1.New(c)
+	cs.spvV2alpha1 = spvv2alpha1.New(c)
+	cs.spvV2beta1 = spvv2beta1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

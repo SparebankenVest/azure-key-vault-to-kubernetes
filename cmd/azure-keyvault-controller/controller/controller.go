@@ -154,7 +154,7 @@ func NewController(client kubernetes.Interface, akvsClient akvcs.Interface, akvI
 
 		secretsLister:             kubeInformerFactory.Core().V1().Secrets().Lister(),
 		configMapsLister:          kubeInformerFactory.Core().V1().ConfigMaps().Lister(),
-		azureKeyVaultSecretLister: akvInformerFactory.Keyvault().V2beta1().AzureKeyVaultSecrets().Lister(),
+		azureKeyVaultSecretLister: akvInformerFactory.Spv().V2beta1().AzureKeyVaultSecrets().Lister(),
 
 		options: options,
 		clock:   &Clock{},

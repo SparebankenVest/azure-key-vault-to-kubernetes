@@ -35,13 +35,13 @@ import (
 
 // FakeAzureKeyVaultSecrets implements AzureKeyVaultSecretInterface
 type FakeAzureKeyVaultSecrets struct {
-	Fake *FakeKeyvaultV2beta1
+	Fake *FakeSpvV2beta1
 	ns   string
 }
 
-var azurekeyvaultsecretsResource = schema.GroupVersionResource{Group: "keyvault.azure.spv.no", Version: "v2beta1", Resource: "azurekeyvaultsecrets"}
+var azurekeyvaultsecretsResource = schema.GroupVersionResource{Group: "spv.no", Version: "v2beta1", Resource: "azurekeyvaultsecrets"}
 
-var azurekeyvaultsecretsKind = schema.GroupVersionKind{Group: "keyvault.azure.spv.no", Version: "v2beta1", Kind: "AzureKeyVaultSecret"}
+var azurekeyvaultsecretsKind = schema.GroupVersionKind{Group: "spv.no", Version: "v2beta1", Kind: "AzureKeyVaultSecret"}
 
 // Get takes name of the azureKeyVaultSecret, and returns the corresponding azureKeyVaultSecret object, and an error if there is any.
 func (c *FakeAzureKeyVaultSecrets) Get(ctx context.Context, name string, options v1.GetOptions) (result *v2beta1.AzureKeyVaultSecret, err error) {

@@ -23,14 +23,14 @@ package fake
 
 import (
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
-	keyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
-	fakekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1/fake"
-	keyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
-	fakekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1/fake"
-	keyvaultv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1"
-	fakekeyvaultv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1/fake"
-	keyvaultv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1"
-	fakekeyvaultv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1/fake"
+	spvv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
+	fakespvv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1/fake"
+	spvv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
+	fakespvv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1/fake"
+	spvv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1"
+	fakespvv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1/fake"
+	spvv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1"
+	fakespvv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -85,22 +85,22 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 
 var _ clientset.Interface = &Clientset{}
 
-// KeyvaultV1alpha1 retrieves the KeyvaultV1alpha1Client
-func (c *Clientset) KeyvaultV1alpha1() keyvaultv1alpha1.KeyvaultV1alpha1Interface {
-	return &fakekeyvaultv1alpha1.FakeKeyvaultV1alpha1{Fake: &c.Fake}
+// SpvV1alpha1 retrieves the SpvV1alpha1Client
+func (c *Clientset) SpvV1alpha1() spvv1alpha1.SpvV1alpha1Interface {
+	return &fakespvv1alpha1.FakeSpvV1alpha1{Fake: &c.Fake}
 }
 
-// KeyvaultV1 retrieves the KeyvaultV1Client
-func (c *Clientset) KeyvaultV1() keyvaultv1.KeyvaultV1Interface {
-	return &fakekeyvaultv1.FakeKeyvaultV1{Fake: &c.Fake}
+// SpvV1 retrieves the SpvV1Client
+func (c *Clientset) SpvV1() spvv1.SpvV1Interface {
+	return &fakespvv1.FakeSpvV1{Fake: &c.Fake}
 }
 
-// KeyvaultV2alpha1 retrieves the KeyvaultV2alpha1Client
-func (c *Clientset) KeyvaultV2alpha1() keyvaultv2alpha1.KeyvaultV2alpha1Interface {
-	return &fakekeyvaultv2alpha1.FakeKeyvaultV2alpha1{Fake: &c.Fake}
+// SpvV2alpha1 retrieves the SpvV2alpha1Client
+func (c *Clientset) SpvV2alpha1() spvv2alpha1.SpvV2alpha1Interface {
+	return &fakespvv2alpha1.FakeSpvV2alpha1{Fake: &c.Fake}
 }
 
-// KeyvaultV2beta1 retrieves the KeyvaultV2beta1Client
-func (c *Clientset) KeyvaultV2beta1() keyvaultv2beta1.KeyvaultV2beta1Interface {
-	return &fakekeyvaultv2beta1.FakeKeyvaultV2beta1{Fake: &c.Fake}
+// SpvV2beta1 retrieves the SpvV2beta1Client
+func (c *Clientset) SpvV2beta1() spvv2beta1.SpvV2beta1Interface {
+	return &fakespvv2beta1.FakeSpvV2beta1{Fake: &c.Fake}
 }
