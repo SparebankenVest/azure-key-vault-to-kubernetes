@@ -29,6 +29,7 @@ import (
 // +kubebuilder:printcolumn:name="Secret Name",type=string,JSONPath=`.status.secretName`,description="Which Kubernetes Secret this resource is synched with, if any"
 // +kubebuilder:printcolumn:name="ConfigMap Name",type=string,JSONPath=`.status.configMapName`,description="Which Kubernetes ConfigMap this resource is synched with, if any"
 // +kubebuilder:printcolumn:name="Last Synched",type=date,JSONPath=`.status.lastAzureUpdate`,description="When this resource was last synched with Azure Key Vault"
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`,description="Time since this resource was created"
 
 // AzureKeyVaultSecret is a specification for a AzureKeyVaultSecret resource
 type AzureKeyVaultSecret struct {
