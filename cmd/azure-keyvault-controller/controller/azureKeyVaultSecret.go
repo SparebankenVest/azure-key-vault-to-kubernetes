@@ -37,7 +37,7 @@ import (
 )
 
 func (c *Controller) initAzureKeyVaultSecret() {
-	c.akvsInformerFactory.Spv().V2beta1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	c.akvsInformerFactory.AzureKeyVault().V2beta1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			akvs, err := convertToAzureKeyVaultSecret(obj)
 			if err != nil {
@@ -465,7 +465,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatus(akvs *akv.AzureKeyVaultSecr
 	}
 	akvsCopy.Status.LastAzureUpdate = c.clock.Now()
 
-	_, err := c.akvsClient.SpvV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(context.TODO(), akvsCopy, metav1.UpdateOptions{})
+	_, err := c.akvsClient.AzureKeyVaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(context.TODO(), akvsCopy, metav1.UpdateOptions{})
 	return err
 }
 
@@ -478,7 +478,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatusForSecret(akvs *akv.AzureKey
 	akvsCopy.Status.SecretHash = secretHash
 	akvsCopy.Status.LastAzureUpdate = now
 
-	_, err := c.akvsClient.SpvV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(context.TODO(), akvsCopy, metav1.UpdateOptions{})
+	_, err := c.akvsClient.AzureKeyVaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(context.TODO(), akvsCopy, metav1.UpdateOptions{})
 	return err
 }
 
@@ -490,7 +490,7 @@ func (c *Controller) updateAzureKeyVaultSecretStatusForConfigMap(akvs *akv.Azure
 	akvsCopy.Status.ConfigMapHash = cmHash
 	akvsCopy.Status.LastAzureUpdate = c.clock.Now()
 
-	_, err := c.akvsClient.SpvV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(context.TODO(), akvsCopy, metav1.UpdateOptions{})
+	_, err := c.akvsClient.AzureKeyVaultV2beta1().AzureKeyVaultSecrets(akvs.Namespace).UpdateStatus(context.TODO(), akvsCopy, metav1.UpdateOptions{})
 	return err
 }
 

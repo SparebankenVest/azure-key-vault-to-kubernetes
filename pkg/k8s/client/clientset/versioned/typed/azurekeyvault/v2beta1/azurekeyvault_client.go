@@ -27,22 +27,22 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-type SpvV2beta1Interface interface {
+type AzureKeyVaultV2beta1Interface interface {
 	RESTClient() rest.Interface
 	AzureKeyVaultSecretsGetter
 }
 
-// SpvV2beta1Client is used to interact with features provided by the spv.no group.
-type SpvV2beta1Client struct {
+// AzureKeyVaultV2beta1Client is used to interact with features provided by the spv.no group.
+type AzureKeyVaultV2beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *SpvV2beta1Client) AzureKeyVaultSecrets(namespace string) AzureKeyVaultSecretInterface {
+func (c *AzureKeyVaultV2beta1Client) AzureKeyVaultSecrets(namespace string) AzureKeyVaultSecretInterface {
 	return newAzureKeyVaultSecrets(c, namespace)
 }
 
-// NewForConfig creates a new SpvV2beta1Client for the given config.
-func NewForConfig(c *rest.Config) (*SpvV2beta1Client, error) {
+// NewForConfig creates a new AzureKeyVaultV2beta1Client for the given config.
+func NewForConfig(c *rest.Config) (*AzureKeyVaultV2beta1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -51,12 +51,12 @@ func NewForConfig(c *rest.Config) (*SpvV2beta1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SpvV2beta1Client{client}, nil
+	return &AzureKeyVaultV2beta1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new SpvV2beta1Client for the given config and
+// NewForConfigOrDie creates a new AzureKeyVaultV2beta1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *SpvV2beta1Client {
+func NewForConfigOrDie(c *rest.Config) *AzureKeyVaultV2beta1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -64,9 +64,9 @@ func NewForConfigOrDie(c *rest.Config) *SpvV2beta1Client {
 	return client
 }
 
-// New creates a new SpvV2beta1Client for the given RESTClient.
-func New(c rest.Interface) *SpvV2beta1Client {
-	return &SpvV2beta1Client{c}
+// New creates a new AzureKeyVaultV2beta1Client for the given RESTClient.
+func New(c rest.Interface) *AzureKeyVaultV2beta1Client {
+	return &AzureKeyVaultV2beta1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -84,7 +84,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *SpvV2beta1Client) RESTClient() rest.Interface {
+func (c *AzureKeyVaultV2beta1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

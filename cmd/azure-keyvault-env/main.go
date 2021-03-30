@@ -308,13 +308,13 @@ func main() {
 			}
 
 			klog.V(4).InfoS("getting azurekeyvaultsecret", "azurekeyvaultsecret", klog.KRef(config.namespace, akvsName))
-			akvs, err := azureKeyVaultSecretClient.SpvV2beta1().AzureKeyVaultSecrets(config.namespace).Get(context.TODO(), akvsName, v1.GetOptions{})
+			akvs, err := azureKeyVaultSecretClient.AzureKeyVaultV2beta1().AzureKeyVaultSecrets(config.namespace).Get(context.TODO(), akvsName, v1.GetOptions{})
 			if err != nil {
 				klog.ErrorS(err, "failed to get azurekeyvaultsecret", "azurekeyvaultsecret", klog.KRef(config.namespace, akvsName))
 				klog.InfoS("will retry getting azurekeyvaultsecret", "azurekeyvaultsecret", klog.KRef(config.namespace, akvsName), "retryTimes", config.retryTimes, "delay", config.waitTimeBetweenRetries)
 
 				err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
-					akvs, err = azureKeyVaultSecretClient.SpvV2beta1().AzureKeyVaultSecrets(config.namespace).Get(context.TODO(), akvsName, v1.GetOptions{})
+					akvs, err = azureKeyVaultSecretClient.AzureKeyVaultV2beta1().AzureKeyVaultSecrets(config.namespace).Get(context.TODO(), akvsName, v1.GetOptions{})
 					if err != nil {
 						klog.V(4).ErrorS(err, "error getting azurekeyvaultsecret", "azurekeyvaultsecret", klog.KRef(config.namespace, akvsName))
 						return err

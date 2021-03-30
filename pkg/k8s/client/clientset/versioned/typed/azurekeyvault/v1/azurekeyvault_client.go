@@ -27,22 +27,22 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-type SpvV1Interface interface {
+type AzureKeyVaultV1Interface interface {
 	RESTClient() rest.Interface
 	AzureKeyVaultSecretsGetter
 }
 
-// SpvV1Client is used to interact with features provided by the spv.no group.
-type SpvV1Client struct {
+// AzureKeyVaultV1Client is used to interact with features provided by the spv.no group.
+type AzureKeyVaultV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *SpvV1Client) AzureKeyVaultSecrets(namespace string) AzureKeyVaultSecretInterface {
+func (c *AzureKeyVaultV1Client) AzureKeyVaultSecrets(namespace string) AzureKeyVaultSecretInterface {
 	return newAzureKeyVaultSecrets(c, namespace)
 }
 
-// NewForConfig creates a new SpvV1Client for the given config.
-func NewForConfig(c *rest.Config) (*SpvV1Client, error) {
+// NewForConfig creates a new AzureKeyVaultV1Client for the given config.
+func NewForConfig(c *rest.Config) (*AzureKeyVaultV1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -51,12 +51,12 @@ func NewForConfig(c *rest.Config) (*SpvV1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SpvV1Client{client}, nil
+	return &AzureKeyVaultV1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new SpvV1Client for the given config and
+// NewForConfigOrDie creates a new AzureKeyVaultV1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *SpvV1Client {
+func NewForConfigOrDie(c *rest.Config) *AzureKeyVaultV1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -64,9 +64,9 @@ func NewForConfigOrDie(c *rest.Config) *SpvV1Client {
 	return client
 }
 
-// New creates a new SpvV1Client for the given RESTClient.
-func New(c rest.Interface) *SpvV1Client {
-	return &SpvV1Client{c}
+// New creates a new AzureKeyVaultV1Client for the given RESTClient.
+func New(c rest.Interface) *AzureKeyVaultV1Client {
+	return &AzureKeyVaultV1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -84,7 +84,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *SpvV1Client) RESTClient() rest.Interface {
+func (c *AzureKeyVaultV1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

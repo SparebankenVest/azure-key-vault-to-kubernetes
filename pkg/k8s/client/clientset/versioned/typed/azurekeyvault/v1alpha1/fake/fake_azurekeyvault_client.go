@@ -27,17 +27,17 @@ import (
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeSpvV1alpha1 struct {
+type FakeAzureKeyVaultV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeSpvV1alpha1) AzureKeyVaultSecrets(namespace string) v1alpha1.AzureKeyVaultSecretInterface {
+func (c *FakeAzureKeyVaultV1alpha1) AzureKeyVaultSecrets(namespace string) v1alpha1.AzureKeyVaultSecretInterface {
 	return &FakeAzureKeyVaultSecrets{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeSpvV1alpha1) RESTClient() rest.Interface {
+func (c *FakeAzureKeyVaultV1alpha1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

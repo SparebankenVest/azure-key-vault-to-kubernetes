@@ -35,7 +35,7 @@ import (
 
 // FakeAzureKeyVaultSecrets implements AzureKeyVaultSecretInterface
 type FakeAzureKeyVaultSecrets struct {
-	Fake *FakeSpvV1
+	Fake *FakeAzureKeyVaultV1
 	ns   string
 }
 

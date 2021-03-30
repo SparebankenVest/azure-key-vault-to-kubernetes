@@ -23,14 +23,14 @@ package fake
 
 import (
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
-	spvv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
-	fakespvv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1/fake"
-	spvv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
-	fakespvv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1/fake"
-	spvv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1"
-	fakespvv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1/fake"
-	spvv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1"
-	fakespvv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1/fake"
+	azurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1"
+	fakeazurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1/fake"
+	azurekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1"
+	fakeazurekeyvaultv1alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v1alpha1/fake"
+	azurekeyvaultv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1"
+	fakeazurekeyvaultv2alpha1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2alpha1/fake"
+	azurekeyvaultv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1"
+	fakeazurekeyvaultv2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned/typed/azurekeyvault/v2beta1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -85,22 +85,22 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 
 var _ clientset.Interface = &Clientset{}
 
-// SpvV1alpha1 retrieves the SpvV1alpha1Client
-func (c *Clientset) SpvV1alpha1() spvv1alpha1.SpvV1alpha1Interface {
-	return &fakespvv1alpha1.FakeSpvV1alpha1{Fake: &c.Fake}
+// AzureKeyVaultV1alpha1 retrieves the AzureKeyVaultV1alpha1Client
+func (c *Clientset) AzureKeyVaultV1alpha1() azurekeyvaultv1alpha1.AzureKeyVaultV1alpha1Interface {
+	return &fakeazurekeyvaultv1alpha1.FakeAzureKeyVaultV1alpha1{Fake: &c.Fake}
 }
 
-// SpvV1 retrieves the SpvV1Client
-func (c *Clientset) SpvV1() spvv1.SpvV1Interface {
-	return &fakespvv1.FakeSpvV1{Fake: &c.Fake}
+// AzureKeyVaultV1 retrieves the AzureKeyVaultV1Client
+func (c *Clientset) AzureKeyVaultV1() azurekeyvaultv1.AzureKeyVaultV1Interface {
+	return &fakeazurekeyvaultv1.FakeAzureKeyVaultV1{Fake: &c.Fake}
 }
 
-// SpvV2alpha1 retrieves the SpvV2alpha1Client
-func (c *Clientset) SpvV2alpha1() spvv2alpha1.SpvV2alpha1Interface {
-	return &fakespvv2alpha1.FakeSpvV2alpha1{Fake: &c.Fake}
+// AzureKeyVaultV2alpha1 retrieves the AzureKeyVaultV2alpha1Client
+func (c *Clientset) AzureKeyVaultV2alpha1() azurekeyvaultv2alpha1.AzureKeyVaultV2alpha1Interface {
+	return &fakeazurekeyvaultv2alpha1.FakeAzureKeyVaultV2alpha1{Fake: &c.Fake}
 }
 
-// SpvV2beta1 retrieves the SpvV2beta1Client
-func (c *Clientset) SpvV2beta1() spvv2beta1.SpvV2beta1Interface {
-	return &fakespvv2beta1.FakeSpvV2beta1{Fake: &c.Fake}
+// AzureKeyVaultV2beta1 retrieves the AzureKeyVaultV2beta1Client
+func (c *Clientset) AzureKeyVaultV2beta1() azurekeyvaultv2beta1.AzureKeyVaultV2beta1Interface {
+	return &fakeazurekeyvaultv2beta1.FakeAzureKeyVaultV2beta1{Fake: &c.Fake}
 }
