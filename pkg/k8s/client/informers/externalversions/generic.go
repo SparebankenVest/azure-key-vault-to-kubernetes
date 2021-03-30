@@ -60,19 +60,19 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	switch resource {
 	// Group=spv.no, Version=v1
 	case v1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Spv().V1().AzureKeyVaultSecrets().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.AzureKeyVault().V1().AzureKeyVaultSecrets().Informer()}, nil
 
 		// Group=spv.no, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Spv().V1alpha1().AzureKeyVaultSecrets().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.AzureKeyVault().V1alpha1().AzureKeyVaultSecrets().Informer()}, nil
 
 		// Group=spv.no, Version=v2alpha1
 	case v2alpha1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Spv().V2alpha1().AzureKeyVaultSecrets().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.AzureKeyVault().V2alpha1().AzureKeyVaultSecrets().Informer()}, nil
 
 		// Group=spv.no, Version=v2beta1
 	case v2beta1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Spv().V2beta1().AzureKeyVaultSecrets().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.AzureKeyVault().V2beta1().AzureKeyVaultSecrets().Informer()}, nil
 
 	}
 

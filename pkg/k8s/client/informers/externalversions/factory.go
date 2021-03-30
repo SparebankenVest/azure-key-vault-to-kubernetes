@@ -175,9 +175,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Spv() azurekeyvault.Interface
+	AzureKeyVault() azurekeyvault.Interface
 }
 
-func (f *sharedInformerFactory) Spv() azurekeyvault.Interface {
+func (f *sharedInformerFactory) AzureKeyVault() azurekeyvault.Interface {
 	return azurekeyvault.New(f, f.namespace, f.tweakListOptions)
 }
