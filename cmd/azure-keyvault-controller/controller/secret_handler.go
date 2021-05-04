@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -128,6 +129,22 @@ func (h *azureSecretHandler) HandleSecret() (map[string][]byte, error) {
 
 	case corev1.SecretTypeSSHAuth:
 		values[corev1.SSHAuthPrivateKey] = []byte(secret)
+
+	case corev1.SecretTypeTLS:
+		pfxRaw, err := base64.StdEncoding.DecodeString(secret)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to decode base64 encoded secret, error: %+v", err)
+		}
+		cert, err := vault.NewCertificateFromPfx(pfxRaw, h.secretSpec.Spec.Output.Secret.ChainOrder == "ensureserverfirst")
+		if err != nil {
+			return nil, fmt.Errorf("Error while processing secret content as pfx, error: %+v", err)
+		}
+		if values[corev1.TLSCertKey], err = cert.ExportPublicKeyAsPem(); err != nil {
+			return nil, fmt.Errorf("Error exporting public key, error: %+v", err)
+		}
+		if values[corev1.TLSPrivateKeyKey], err = cert.ExportPrivateKeyAsPem(); err != nil {
+			return nil, fmt.Errorf("Error exporting private key, error: %+v", err)
+		}
 
 	default:
 		if h.secretSpec.Spec.Vault.Object.Type != akv.AzureKeyVaultObjectTypeMultiKeyValueSecret &&
