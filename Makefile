@@ -6,8 +6,8 @@ COMPONENT_VAR=$(PACKAGE)/pkg/akv2k8s.Component
 GIT_VAR=$(PACKAGE)/pkg/akv2k8s.GitCommit
 BUILD_DATE_VAR := $(PACKAGE)/pkg/akv2k8s.BuildDate
 
-KUBERNETES_VERSION=v1.19.0
-KUBERNETES_DEP_VERSION=v0.19.0
+KUBERNETES_VERSION=v1.19.3
+KUBERNETES_DEP_VERSION=v0.19.3
 
 WEBHOOK_BINARY_NAME=azure-keyvault-secrets-webhook
 CONTROLLER_BINARY_NAME=azure-keyvault-controller
@@ -81,15 +81,15 @@ lint: $(TOOLS_DIR)/golangci-lint $(TOOLS_DIR)/misspell
 
 .PHONY: print-v-webhook
 print-v-webhook:
-	@echo $(DOCKER_RELEASE_TAG_WEBHOOK) 
+	@echo $(DOCKER_RELEASE_TAG_WEBHOOK)
 
 .PHONY: print-v-controller
 print-v-controller:
-	@echo $(DOCKER_RELEASE_TAG_CONTROLLER) 
+	@echo $(DOCKER_RELEASE_TAG_CONTROLLER)
 
 .PHONY: print-v-vaultenv
 print-v-vaultenv:
-	@echo $(DOCKER_RELEASE_TAG_VAULTENV) 
+	@echo $(DOCKER_RELEASE_TAG_VAULTENV)
 
 .PHONY: tag-all
 tag-all: tag-webhook tag-controller tag-vaultenv
@@ -176,7 +176,7 @@ clean-controller:
 clean-vaultenv:
 	rm -rf bin/$(PROJECT_NAME)/$(KEYVAULT_ENV_BINARY_NAME)
 
-# build: build-controller build-ca-bundle-controller build-webhook build-vaultenv
+# build: build-controller build-webhook build-vaultenv
 .PHONY: build
 build: clean build-webhook build-controller build-vaultenv
 
@@ -193,7 +193,7 @@ build-vaultenv: clean-vaultenv
 	CGO_ENABLED=0 COMPONENT=vaultenv PKG_NAME=$(PACKAGE)/cmd/$(KEYVAULT_ENV_BINARY_NAME) $(MAKE) bin/$(PROJECT_NAME)/$(KEYVAULT_ENV_BINARY_NAME)
 
 .PHONY: images
-images: image-webhook image-controller image-ca-bundle-controller image-vaultenv
+images: image-webhook image-controller image-vaultenv
 
 .PHONY: upload-kind-webhook
 upload-kind-webhook:
@@ -274,15 +274,15 @@ pull-all: pull-webhook pull-controller pull-vaultenv
 
 .PHONY: pull-webhook
 pull-webhook:
-	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG) 
+	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG)
 
 .PHONY: pull-controller
 pull-controller:
-	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) 
+	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG)
 
 .PHONY: pull-vaultenv
 pull-vaultenv:
-	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) 
+	docker pull $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG)
 
 .PHONY: release
 release: release-controller release-webhook release-vaultenv

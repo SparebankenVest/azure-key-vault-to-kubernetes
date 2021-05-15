@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -139,7 +140,7 @@ func TestMutateContainers(t *testing.T) {
 	// 	StringData: map[string]string{"secret": "my secret"},
 	// }
 
-	err := pw.mutatePodSpec(&pod) //mutateContainers(kubeClient, podSpec.Containers, &podSpec, ns, &authSecret)
+	err := pw.mutatePodSpec(context.Background(), &pod) //mutateContainers(kubeClient, podSpec.Containers, &podSpec, ns, &authSecret)
 	if err != nil {
 		t.Error(err)
 	}

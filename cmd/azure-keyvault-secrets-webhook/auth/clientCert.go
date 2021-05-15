@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"crypto/rand"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
 )
 
 type ClientCertificate struct {
@@ -21,26 +22,26 @@ type ClientCertificate struct {
 }
 
 func generateClientCert(mutationID types.UID, validMonths int, caCert, caKey []byte) (*ClientCertificate, error) {
+	klog.V(4).InfoS("creating x509 key pair for ca cert and key")
+
 	ca, err := tls.X509KeyPair(caCert, caKey)
 	if err != nil {
 		return nil, err
 	}
 
+	klog.V(4).InfoS("parse certificate")
 	x509Ca, err := x509.ParseCertificate(ca.Certificate[0])
 	if err != nil {
 		return nil, err
 	}
 
+	klog.V(4).InfoS("generating client key")
 	clientKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
 		return nil, err
 	}
 
-	// clientKey, err := ecdsa.GenerateKey(elliptic., rand.Reader)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
+	klog.V(4).InfoS("generating serial number")
 	now := time.Now()
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
@@ -62,6 +63,7 @@ func generateClientCert(mutationID types.UID, validMonths int, caCert, caKey []b
 		IsCA:                  false,
 	}
 
+	klog.V(4).InfoS("crating x509 certificate")
 	certByte, err := x509.CreateCertificate(rand.Reader, &template, x509Ca, &clientKey.PublicKey, ca.PrivateKey)
 	if err != nil {
 		return nil, err

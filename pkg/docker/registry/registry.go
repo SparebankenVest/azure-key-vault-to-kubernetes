@@ -1,4 +1,4 @@
-// Copyright © 2019 Sparebanken Vest
+// Copyright © 2021 Jon Arild Tørresdal
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,96 +18,149 @@
 package registry
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"strings"
+	"context"
+	"crypto/tls"
+	"net/http"
 
 	"emperror.dev/errors"
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
-	dockerTypes "github.com/docker/docker/api/types"
-	"github.com/heroku/docker-registry-client/registry"
-	imagev1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/google/go-containerregistry/pkg/authn/k8schain"
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/patrickmn/go-cache"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 )
 
-type DockerCreds struct {
-	Auths map[string]dockerTypes.AuthConfig `json:"auths"`
+// ImageRegistry is a docker registry
+type ImageRegistry interface {
+	GetImageConfig(
+		ctx context.Context,
+		clientset kubernetes.Interface,
+		namespace string,
+		container *corev1.Container,
+		podSpec *corev1.PodSpec,
+		opt ImageRegistryOptions) (*v1.Config, error)
+}
+
+type ImageRegistryOptions struct {
+	SkipVerify bool
+}
+
+// Registry impl
+type Registry struct {
+	imageCache *cache.Cache
+}
+
+// NewRegistry creates and initializes registry
+func NewRegistry(cloudConfigPath string) ImageRegistry {
+	return &Registry{
+		imageCache: cache.New(cache.NoExpiration, cache.NoExpiration),
+	}
+}
+
+// IsAllowedToCache checks that information about Docker image can be cached
+// base on image name and container PullPolicy
+func IsAllowedToCache(container *corev1.Container) bool {
+	if container.ImagePullPolicy == corev1.PullAlways {
+		return false
+	}
+
+	reference, err := name.ParseReference(container.Image)
+	if err != nil {
+		return false
+	}
+
+	return reference.Identifier() != "latest"
 }
 
 // GetImageConfig returns entrypoint and command of container
-func GetImageConfig(clientset kubernetes.Interface, namespace string, container *corev1.Container, podSpec *corev1.PodSpec, credentialProvider credentialprovider.CredentialProvider) (*imagev1.ImageConfig, error) {
-	containerInfo := ContainerInfo{Namespace: namespace, clientset: clientset}
+func (r *Registry) GetImageConfig(
+	ctx context.Context,
+	client kubernetes.Interface,
+	namespace string,
+	container *corev1.Container,
+	podSpec *corev1.PodSpec,
+	opt ImageRegistryOptions) (*v1.Config, error) {
+	allowToCache := IsAllowedToCache(container)
+	if allowToCache {
+		if imageConfig, cacheHit := r.imageCache.Get(container.Image); cacheHit {
+			klog.InfoS("found image in cache", "image", container.Image)
+			return imageConfig.(*v1.Config), nil
+		}
+	}
 
-	err := containerInfo.Collect(container, podSpec, credentialProvider)
+	containerInfo := containerInfo{
+		Namespace:          namespace,
+		ServiceAccountName: podSpec.ServiceAccountName,
+		Image:              container.Image,
+	}
+	for _, imagePullSecret := range podSpec.ImagePullSecrets {
+		containerInfo.ImagePullSecrets = append(containerInfo.ImagePullSecrets, imagePullSecret.Name)
+	}
+
+	imageConfig, err := getImageConfig(ctx, client, containerInfo, opt)
+	if imageConfig != nil && allowToCache {
+		r.imageCache.Set(container.Image, imageConfig, cache.DefaultExpiration)
+	}
+
+	return imageConfig, err
+}
+
+// getImageConfig download image blob from registry
+func getImageConfig(ctx context.Context, client kubernetes.Interface, container containerInfo, opt ImageRegistryOptions) (*v1.Config, error) {
+	authChain, err := k8schain.New(
+		ctx,
+		client,
+		k8schain.Options{
+			Namespace:          container.Namespace,
+			ServiceAccountName: container.ServiceAccountName,
+			ImagePullSecrets:   container.ImagePullSecrets,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	imageConfig, err := getImageBlob(containerInfo)
-	return imageConfig, err
-}
-
-// GetImageBlob download image blob from registry
-func getImageBlob(container ContainerInfo) (*imagev1.ImageConfig, error) {
-	imageName, reference := parseContainerImage(container.Image)
-
-	if container.RegistryUsername == "" {
-		return nil, fmt.Errorf("No user provided to authenticate with docker registry")
+	options := []remote.Option{
+		remote.WithAuthFromKeychain(authChain),
 	}
 
-	hub, err := registry.New(container.RegistryAddress, container.RegistryUsername, container.RegistryPassword)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot create client for doker registry")
-	}
-
-	manifest, err := hub.ManifestV2(imageName, reference)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot download manifest for docker image")
-	}
-
-	reader, err := hub.DownloadBlob(imageName, manifest.Config.Digest)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot download blob from docker manifest")
-	}
-
-	defer reader.Close()
-
-	b, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot read blob from docker manifest")
-	}
-
-	var imageMetadata imagev1.Image
-	err = json.Unmarshal(b, &imageMetadata)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot unmarshal BlobResponse JSON from docker manifest")
-	}
-
-	return &imageMetadata.Config, nil
-}
-
-// parseContainerImage returns image and reference
-func parseContainerImage(image string) (string, string) {
-	var split []string
-
-	if strings.Contains(image, "@") {
-		split = strings.SplitN(image, "@", 2)
-		subsplit := strings.SplitN(split[0], ":", 2)
-		if len(subsplit) > 1 {
-			split[0] = subsplit[0]
+	if opt.SkipVerify {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint:gosec
 		}
-	} else {
-		split = strings.SplitN(image, ":", 2)
+		options = append(options, remote.WithTransport(tr))
 	}
 
-	imageName := split[0]
-	reference := "latest"
-
-	if len(split) > 1 {
-		reference = split[1]
+	ref, err := name.ParseReference(container.Image)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse image reference")
 	}
 
-	return imageName, reference
+	descriptor, err := remote.Get(ref, options...)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot fetch image descriptor")
+	}
+
+	image, err := descriptor.Image()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot convert image descriptor to v1.Image")
+	}
+
+	configFile, err := image.ConfigFile()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot extract config file of image")
+	}
+
+	return &configFile.Config, nil
+}
+
+// containerInfo keeps information retrieved from POD based container definition
+type containerInfo struct {
+	Namespace          string
+	ImagePullSecrets   []string
+	ServiceAccountName string
+	Image              string
 }

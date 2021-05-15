@@ -229,21 +229,28 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			klog.InfoS("updating with recent changes from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KRef(akvs.Namespace, akvs.Spec.Output.Secret.Name))
 			existingSecret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Get(context.TODO(), akvs.Spec.Output.Secret.Name, metav1.GetOptions{})
 			if err != nil {
-				return fmt.Errorf("failed to get existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
-			}
+				klog.Infof("existing secret %s not found, creating new secret", akvs.Spec.Output.Secret.Name)
+				newSecret := createNewSecret(akvs, secretValue)
+				secret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Create(context.TODO(), newSecret, metav1.CreateOptions{})
+				if err != nil {
+					return fmt.Errorf("failed to create the secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
+				}
 
-			updatedSecret, err := createNewSecretFromExisting(akvs, secretValue, existingSecret)
-			if err != nil {
-				return fmt.Errorf("failed to update existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
-			}
+				secretName = secret.Name
+				klog.InfoS("secret created", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
+			} else {
+				updatedSecret, err := createNewSecretFromExisting(akvs, secretValue, existingSecret)
+				if err != nil {
+					return fmt.Errorf("failed to update existing secret %s, error: %+v", akvs.Spec.Output.Secret.Name, err)
+				}
+				secret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(context.TODO(), updatedSecret, metav1.UpdateOptions{})
+				if err != nil {
+					return fmt.Errorf("failed to update secret, error: %+v", err)
+				}
 
-			secret, err := c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(context.TODO(), updatedSecret, metav1.UpdateOptions{})
-			if err != nil {
-				return fmt.Errorf("failed to update secret, error: %+v", err)
+				secretName = secret.Name
+				klog.InfoS("secret changed - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(secret), "secret", klog.KObj(akvs))
 			}
-
-			secretName = secret.Name
-			klog.InfoS("secret changed - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(secret), "secret", klog.KObj(akvs))
 		}
 	}
 
@@ -265,21 +272,26 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			klog.InfoS("updating with recent changes from azure key vault", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KRef(akvs.Namespace, akvs.Spec.Output.ConfigMap.Name))
 			existingCm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Get(context.TODO(), akvs.Spec.Output.ConfigMap.Name, metav1.GetOptions{})
 			if err != nil {
-				return fmt.Errorf("failed to get existing configmap %s, error: %+v", akvs.Spec.Output.ConfigMap.Name, err)
+				klog.Infof("existing configmap %s not found, creating new configmap", akvs.Spec.Output.ConfigMap.Name)
+				newCm := createNewConfigMap(akvs, cmValue)
+				cm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Create(context.TODO(), newCm, metav1.CreateOptions{})
+				if err != nil {
+					return fmt.Errorf("failed to create the configmap %s, error: %+v", akvs.Spec.Output.ConfigMap.Name, err)
+				}
+				cmName = cm.Name
+				klog.InfoS("configmap created", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
+			} else {
+				updatedCm, err := createNewConfigMapFromExisting(akvs, cmValue, existingCm)
+				if err != nil {
+					return fmt.Errorf("failed to update existing configmap %s, error: %+v", akvs.Spec.Output.ConfigMap.Name, err)
+				}
+				cm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(context.TODO(), updatedCm, metav1.UpdateOptions{})
+				if err != nil {
+					return fmt.Errorf("failed to update configmap, error: %+v", err)
+				}
+				cmName = cm.Name
+				klog.InfoS("configmap changed - any resources (like pods) using this configmap must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 			}
-
-			updatedCm, err := createNewConfigMapFromExisting(akvs, cmValue, existingCm)
-			if err != nil {
-				return fmt.Errorf("failed to update existing configmap %s, error: %+v", akvs.Spec.Output.ConfigMap.Name, err)
-			}
-
-			cm, err := c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(context.TODO(), updatedCm, metav1.UpdateOptions{})
-			if err != nil {
-				return fmt.Errorf("failed to update configmap, error: %+v", err)
-			}
-
-			cmName = cm.Name
-			klog.InfoS("configmap changed - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 		}
 	}
 

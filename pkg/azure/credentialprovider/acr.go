@@ -22,7 +22,7 @@ import (
 
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
-	dockerTypes "github.com/docker/docker/api/types"
+	k8sCredentialProvider "github.com/vdemeester/k8s-pkg-credentialprovider"
 	"k8s.io/klog/v2"
 )
 
@@ -31,11 +31,40 @@ var (
 	acrRE                 = regexp.MustCompile(`.*\.azurecr\.io|.*\.azurecr\.cn|.*\.azurecr\.de|.*\.azurecr\.us`)
 )
 
+func NewAcrDockerProvider(provider CredentialProvider) k8sCredentialProvider.DockerConfigProvider {
+	return acrDockerProvider{
+		internalProvider: provider,
+	}
+}
+
+// acrDockerProvider handles docker credentials for ACR
+type acrDockerProvider struct {
+	internalProvider CredentialProvider
+}
+
+func (acr acrDockerProvider) Enabled() bool {
+	return true
+}
+
+func (acr acrDockerProvider) Provide(image string) k8sCredentialProvider.DockerConfig {
+	cfg := k8sCredentialProvider.DockerConfig{}
+
+	creds, err := acr.internalProvider.GetAcrCredentials(image)
+	if err != nil {
+		klog.ErrorS(err, "failed to get acr credentials")
+		return cfg
+	}
+
+	return k8sCredentialProvider.DockerConfig{
+		"*.azurecr.*": creds,
+	}
+}
+
 // GetAcrCredentials will get Docker credentials for Azure Container Registry
 // It will either get a exact match to the login server for the image (eg xxx.azureacr.io) or
 // get credentials for a wildcard match (eg *.azureacr.io* or *.azureacr.cn*)
-func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*dockerTypes.AuthConfig, error) {
-	cred := &dockerTypes.AuthConfig{
+func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (k8sCredentialProvider.DockerConfigEntry, error) {
+	cred := k8sCredentialProvider.DockerConfigEntry{
 		Username: "",
 		Password: "",
 	}
@@ -49,7 +78,7 @@ func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*dockerT
 		} else {
 			token, err := getServicePrincipalTokenFromCloudConfig(c.config, c.environment, c.environment.ServiceManagementEndpoint)
 			if err != nil {
-				return nil, err
+				return cred, err
 			}
 
 			if managedCred, err := getACRDockerEntryFromARMToken(c.config.TenantID, *c.environment, token, loginServer); err == nil {
@@ -58,7 +87,7 @@ func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*dockerT
 			}
 		}
 	} else {
-		return &dockerTypes.AuthConfig{
+		return k8sCredentialProvider.DockerConfigEntry{
 			Username: c.config.AADClientID,
 			Password: c.config.AADClientSecret,
 		}, nil
@@ -67,15 +96,15 @@ func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (*dockerT
 	return cred, nil
 }
 
-func (c EnvironmentCredentialProvider) GetAcrCredentials(image string) (*dockerTypes.AuthConfig, error) {
-	cred := &dockerTypes.AuthConfig{
+func (c EnvironmentCredentialProvider) GetAcrCredentials(image string) (k8sCredentialProvider.DockerConfigEntry, error) {
+	cred := k8sCredentialProvider.DockerConfigEntry{
 		Username: "",
 		Password: "",
 	}
 
 	creds, err := getCredentials(c.envSettings, c.envSettings.Environment.ServiceManagementEndpoint)
 	if err != nil {
-		return nil, err
+		return cred, err
 	}
 
 	loginServer := parseACRLoginServerFromImage(image, &c.envSettings.Environment)
@@ -85,7 +114,7 @@ func (c EnvironmentCredentialProvider) GetAcrCredentials(image string) (*dockerT
 	} else {
 		managedCred, err := getACRDockerEntryFromARMToken(creds.tenantID, c.envSettings.Environment, creds.token, loginServer)
 		if err != nil {
-			return nil, err
+			return cred, err
 		}
 
 		return managedCred, nil
@@ -103,7 +132,7 @@ func (c EnvironmentCredentialProvider) IsAcrRegistry(image string) bool {
 	return parseACRLoginServerFromImage(image, &c.envSettings.Environment) != ""
 }
 
-func getACRDockerEntryFromARMToken(tenantID string, env azure.Environment, token *adal.ServicePrincipalToken, loginServer string) (*dockerTypes.AuthConfig, error) {
+func getACRDockerEntryFromARMToken(tenantID string, env azure.Environment, token *adal.ServicePrincipalToken, loginServer string) (k8sCredentialProvider.DockerConfigEntry, error) {
 	// Run EnsureFresh to make sure the token is valid and does not expire
 	// if err := token.EnsureFresh(); err != nil {
 	// 	return nil, fmt.Errorf("Failed to ensure fresh service principal token: %v", err)
@@ -111,9 +140,14 @@ func getACRDockerEntryFromARMToken(tenantID string, env azure.Environment, token
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	cred := k8sCredentialProvider.DockerConfigEntry{
+		Username: "",
+		Password: "",
+	}
+
 	err := token.RefreshExchangeWithContext(ctx, env.ServiceManagementEndpoint)
 	if err != nil {
-		return nil, fmt.Errorf("failed to refresh token using resource %s, error: %+v", env.ServiceManagementEndpoint, err)
+		return cred, fmt.Errorf("failed to refresh token using resource %s, error: %+v", env.ServiceManagementEndpoint, err)
 	}
 
 	armAccessToken := token.OAuthToken()
@@ -121,17 +155,17 @@ func getACRDockerEntryFromARMToken(tenantID string, env azure.Environment, token
 	klog.V(4).InfoS("discovering auth redirects", "url", loginServer)
 	directive, err := receiveChallengeFromLoginServer(loginServer)
 	if err != nil {
-		return nil, fmt.Errorf("failed to receive challenge: %s", err)
+		return cred, fmt.Errorf("failed to receive challenge: %s", err)
 	}
 
 	klog.V(4).Info("exchanging an acr refresh_token")
 	registryRefreshToken, err := performTokenExchange(loginServer, directive, tenantID, armAccessToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to perform token exchange: %s", err)
+		return cred, fmt.Errorf("failed to perform token exchange: %s", err)
 	}
 
 	klog.V(4).InfoS("adding ACR docker config entry", "url", loginServer)
-	return &dockerTypes.AuthConfig{
+	return k8sCredentialProvider.DockerConfigEntry{
 		Username: dockerTokenLoginUsernameGUID,
 		Password: registryRefreshToken,
 	}, nil

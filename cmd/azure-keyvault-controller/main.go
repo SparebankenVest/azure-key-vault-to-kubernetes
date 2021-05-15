@@ -157,6 +157,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = validateCredentials(vaultAuth)
+	if err != nil {
+		klog.ErrorS(err, "failed to get authorizer from azure key vault credentials")
+		os.Exit(1)
+	}
+
 	vaultService := vault.NewService(vaultAuth)
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
@@ -175,6 +181,12 @@ func main() {
 		options)
 
 	controller.Run(stopCh)
+}
+
+func validateCredentials(credentials credentialprovider.Credentials) error {
+	klog.V(4).InfoS("checking credentials by getting authorizer")
+	_, err := credentials.Authorizer()
+	return err
 }
 
 func createMetricsServer(metricsPort string) {

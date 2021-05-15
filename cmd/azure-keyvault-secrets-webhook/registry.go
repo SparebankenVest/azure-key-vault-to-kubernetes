@@ -18,13 +18,15 @@
 package main
 
 import (
+	"context"
+
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/docker/registry"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 )
 
-func getContainerCmd(clientset kubernetes.Interface, container *corev1.Container, podSpec *corev1.PodSpec, namespace string) ([]string, error) {
+func getContainerCmd(ctx context.Context, clientset kubernetes.Interface, container *corev1.Container, podSpec *corev1.PodSpec, namespace string, imageRegistry registry.ImageRegistry) ([]string, error) {
 	klog.V(4).InfoS("getting container command for container", "container", klog.KRef(namespace, container.Name))
 	cmd := container.Command
 
@@ -34,7 +36,7 @@ func getContainerCmd(clientset kubernetes.Interface, container *corev1.Container
 		klog.V(4).InfoS("no cmd override in kubernetes for container, checking docker image configuration for entrypoint and cmd", "image", container.Image, "container", klog.KRef(namespace, container.Name))
 
 		containerImageInspectionCounter.Inc()
-		imgConfig, err := registry.GetImageConfig(clientset, namespace, container, podSpec, config.credentialProvider)
+		imgConfig, err := imageRegistry.GetImageConfig(ctx, clientset, namespace, container, podSpec, registry.ImageRegistryOptions{})
 		if err != nil {
 			containerImageInspectionFailures.Inc()
 			return nil, err
