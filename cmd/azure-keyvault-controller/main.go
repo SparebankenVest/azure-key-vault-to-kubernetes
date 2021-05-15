@@ -54,11 +54,12 @@ import (
 const controllerAgentName = "azurekeyvaultcontroller"
 
 var (
-	version     string
-	kubeconfig  string
-	masterURL   string
-	cloudconfig string
-	logFormat   string
+	version            string
+	kubeconfig         string
+	masterURL          string
+	cloudconfig        string
+	logFormat          string
+	watchAllNamespaces bool
 )
 
 func initConfig() {
@@ -77,6 +78,7 @@ func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&cloudconfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
+	flag.BoolVar(&watchAllNamespaces, "watch-all-namespaces", true, "Watch for custom resources in all namespaces, if set to false it will only watch the runtime namespace.")
 }
 
 func main() {
@@ -97,7 +99,6 @@ func main() {
 	authType := viper.GetString("auth_type")
 	serveMetrics := viper.GetBool("metrics_enabled")
 	metricsPort := viper.GetString("metrics_port")
-	namespace := viper.GetString("namespace")
 
 	if serveMetrics {
 		createMetricsServer(metricsPort)
@@ -126,10 +127,12 @@ func main() {
 
 	var kubeInformerOptions []kubeinformers.SharedInformerOption
 	var akvInformerOptions []informers.SharedInformerOption
-	if namespace != "" {
-		kubeInformerOptions = append(kubeInformerOptions, kubeinformers.WithNamespace(namespace))
-		akvInformerOptions = append(akvInformerOptions, informers.WithNamespace(namespace))
+	watchNamespace := ""
+	if !watchAllNamespaces {
+		watchNamespace = os.Getenv("RUNTIME_NAMESPACE")
 	}
+	kubeInformerOptions = append(kubeInformerOptions, kubeinformers.WithNamespace(watchNamespace))
+	akvInformerOptions = append(akvInformerOptions, informers.WithNamespace(watchNamespace))
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, kubeInformerOptions...)
 	azureKeyVaultSecretInformerFactory := informers.NewSharedInformerFactoryWithOptions(azureKeyVaultSecretClient, time.Second*30, akvInformerOptions...)
 
