@@ -30,6 +30,8 @@ import (
 
 	"github.com/gorilla/mux"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -99,6 +101,7 @@ func main() {
 	authType := viper.GetString("auth_type")
 	serveMetrics := viper.GetBool("metrics_enabled")
 	metricsPort := viper.GetString("metrics_port")
+	objectLabels := viper.GetString("object_labels")
 
 	if serveMetrics {
 		createMetricsServer(metricsPort)
@@ -133,6 +136,25 @@ func main() {
 	}
 	kubeInformerOptions = append(kubeInformerOptions, kubeinformers.WithNamespace(watchNamespace))
 	akvInformerOptions = append(akvInformerOptions, informers.WithNamespace(watchNamespace))
+	if objectLabels != "" {
+		objectLabelSet, err := labels.ConvertSelectorToLabelsMap(objectLabels)
+		if err != nil {
+			klog.ErrorS(err, "invalid labels", "labels", objectLabels)
+			os.Exit(1)
+		}
+
+		labelSelectorAppender := func(curLabels string, newLabels labels.Set) string {
+			curLabelSet, _ := labels.ConvertSelectorToLabelsMap(curLabels)
+			m := labels.Merge(curLabelSet, newLabels)
+			return m.String()
+		}
+		kubeInformerOptions = append(kubeInformerOptions, kubeinformers.WithTweakListOptions(func(options *metav1.ListOptions) {
+			options.LabelSelector = labelSelectorAppender(options.LabelSelector, objectLabelSet)
+		}))
+		akvInformerOptions = append(akvInformerOptions, informers.WithTweakListOptions(func(options *metav1.ListOptions) {
+			options.LabelSelector = labelSelectorAppender(options.LabelSelector, objectLabelSet)
+		}))
+	}
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, kubeInformerOptions...)
 	azureKeyVaultSecretInformerFactory := informers.NewSharedInformerFactoryWithOptions(azureKeyVaultSecretClient, time.Second*30, akvInformerOptions...)
 
