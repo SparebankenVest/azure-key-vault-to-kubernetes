@@ -1,5 +1,6 @@
 ARG BASEIMAGE=gcr.io/distroless/static:nonroot
 ARG BASE_ALPINE=alpine:3.14.0
+ARG GO_VERSION=1.16.5
 
 # -------
 # Builder
@@ -27,7 +28,7 @@ LABEL org.label-schema.vcs-ref=$VCS_REF
 LABEL org.label-schema.vcs-url=$VCS_URL
 LABEL org.label-schema.url=$VCS_URL
 LABEL org.label-schema.description="A Kubernetes Mutating Admission Webhook that adds an init container to a pod that will inject environment variables from Azure Key Vault"
-LABEL org.label-schema.vendor="Sparebanken Vest"      
+LABEL org.label-schema.vendor="Sparebanken Vest"
 LABEL org.label-schema.author="Jon Arild Tørresdal"
 
 COPY --from=builder /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes/bin/azure-key-vault-to-kubernetes/azure-keyvault-secrets-webhook /usr/local/bin/
@@ -47,7 +48,7 @@ LABEL org.label-schema.vcs-ref=$VCS_REF
 LABEL org.label-schema.vcs-url=$VCS_URL
 LABEL org.label-schema.url=$VCS_URL
 LABEL org.label-schema.description="A Kubernetes Mutating Admission Webhook that adds an init container to a pod that will inject environment variables from Azure Key Vault"
-LABEL org.label-schema.vendor="Sparebanken Vest"      
+LABEL org.label-schema.vendor="Sparebanken Vest"
 LABEL org.label-schema.author="Jon Arild Tørresdal"
 
 COPY --from=builder /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes/bin/azure-key-vault-to-kubernetes/azure-keyvault-controller /usr/local/bin/
@@ -67,7 +68,7 @@ LABEL org.label-schema.vcs-ref=$VCS_REF
 LABEL org.label-schema.vcs-url=$VCS_URL
 LABEL org.label-schema.url=$VCS_URL
 LABEL org.label-schema.description="A Kubernetes Mutating Admission Webhook that adds an init container to a pod that will inject environment variables from Azure Key Vault"
-LABEL org.label-schema.vendor="Sparebanken Vest"      
+LABEL org.label-schema.vendor="Sparebanken Vest"
 LABEL org.label-schema.author="Jon Arild Tørresdal"
 
 COPY --from=builder /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes/bin/azure-key-vault-to-kubernetes/azure-keyvault-env /usr/local/bin/
