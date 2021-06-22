@@ -8,7 +8,7 @@ require (
 	github.com/Azure/azure-sdk-for-go v42.3.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.19
 	github.com/Azure/go-autorest/autorest/adal v0.9.14
-	github.com/Azure/go-autorest/autorest/azure/auth v0.4.2
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
 	github.com/appscode/go v0.0.0-20191119085241-0887d8ec2ecc
 	github.com/google/go-cmp v0.5.6
 	github.com/google/go-containerregistry v0.4.0
@@ -20,7 +20,7 @@ require (
 	github.com/slok/kubewebhook v0.11.0
 	github.com/spf13/viper v1.8.0
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.18.1-0.20201019120933-f1d16962a4db
-	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
