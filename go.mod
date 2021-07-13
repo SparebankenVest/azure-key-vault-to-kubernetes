@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	emperror.dev/errors v0.8.0
-	github.com/Azure/aad-pod-identity v1.6.3
+	github.com/Azure/aad-pod-identity v1.8.1
 	github.com/Azure/azure-sdk-for-go v42.3.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.19
 	github.com/Azure/go-autorest/autorest/adal v0.9.14
@@ -20,7 +20,7 @@ require (
 	github.com/slok/kubewebhook v0.11.0
 	github.com/spf13/viper v1.8.0
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.18.1-0.20201019120933-f1d16962a4db
-	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+	golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
