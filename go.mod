@@ -20,12 +20,12 @@ require (
 	github.com/slok/kubewebhook v0.11.0
 	github.com/spf13/viper v1.8.0
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.18.1-0.20201019120933-f1d16962a4db
-	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.20.2
-	k8s.io/apimachinery v0.20.2
-	k8s.io/client-go v0.20.2
-	k8s.io/component-base v0.20.2
+	k8s.io/api v0.21.3
+	k8s.io/apimachinery v0.21.3
+	k8s.io/client-go v0.21.3
+	k8s.io/component-base v0.21.3
 	k8s.io/klog/v2 v2.9.0
 	kmodules.xyz/client-go v0.0.0-20200521013203-6fe0a448d053
 	sigs.k8s.io/controller-runtime v0.8.2
