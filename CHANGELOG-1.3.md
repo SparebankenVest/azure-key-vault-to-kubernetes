@@ -37,19 +37,19 @@ The most notable changes in this release are:
 
 ### Helm Charts
 
-* Add generated crd from SparebankenVest/azure-key-vault-to-kubernetes #159
+* Add generated crd from SparebankenVest/azure-key-vault-to-kubernetes#159
 * Ignore files in .helmignore
 * Add support for watchAllNamespaces
-* #45 - Upgrade cert-manager CRD's to api version v1
+* SparebankenVest/public-helm-charts#45 - Upgrade cert-manager CRD's to api version v1
 * Remove unused RUNNING_INSIDE_AZURE_AKS env
-* #57 - Add optional pod annotations to the controller
-* #59 - Add optional pod security context
+* SparebankenVest/public-helm-charts#57 - Add optional pod annotations to the controller
+* SparebankenVest/public-helm-charts#59 - Add optional pod security context
 
 ### Chart and Image versions
 
-| Type         | Component                                                                                   | Version |
-| ------------ | ------------------------------------------------------------------------------------------- | ------- |
-| Helm Chart   | [akv2k8s](https://github.com/SparebankenVest/public-helm-charts/tree/master/stable/akv2k8s) | 2.1.0   |
-| Docker Image | spvest/azure-keyvault-controller                                                            | 1.3.0   |
-| Docker Image | spvest/azure-keyvault-webhook                                                               | 1.3.0   |
-| Docker Image | spvest/azure-keyvault-env                                                                   | 1.3.0   |
+| Type         | Component                                                                                          | Version |
+| ------------ | -------------------------------------------------------------------------------------------------- | ------- |
+| Helm Chart   | [akv2k8s](https://github.com/SparebankenVest/public-helm-charts/tree/akv2k8s-2.1.0/stable/akv2k8s) | 2.1.0   |
+| Docker Image | spvest/azure-keyvault-controller                                                                   | 1.3.0   |
+| Docker Image | spvest/azure-keyvault-webhook                                                                      | 1.3.0   |
+| Docker Image | spvest/azure-keyvault-env                                                                          | 1.3.0   |
