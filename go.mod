@@ -6,7 +6,7 @@ require (
 	emperror.dev/errors v0.8.0
 	github.com/Azure/aad-pod-identity v1.8.0
 	github.com/Azure/azure-sdk-for-go v55.3.0+incompatible
-	github.com/Azure/go-autorest/autorest v0.11.19
+	github.com/Azure/go-autorest/autorest v0.11.20
 	github.com/Azure/go-autorest/autorest/adal v0.9.14
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
 	github.com/appscode/go v0.0.0-20191119085241-0887d8ec2ecc
