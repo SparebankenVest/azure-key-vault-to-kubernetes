@@ -32,7 +32,7 @@
 
 <p align="center"><i>Documentation available at <a href="https://akv2k8s.io">https://akv2k8s.io</a>. Join our <a href="https://join.slack.com/t/akv2k8s/shared_invite/zt-lfx2qdky-SGjwN8qTfca6bdeIyk46lg">Slack Workspace</a> to ask questions to the akv2k8s community.</i></p>
 
-<p align="center"><i>Please spare one minute to take our survey: <a href="https://www.surveymonkey.com/r/HMFZVYR">https://www.surveymonkey.com/r/HMFZVYR</a>. Why? We have no ide how many are using Akv2k8s, except through user interaction here on GitHub. More importantly - what can we do to make Akv2k8s even better?</i></p>
+<p align="center"><i>Please spare one minute to take our survey: <a href="https://www.surveymonkey.com/r/HMFZVYR">https://www.surveymonkey.com/r/HMFZVYR</a>. Why? We have no idea how many are using Akv2k8s, except through user interaction here on GitHub. More importantly - what can we do to make Akv2k8s even better?</i></p>
 
 ## Overview
 
@@ -41,13 +41,13 @@ Azure Key Vault to Kubernetes (akv2k8s) will make Azure Key Vault objects availa
 * As native Kubernetes `Secret`s 
 * As environment variables directly injected into your Container application
 
-The **Azure Key Vault Controller** (Controller for short) is responsible for synchronizing Secrets, Certificates and Keys from Azure Key Vault to native `Secret`'s in Kubernetes.
+The **Azure Key Vault Controller** (Controller for short) is responsible for synchronizing Secrets, Certificates and Keys from Azure Key Vault to native `Secret`s in Kubernetes.
 
-The **Azure Key Vault Env Injector** (Env Injector for short) is responsible for transparently injecting Azure Key Vault secrets as environment variables into Container applications, without touching disk or expose the actual secret to Kubernetes.
+The **Azure Key Vault Env Injector** (Env Injector for short) is responsible for transparently injecting Azure Key Vault secrets as environment variables into Container applications, without touching disk or exposing the actual secret to Kubernetes.
 
 ## Goals
 
-Goals for this project was:
+The goals for this project were:
 
 1. Avoid a direct program dependency on Azure Key Vault for getting secrets, and adhere to the 12 Factor App principle for configuration (https://12factor.net/config)
 2. Make it simple, secure and low risk to transfer Azure Key Vault secrets into Kubernetes as native Kubernetes secrets
@@ -57,7 +57,7 @@ All of these goals are met.
 
 ## Installation
 
-For installation instructions, see documentation at https://akv2k8s.io/installation/
+For installation instructions, see documentation at https://akv2k8s.io/installation/.
 
 ## Credits
 
@@ -65,7 +65,7 @@ Credit goes to Banzai Cloud for coming up with the [original idea](https://banza
 
 ## Contributing
 
-Development of Azure Key Vault for Kubernetes happens in the open on GitHub, and encourage users to:
+Development of Azure Key Vault for Kubernetes happens in the open on GitHub, and we encourage users to:
 
 * Send a pull request with 
   * any security issues found and fixed
