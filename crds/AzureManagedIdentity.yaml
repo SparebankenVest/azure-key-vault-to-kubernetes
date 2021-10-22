@@ -30,4 +30,4 @@ spec:
           properties:
             name:
               type: string
-              description: Name of the Azure Managed Identity to 
+              description: Name of the Azure Managed Identity
