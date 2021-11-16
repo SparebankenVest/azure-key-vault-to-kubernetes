@@ -11,7 +11,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8
 	github.com/appscode/go v0.0.0-20191119085241-0887d8ec2ecc
 	github.com/google/go-cmp v0.5.6
-	github.com/google/go-containerregistry v0.5.1
+	github.com/google/go-containerregistry v0.7.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20210113221012-4eb508cda163
 	github.com/gorilla/mux v1.8.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
