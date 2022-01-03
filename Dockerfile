@@ -5,15 +5,21 @@ ARG GO_VERSION=1.16.12
 # -------
 # Builder
 # -------
-FROM golang:${GO_VERSION} AS builder
+FROM golang:${GO_VERSION} AS base_builder
 ARG PACKAGE
 ARG VCS_REF=noref
-ARG BUILD_SUB_TARGET
 
 WORKDIR /go/src/${PACKAGE}
 
 ADD go.mod go.sum /go/src/${PACKAGE}
 RUN go mod download
+
+FROM base_builder AS builder
+ARG PACKAGE
+ARG VCS_REF=noref
+ARG BUILD_SUB_TARGET
+
+WORKDIR /go/src/${PACKAGE}
 
 ADD . .
 RUN GIT_TAG=${VCS_REF} make build${BUILD_SUB_TARGET}
