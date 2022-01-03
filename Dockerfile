@@ -1,6 +1,6 @@
 ARG BASEIMAGE=gcr.io/distroless/static:nonroot
 ARG BASE_ALPINE=alpine:3.14
-ARG GO_VERSION=1.16.9
+ARG GO_VERSION=1.16.12
 
 # -------
 # Builder
@@ -11,8 +11,11 @@ ARG VCS_REF=noref
 ARG BUILD_SUB_TARGET
 
 WORKDIR /go/src/${PACKAGE}
-ADD . .
+
+ADD go.mod go.sum /go/src/${PACKAGE}
 RUN go mod download
+
+ADD . .
 RUN GIT_TAG=${VCS_REF} make build${BUILD_SUB_TARGET}
 
 # ------------
