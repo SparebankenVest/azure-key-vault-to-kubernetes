@@ -7,10 +7,8 @@ ARG GO_VERSION=1.16.12
 # -------
 FROM golang:${GO_VERSION} AS base_builder
 ARG PACKAGE
-ARG VCS_REF=noref
 
 WORKDIR /go/src/${PACKAGE}
-
 ADD go.mod go.sum /go/src/${PACKAGE}
 RUN go mod download
 
