@@ -62,6 +62,7 @@ var (
 	cloudconfig        string
 	logFormat          string
 	watchAllNamespaces bool
+	watchThisNamespace string
 )
 
 func initConfig() {
@@ -81,6 +82,7 @@ func init() {
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&cloudconfig, "cloudconfig", "/etc/kubernetes/azure.json", "Path to cloud config. Only required if this is not at default location /etc/kubernetes/azure.json")
 	flag.BoolVar(&watchAllNamespaces, "watch-all-namespaces", true, "Watch for custom resources in all namespaces, if set to false it will only watch the runtime namespace.")
+	flag.BoolVar(&watchThisNamespace, "watch-this-namespace", "", "Watch for custom resources in a single namespace, if set watch-all-namespaces behaviour is not applied.")
 }
 
 func main() {
@@ -131,9 +133,13 @@ func main() {
 	var kubeInformerOptions []kubeinformers.SharedInformerOption
 	var akvInformerOptions []informers.SharedInformerOption
 	watchNamespace := ""
-	if !watchAllNamespaces {
+
+	if watchThisNamespace != "" {
+		watchNamespace = watchThisNamespace
+	} else if !watchAllNamespaces {
 		watchNamespace = os.Getenv("RUNTIME_NAMESPACE")
 	}
+
 	kubeInformerOptions = append(kubeInformerOptions, kubeinformers.WithNamespace(watchNamespace))
 	akvInformerOptions = append(akvInformerOptions, informers.WithNamespace(watchNamespace))
 	if objectLabels != "" {
