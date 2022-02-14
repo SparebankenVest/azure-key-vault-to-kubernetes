@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -40,7 +41,7 @@ import (
 )
 
 const (
-	envLookupKey = "@azurekeyvault"
+	envLookupRegex = `^([a-z-\d]*)@azurekeyvault([\?]?[a-z-\d]*)$`
 )
 
 type injectorConfig struct {
@@ -280,16 +281,21 @@ func main() {
 
 	environ := os.Environ()
 
+	re := regexp.MustCompile(envLookupRegex)
+
 	for i, env := range environ {
 		split := strings.SplitN(env, "=", 2)
 		name := split[0]
 		value := split[1]
 
+		regexMatches := re.FindAllStringSubmatch(value, -1)
+
 		// e.g. my-akv-secret-name@azurekeyvault?some-sub-key
-		if strings.Contains(value, envLookupKey) {
+		for _, match := range regexMatches {
 			// e.g. my-akv-secret-name?some-sub-key
 			klog.V(4).InfoS("found env var to get azure key vault secret for", "env", name)
-			akvsName := strings.Join(strings.Split(value, envLookupKey), "")
+
+			akvsName := strings.Join(match[1:], "")
 
 			if akvsName == "" {
 				klog.ErrorS(fmt.Errorf("error extracting secret name"), "env variable not properly formatted", "env", name, "value", value)
