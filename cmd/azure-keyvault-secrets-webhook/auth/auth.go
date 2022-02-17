@@ -272,6 +272,8 @@ func (a AuthService) NewPodSecret(pod *corev1.Pod, namespace string, mutationID 
 			} else {
 				name = ownerReferences[0].Name
 			}
+		} else {
+			name = pod.GetGenerateName()
 		}
 	}
 
