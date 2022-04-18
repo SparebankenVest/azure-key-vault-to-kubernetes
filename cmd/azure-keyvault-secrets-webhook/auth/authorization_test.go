@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -42,7 +43,10 @@ func (f *fixture) initAuthorization() {
 	k8sInformerNamespaces := kubeinformers.NewSharedInformerFactory(f.kubeclient, noResyncPeriodFunc())
 
 	for _, d := range f.namespaceLister {
-		k8sInformerNamespaces.Core().V1().Namespaces().Informer().GetIndexer().Add(d)
+		err := k8sInformerNamespaces.Core().V1().Namespaces().Informer().GetIndexer().Add(d)
+		if err != nil {
+			log.Fatalf("failed to add namespace to listener: %s", err)
+		}
 	}
 }
 

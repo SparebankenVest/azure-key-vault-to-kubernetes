@@ -39,6 +39,9 @@ func TestTransformWithTrim(t *testing.T) {
 	}
 
 	newSecret, err := transformator.Transform(testString)
+	if err != nil {
+		t.Error(err)
+	}
 
 	if newSecret != testStringTrimmed {
 		t.Error("Secret not properly trimmed with white space")
@@ -56,6 +59,9 @@ func TestTransformWithBase64Decode(t *testing.T) {
 	}
 
 	newSecret, err := transformator.Transform(testBase64String)
+	if err != nil {
+		t.Error(err)
+	}
 
 	if newSecret != testString {
 		t.Errorf("Actual   :%s", newSecret)
@@ -74,6 +80,9 @@ func TestTransformWithBase64Encode(t *testing.T) {
 	}
 
 	newSecret, err := transformator.Transform(testString)
+	if err != nil {
+		t.Error(err)
+	}
 
 	if newSecret != testBase64String {
 		t.Errorf("Actual   :%s", newSecret)
@@ -92,6 +101,9 @@ func TestTransformWithAll(t *testing.T) {
 	}
 
 	newSecret, err := transformator.Transform(testString)
+	if err != nil {
+		t.Error(err)
+	}
 
 	if newSecret != testStringTrimmed {
 		t.Errorf("Actual   :%s", newSecret)
@@ -117,6 +129,9 @@ func TestTransformWithNilOutputSpec(t *testing.T) {
 	}
 
 	newSecret, err := transformator.Transform(testString)
+	if err != nil {
+		t.Error(err)
+	}
 	if newSecret != testString {
 		t.Errorf("Transform should work without any transformers")
 	}
