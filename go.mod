@@ -3,12 +3,12 @@ module github.com/SparebankenVest/azure-key-vault-to-kubernetes
 go 1.18
 
 require (
-	emperror.dev/errors v0.8.0
-	github.com/Azure/aad-pod-identity v1.8.5
-	github.com/Azure/azure-sdk-for-go v57.4.0+incompatible
-	github.com/Azure/go-autorest/autorest v0.11.21
+	emperror.dev/errors v0.8.1
+	github.com/Azure/aad-pod-identity v1.8.8
+	github.com/Azure/azure-sdk-for-go v63.3.0+incompatible
+	github.com/Azure/go-autorest/autorest v0.11.25
 	github.com/Azure/go-autorest/autorest/adal v0.9.18
-	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11
 	github.com/appscode/go v0.0.0-20191119085241-0887d8ec2ecc
 	github.com/google/go-cmp v0.5.7
 	github.com/google/go-containerregistry v0.8.1-0.20220414133640-f1b729141d33
@@ -16,11 +16,11 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.12.1
 	github.com/slok/kubewebhook v0.11.0
-	github.com/spf13/viper v1.9.0
+	github.com/spf13/viper v1.11.0
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.18.1-0.20201019120933-f1d16962a4db
-	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3
+	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.23.5
 	k8s.io/apimachinery v0.23.5
@@ -75,6 +75,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
+	github.com/pelletier/go-toml/v2 v2.0.0-beta.8 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
@@ -84,7 +85,6 @@ require (
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.7.1 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/yudai/gojsondiff v1.0.0 // indirect
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
