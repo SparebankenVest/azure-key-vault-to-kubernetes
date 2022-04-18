@@ -1,6 +1,6 @@
 module github.com/SparebankenVest/azure-key-vault-to-kubernetes
 
-go 1.16
+go 1.18
 
 require (
 	emperror.dev/errors v0.8.0
