@@ -5,6 +5,47 @@ description: "All changes in version 1.3"
 
 # Changelog for Version 1.3
 
+## Version 1.3.1
+
+The most notable changes in this release are:
+
+* Fallback to the Pod generated name when creating a secret for an unnamed pod #322
+* Use a more refined regex to match valid injectable secret names #320 #281
+* Fixes correct RBAC Role vs ClusterRole when `watchAllNamespaces` is `false` SparebankenVest/public-helm-charts#62
+* Upgrade k8s client v0.23.5
+* Upgrade go 1.18
+* Upgrade alpine base image 3.15.6
+
+### Controller
+
+#### Features
+
+* Upgrade k8s client v0.23.5
+* Upgrade go 1.18
+* Upgrade alpine base image 3.15.6
+
+#### Bug Fixes
+
+* Fallback to the Pod generated name when creating a secret for an unnamed pod #322
+* Use a more refined regex to match valid injectable secret names #320 #281
+
+### Helm Charts
+
+* Add priorityClassName spec to akv2k8s controller deployment SparebankenVest/public-helm-charts#60
+* Fixes correct RBAC Role vs ClusterRole when `watchAllNamespaces` is `false` SparebankenVest/public-helm-charts#62
+* Remove duplicate MTLS_PORT environment variable SparebankenVest/public-helm-charts#70
+* Upgrade PodDistributionBudget api version to v1 SparebankenVest/public-helm-charts#71
+* Update generated CRD
+
+### Chart and Image versions
+
+| Type         | Component                                                                                          | Version |
+| ------------ | -------------------------------------------------------------------------------------------------- | ------- |
+| Helm Chart   | [akv2k8s](https://github.com/SparebankenVest/public-helm-charts/tree/akv2k8s-2.2.0/stable/akv2k8s) | 2.2.0   |
+| Docker Image | spvest/azure-keyvault-controller                                                                   | 1.3.1   |
+| Docker Image | spvest/azure-keyvault-webhook                                                                      | 1.3.1   |
+| Docker Image | spvest/azure-keyvault-env                                                                          | 1.3.1   |
+
 ## Version 1.3.0
 
 The most notable changes in this release are:
