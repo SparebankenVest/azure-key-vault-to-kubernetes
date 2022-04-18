@@ -24,8 +24,8 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:resource:shortName=akvs,categories=all
-// +kubebuilder:printcolumn:name="Vault",type=string,JSONPath=`.spec.vault.name`,description="Which Azure Key Vault this resource is asosiated with"
-// +kubebuilder:printcolumn:name="Vault Object",type=string,JSONPath=`.spec.vault.object.name`,description="Which Azure Key Vault object this resource is asosiated with"
+// +kubebuilder:printcolumn:name="Vault",type=string,JSONPath=`.spec.vault.name`,description="Which Azure Key Vault this resource is associated with"
+// +kubebuilder:printcolumn:name="Vault Object",type=string,JSONPath=`.spec.vault.object.name`,description="Which Azure Key Vault object this resource is associated with"
 // +kubebuilder:printcolumn:name="Secret Name",type=string,JSONPath=`.status.secretName`,description="Which Kubernetes Secret this resource is synched with, if any"
 // +kubebuilder:printcolumn:name="ConfigMap Name",type=string,JSONPath=`.status.configMapName`,description="Which Kubernetes ConfigMap this resource is synched with, if any"
 // +kubebuilder:printcolumn:name="Last Synched",type=date,JSONPath=`.status.lastAzureUpdate`,description="When this resource was last synched with Azure Key Vault"
@@ -127,7 +127,7 @@ type AzureKeyVaultOutput struct {
 }
 
 // AzureKeyVaultOutputSecret has information needed to output
-// a secret from Azure Key Vault to Kubertnetes as a Secret resource
+// a secret from Azure Key Vault to Kubernetes as a Secret resource
 type AzureKeyVaultOutputSecret struct {
 	// Name for Kubernetes secret
 	Name string `json:"name"`
@@ -135,7 +135,7 @@ type AzureKeyVaultOutputSecret struct {
 	// Type of Secret in Kubernetes
 	Type corev1.SecretType `json:"type,omitempty"`
 	// +optional
-	// The key to use in Kubernetes secret when setting the value from Azure Keyv Vault object data
+	// The key to use in Kubernetes secret when setting the value from Azure Key Vault object data
 	DataKey string `json:"dataKey,omitempty"`
 	// +optional
 	// By setting chainOrder to ensureserverfirst the server certificate will be moved first in the chain
@@ -144,11 +144,11 @@ type AzureKeyVaultOutputSecret struct {
 }
 
 // AzureKeyVaultOutputConfigMap has information needed to output
-// a secret from Azure Key Vault to Kubertnetes as a ConfigMap resource
+// a secret from Azure Key Vault to Kubernetes as a ConfigMap resource
 type AzureKeyVaultOutputConfigMap struct {
 	// Name for Kubernetes ConfigMap
 	Name string `json:"name"`
-	// The key to use in Kubernetes ConfigMap when setting the value from Azure Keyv Vault object data
+	// The key to use in Kubernetes ConfigMap when setting the value from Azure Key Vault object data
 	DataKey string `json:"dataKey"`
 }
 
