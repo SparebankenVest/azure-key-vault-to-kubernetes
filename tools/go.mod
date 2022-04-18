@@ -4,6 +4,6 @@ go 1.18
 
 require (
 	github.com/client9/misspell v0.3.4
-	github.com/golangci/golangci-lint v1.30.0
+	github.com/golangci/golangci-lint v1.45.2
 	sigs.k8s.io/controller-tools v0.5.0 // indirect
 )
