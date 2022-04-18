@@ -19,7 +19,7 @@ require (
 	github.com/prometheus/client_golang v1.12.1
 	github.com/slok/kubewebhook v0.11.0
 	github.com/spf13/viper v1.11.0
-	github.com/vdemeester/k8s-pkg-credentialprovider v1.18.1-0.20201019120933-f1d16962a4db
+	github.com/vdemeester/k8s-pkg-credentialprovider v1.22.4
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.23.5
@@ -41,7 +41,7 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
-	github.com/aws/aws-sdk-go v1.38.49 // indirect
+	github.com/aws/aws-sdk-go v1.39.4 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -108,7 +108,7 @@ require (
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	gotest.tools/v3 v3.1.0 // indirect
-	k8s.io/klog v1.0.0 // indirect
+	k8s.io/cloud-provider v0.22.4 // indirect
 	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf // indirect
 	k8s.io/legacy-cloud-providers v0.22.4 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
