@@ -327,7 +327,7 @@ func determineSecretType(azureKeyVaultSecret *akv.AzureKeyVaultSecret) corev1.Se
 func getMD5HashOfByteValues(values map[string][]byte) string {
 	var mergedValues bytes.Buffer
 
-	// sort keys to make sure hash is consistant
+	// sort keys to make sure hash is consistent
 	keys := sortByteValueKeys(values)
 
 	for _, k := range keys {

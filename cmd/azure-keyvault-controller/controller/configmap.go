@@ -290,7 +290,7 @@ func determineConfigMapName(azureKeyVaultSecret *akv.AzureKeyVaultSecret) string
 func getMD5HashOfStringValues(values map[string]string) string {
 	var mergedValues bytes.Buffer
 
-	// sort keys to make sure hash is consistant
+	// sort keys to make sure hash is consistent
 	keys := sortStringValueKeys(values)
 
 	for _, k := range keys {

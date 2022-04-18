@@ -265,7 +265,7 @@ func (h *azureKeyHandler) HandleConfigMap() (map[string]string, error) {
 	return values, nil
 }
 
-// Handle getting and formating Azure Key Vault Secret containing mulitple values from Azure Key Vault to Kubernetes
+// Handle getting and formating Azure Key Vault Secret containing multiple values from Azure Key Vault to Kubernetes
 func (h *azureMultiValueSecretHandler) HandleSecret() (map[string][]byte, error) {
 	values := make(map[string][]byte)
 
@@ -300,7 +300,7 @@ func (h *azureMultiValueSecretHandler) HandleSecret() (map[string][]byte, error)
 	return values, nil
 }
 
-// Handle getting and formating Azure Key Vault Secret containing mulitple values from Azure Key Vault to Kubernetes
+// Handle getting and formating Azure Key Vault Secret containing multiple values from Azure Key Vault to Kubernetes
 func (h *azureMultiValueSecretHandler) HandleConfigMap() (map[string]string, error) {
 	values := make(map[string]string)
 

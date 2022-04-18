@@ -346,7 +346,7 @@ func newKubeClient() (kubernetes.Interface, error) {
 
 func getCredentials() (credentialprovider.Credentials, credentialprovider.CredentialProvider, error) {
 	if config.authType != "azureCloudConfig" {
-		klog.V(4).InfoS("not using cloudConfig for auth - looking for azure key vault credentials in envrionment")
+		klog.V(4).InfoS("not using cloudConfig for auth - looking for azure key vault credentials in environment")
 		cProvider, err := credentialprovider.NewFromEnvironment()
 		if err != nil {
 			return nil, cProvider, err

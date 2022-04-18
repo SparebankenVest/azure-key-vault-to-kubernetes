@@ -177,7 +177,7 @@ func (h *AzureKeyVaultKeyHandler) Handle() (string, error) {
 	return key, nil
 }
 
-// Handle getting and formating Azure Key Vault Secret containing mulitple values from Azure Key Vault to Kubernetes
+// Handle getting and formating Azure Key Vault Secret containing multiple values from Azure Key Vault to Kubernetes
 func (h *AzureKeyVaultMultiValueSecretHandler) Handle() (string, error) {
 	if h.secretSpec.Spec.Vault.Object.ContentType == "" {
 		return "", fmt.Errorf("cannot use '%s' without also specifying content type", akv.AzureKeyVaultObjectTypeMultiKeyValueSecret)

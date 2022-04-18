@@ -255,7 +255,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			klog.Info("succeded getting credentials")
+			klog.Info("succeeded getting credentials")
 			return nil
 		})
 		if err != nil {
@@ -325,7 +325,7 @@ func main() {
 						klog.V(4).ErrorS(err, "error getting azurekeyvaultsecret", "azurekeyvaultsecret", klog.KRef(config.namespace, akvsName))
 						return err
 					}
-					klog.InfoS("succeded getting azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
+					klog.InfoS("succeeded getting azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
 					return nil
 				})
 				if err != nil {
