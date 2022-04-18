@@ -5,7 +5,7 @@ ENV XDG_CACHE_HOME /tmp/.cache
 ENV GOPATH /tmp/go
 ENV GOBIN /tmp/gobin
 
-ARG KUBERNETES_VERSION="v0.20.2"
+ARG KUBERNETES_VERSION="v0.23.5"
 ARG REPO="${GOPATH}/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes"
 
 RUN apk add --no-cache bash git openssh \

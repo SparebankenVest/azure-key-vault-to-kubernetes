@@ -83,7 +83,10 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var _ clientset.Interface = &Clientset{}
+var (
+	_ clientset.Interface = &Clientset{}
+	_ testing.FakeClient  = &Clientset{}
+)
 
 // AzureKeyVaultV1alpha1 retrieves the AzureKeyVaultV1alpha1Client
 func (c *Clientset) AzureKeyVaultV1alpha1() azurekeyvaultv1alpha1.AzureKeyVaultV1alpha1Interface {

@@ -43,6 +43,7 @@ import (
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
 	k8sCredentialProvider "github.com/vdemeester/k8s-pkg-credentialprovider"
+	componentBaseConfig "k8s.io/component-base/config"
 	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 	kubernetesConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -226,7 +227,9 @@ func main() {
 	initConfig()
 
 	if params.logFormat == "json" {
-		klog.SetLogger(jsonlogs.JSONLogger)
+		loggerFactory := jsonlogs.Factory{}
+		logger, _ := loggerFactory.Create(componentBaseConfig.FormatOptions{})
+		klog.SetLogger(logger)
 	}
 
 	akv2k8s.Version = params.version

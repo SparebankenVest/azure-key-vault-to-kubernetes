@@ -36,6 +36,7 @@ import (
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	componentBaseConfig "k8s.io/component-base/config"
 	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 )
@@ -158,18 +159,24 @@ func main() {
 	logLevel := viper.GetString("ENV_INJECTOR_LOG_LEVEL")
 
 	if logFormat == "json" {
-		klog.SetLogger(jsonlogs.JSONLogger)
+		loggerFactory := jsonlogs.Factory{}
+		logger, _ := loggerFactory.Create(componentBaseConfig.FormatOptions{})
+		klog.SetLogger(logger)
 	}
 
 	klog.InitFlags(nil)
 	defer klog.Flush()
 
 	if logLevel == "debug" {
-		flag.Set("v", "4")
+		err = flag.Set("v", "4")
 	} else if logLevel == "trace" {
-		flag.Set("v", "6")
+		err = flag.Set("v", "6")
 	} else {
-		flag.Set("v", "2")
+		err = flag.Set("v", "2")
+	}
+
+	if err != nil {
+		klog.ErrorS(err, "failed setting log level")
 	}
 
 	akv2k8s.LogVersion()

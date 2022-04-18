@@ -120,7 +120,7 @@ func (c *FakeAzureKeyVaultSecrets) UpdateStatus(ctx context.Context, azureKeyVau
 // Delete takes name of the azureKeyVaultSecret and deletes it. Returns an error if one occurs.
 func (c *FakeAzureKeyVaultSecrets) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(azurekeyvaultsecretsResource, c.ns, name), &v2alpha1.AzureKeyVaultSecret{})
+		Invokes(testing.NewDeleteActionWithOptions(azurekeyvaultsecretsResource, c.ns, name, opts), &v2alpha1.AzureKeyVaultSecret{})
 
 	return err
 }
