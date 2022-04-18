@@ -139,7 +139,7 @@ codegen:
 .PHONY: crdgen
 crdgen: $(TOOLS_DIR)/controller-gen
 	$(TOOLS_DIR)/controller-gen \
-		crd:crdVersions=v1,preserveUnknownFields=false,trivialVersions=true \
+		crd:crdVersions=v1 \
   		paths=./pkg/k8s/apis/azurekeyvault/v1alpha1/... \
   		paths=./pkg/k8s/apis/azurekeyvault/v1/... \
   		paths=./pkg/k8s/apis/azurekeyvault/v2alpha1/... \
