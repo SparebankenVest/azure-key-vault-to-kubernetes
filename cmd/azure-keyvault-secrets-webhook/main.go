@@ -55,8 +55,6 @@ import (
 )
 
 const (
-	dockerHubHost           = "index.docker.io"
-	oldDockerHubHost        = "docker.io"
 	injectorExecutable      = "azure-keyvault-env"
 	clientCertDir           = "/var/client-cert/"
 	initContainerVolumeName = "azure-keyvault-env"

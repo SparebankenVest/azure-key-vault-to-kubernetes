@@ -19,7 +19,6 @@ import (
 )
 
 var (
-	alwaysReady        = func() bool { return true }
 	noResyncPeriodFunc = func() time.Duration { return 0 }
 )
 

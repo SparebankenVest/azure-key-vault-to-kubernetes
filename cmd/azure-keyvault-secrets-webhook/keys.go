@@ -29,13 +29,6 @@ func signPKCS(plaintext string, privKey rsa.PrivateKey) (string, error) {
 	return base64.StdEncoding.EncodeToString(signature), nil
 }
 
-func verifyPKCS(signature string, plaintext string, pubkey rsa.PublicKey) bool {
-	sig, _ := base64.StdEncoding.DecodeString(signature)
-	hashed := sha256.Sum256([]byte(plaintext))
-	err := rsa.VerifyPKCS1v15(&pubkey, crypto.SHA256, hashed[:], sig)
-	return err != nil
-}
-
 func exportRsaPublicKey(pubkey *rsa.PublicKey) (string, error) {
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(pubkey)
 	if err != nil {

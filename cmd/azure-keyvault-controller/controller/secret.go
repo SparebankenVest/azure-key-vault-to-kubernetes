@@ -37,21 +37,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func convertToSecret(obj interface{}) (*corev1.Secret, error) {
-	secret, ok := obj.(*corev1.Secret)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			return nil, fmt.Errorf("couldn't get object from tombstone %#v", obj)
-		}
-		secret, ok = tombstone.Obj.(*corev1.Secret)
-		if !ok {
-			return nil, fmt.Errorf("tombstone contained object that is not a Secret %#v", obj)
-		}
-	}
-	return secret, nil
-}
-
 func (c *Controller) getSecretByKey(key string) (*corev1.Secret, error) {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {

@@ -37,21 +37,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func convertToConfigMap(obj interface{}) (*corev1.ConfigMap, error) {
-	cm, ok := obj.(*corev1.ConfigMap)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			return nil, fmt.Errorf("couldn't get object from tombstone %#v", obj)
-		}
-		cm, ok = tombstone.Obj.(*corev1.ConfigMap)
-		if !ok {
-			return nil, fmt.Errorf("tombstone contained object that is not a ConfigMap %#v", obj)
-		}
-	}
-	return cm, nil
-}
-
 func (c *Controller) getConfigMapByKey(key string) (*corev1.ConfigMap, error) {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
