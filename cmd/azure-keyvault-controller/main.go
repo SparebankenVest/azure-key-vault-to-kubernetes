@@ -151,9 +151,6 @@ func main() {
 			m := labels.Merge(curLabelSet, newLabels)
 			return m.String()
 		}
-		kubeInformerOptions = append(kubeInformerOptions, kubeinformers.WithTweakListOptions(func(options *metav1.ListOptions) {
-			options.LabelSelector = labelSelectorAppender(options.LabelSelector, objectLabelSet)
-		}))
 		akvInformerOptions = append(akvInformerOptions, informers.WithTweakListOptions(func(options *metav1.ListOptions) {
 			options.LabelSelector = labelSelectorAppender(options.LabelSelector, objectLabelSet)
 		}))
