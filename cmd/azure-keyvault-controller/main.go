@@ -39,7 +39,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
 
-	json "k8s.io/component-base/logs/json"
+	componentBaseConfig "k8s.io/component-base/config"
+	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -95,7 +96,9 @@ func main() {
 	initConfig()
 
 	if logFormat == "json" {
-		klog.SetLogger(json.JSONLogger)
+		loggerFactory := jsonlogs.Factory{}
+		logger, _ := loggerFactory.Create(componentBaseConfig.FormatOptions{})
+		klog.SetLogger(logger)
 	}
 	klog.InfoS("log settings", "format", logFormat, "level", flag.Lookup("v").Value)
 

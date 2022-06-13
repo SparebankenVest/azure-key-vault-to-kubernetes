@@ -43,6 +43,7 @@ import (
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
 	k8sCredentialProvider "github.com/vdemeester/k8s-pkg-credentialprovider"
+	componentBaseConfig "k8s.io/component-base/config"
 	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 	kubernetesConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -55,8 +56,6 @@ import (
 )
 
 const (
-	dockerHubHost           = "index.docker.io"
-	oldDockerHubHost        = "docker.io"
 	injectorExecutable      = "azure-keyvault-env"
 	clientCertDir           = "/var/client-cert/"
 	initContainerVolumeName = "azure-keyvault-env"
@@ -228,7 +227,9 @@ func main() {
 	initConfig()
 
 	if params.logFormat == "json" {
-		klog.SetLogger(jsonlogs.JSONLogger)
+		loggerFactory := jsonlogs.Factory{}
+		logger, _ := loggerFactory.Create(componentBaseConfig.FormatOptions{})
+		klog.SetLogger(logger)
 	}
 
 	akv2k8s.Version = params.version
@@ -346,7 +347,7 @@ func newKubeClient() (kubernetes.Interface, error) {
 
 func getCredentials() (credentialprovider.Credentials, credentialprovider.CredentialProvider, error) {
 	if config.authType != "azureCloudConfig" {
-		klog.V(4).InfoS("not using cloudConfig for auth - looking for azure key vault credentials in envrionment")
+		klog.V(4).InfoS("not using cloudConfig for auth - looking for azure key vault credentials in environment")
 		cProvider, err := credentialprovider.NewFromEnvironment()
 		if err != nil {
 			return nil, cProvider, err

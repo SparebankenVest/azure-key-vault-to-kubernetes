@@ -1,6 +1,7 @@
 bin
 debug.test
 .vscode
+.idea
 /vendor/
 /tmp/
 /.tools/

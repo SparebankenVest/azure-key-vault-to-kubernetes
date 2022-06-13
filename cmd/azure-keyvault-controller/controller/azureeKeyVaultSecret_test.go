@@ -40,7 +40,6 @@ func TestNullLookup(t *testing.T) {
 }
 
 const (
-	fakeSecret     = "some secret"
 	fakeJsonSecret = `{
 		"someKey": "someValue",
 		"someOtherKey": "someOtherValue"

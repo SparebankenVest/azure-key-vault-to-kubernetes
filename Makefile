@@ -77,8 +77,8 @@ check-mod: mod
 
 .PHONY: lint
 lint: $(TOOLS_DIR)/golangci-lint $(TOOLS_DIR)/misspell
-	$(TOOLS_DIR)/golangci-lint run --timeout=5m
-	$(TOOLS_DIR)/misspell -w $(ALL_DOCS) && \
+	$(TOOLS_DIR)/golangci-lint run --timeout=5m && \
+	find . -type f \( -iname \*.go -o -iname \*.md \) | xargs $(TOOLS_DIR)/misspell -w && \
 	go mod tidy
 
 .PHONY: print-v-webhook
@@ -139,7 +139,7 @@ codegen:
 .PHONY: crdgen
 crdgen: $(TOOLS_DIR)/controller-gen
 	$(TOOLS_DIR)/controller-gen \
-		crd:crdVersions=v1,preserveUnknownFields=false,trivialVersions=true \
+		crd:crdVersions=v1 \
   		paths=./pkg/k8s/apis/azurekeyvault/v1alpha1/... \
   		paths=./pkg/k8s/apis/azurekeyvault/v1/... \
   		paths=./pkg/k8s/apis/azurekeyvault/v2alpha1/... \

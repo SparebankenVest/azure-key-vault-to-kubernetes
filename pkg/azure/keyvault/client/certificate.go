@@ -116,22 +116,25 @@ func (cert *Certificate) ExportPrivateKeyAsPem() ([]byte, error) {
 	}
 
 	var derKey []byte
+	var keyType string
 	var err error
 
 	switch cert.PrivateKeyType {
 	case CertificateKeyTypeRsa:
 		derKey = x509.MarshalPKCS1PrivateKey(cert.PrivateKeyRsa)
+		keyType = "RSA PRIVATE KEY"
 	case CertificateKeyTypeEcdsa:
 		derKey, err = x509.MarshalECPrivateKey(cert.PrivateKeyEcdsa)
 		if err != nil {
 			return nil, err
 		}
+		keyType = "EC PRIVATE KEY"
 	default:
 		return nil, fmt.Errorf("private key type '%s' currently not supported for pem export", cert.PrivateKeyType)
 	}
 
 	privKeyBlock := &pem.Block{
-		Type:  "RSA PRIVATE KEY",
+		Type:  keyType,
 		Bytes: derKey,
 	}
 	return pem.EncodeToMemory(privKeyBlock), nil

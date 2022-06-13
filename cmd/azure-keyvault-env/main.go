@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -35,12 +36,13 @@ import (
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	componentBaseConfig "k8s.io/component-base/config"
 	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 )
 
 const (
-	envLookupKey = "@azurekeyvault"
+	envLookupRegex = `^([a-z-\d]*)@azurekeyvault([\?]?[a-z-\d]*)$`
 )
 
 type injectorConfig struct {
@@ -157,18 +159,24 @@ func main() {
 	logLevel := viper.GetString("ENV_INJECTOR_LOG_LEVEL")
 
 	if logFormat == "json" {
-		klog.SetLogger(jsonlogs.JSONLogger)
+		loggerFactory := jsonlogs.Factory{}
+		logger, _ := loggerFactory.Create(componentBaseConfig.FormatOptions{})
+		klog.SetLogger(logger)
 	}
 
 	klog.InitFlags(nil)
 	defer klog.Flush()
 
 	if logLevel == "debug" {
-		flag.Set("v", "4")
+		err = flag.Set("v", "4")
 	} else if logLevel == "trace" {
-		flag.Set("v", "6")
+		err = flag.Set("v", "6")
 	} else {
-		flag.Set("v", "2")
+		err = flag.Set("v", "2")
+	}
+
+	if err != nil {
+		klog.ErrorS(err, "failed setting log level")
 	}
 
 	akv2k8s.LogVersion()
@@ -254,7 +262,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			klog.Info("succeded getting credentials")
+			klog.Info("succeeded getting credentials")
 			return nil
 		})
 		if err != nil {
@@ -280,16 +288,21 @@ func main() {
 
 	environ := os.Environ()
 
+	re := regexp.MustCompile(envLookupRegex)
+
 	for i, env := range environ {
 		split := strings.SplitN(env, "=", 2)
 		name := split[0]
 		value := split[1]
 
+		regexMatches := re.FindAllStringSubmatch(value, -1)
+
 		// e.g. my-akv-secret-name@azurekeyvault?some-sub-key
-		if strings.Contains(value, envLookupKey) {
+		for _, match := range regexMatches {
 			// e.g. my-akv-secret-name?some-sub-key
 			klog.V(4).InfoS("found env var to get azure key vault secret for", "env", name)
-			akvsName := strings.Join(strings.Split(value, envLookupKey), "")
+
+			akvsName := strings.Join(match[1:], "")
 
 			if akvsName == "" {
 				klog.ErrorS(fmt.Errorf("error extracting secret name"), "env variable not properly formatted", "env", name, "value", value)
@@ -319,7 +332,7 @@ func main() {
 						klog.V(4).ErrorS(err, "error getting azurekeyvaultsecret", "azurekeyvaultsecret", klog.KRef(config.namespace, akvsName))
 						return err
 					}
-					klog.InfoS("succeded getting azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
+					klog.InfoS("succeeded getting azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
 					return nil
 				})
 				if err != nil {

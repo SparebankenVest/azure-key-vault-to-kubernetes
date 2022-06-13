@@ -26,8 +26,7 @@ import (
 )
 
 const (
-	vmTypeVMSS     = "vmss"
-	vmTypeStandard = "standard"
+	vmTypeVMSS = "vmss"
 )
 
 // AzureKeyVaultCredentials has credentials needed to authenticate with azure key vault.
