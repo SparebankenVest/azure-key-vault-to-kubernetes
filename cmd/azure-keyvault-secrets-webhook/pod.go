@@ -22,6 +22,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -31,8 +33,6 @@ import (
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/docker/registry"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
@@ -112,7 +112,6 @@ func (p podWebHook) mutateContainers(ctx context.Context, containers []corev1.Co
 	mutated := false
 
 	for i, container := range containers {
-		useAuthService := p.useAuthService
 		klog.InfoS("found container to mutate", "container", klog.KRef(p.namespace, container.Name))
 
 		var envVars []corev1.EnvVar
@@ -201,18 +200,6 @@ func (p podWebHook) mutateContainers(ctx context.Context, containers []corev1.Co
 		}...)
 
 		if useAuthService {
-			_, err := p.clientset.CoreV1().Secrets(p.namespace).Create(context.TODO(), authServiceSecret, metav1.CreateOptions{})
-			if err != nil {
-				if errors.IsAlreadyExists(err) {
-					_, err = p.clientset.CoreV1().Secrets(p.namespace).Update(context.TODO(), authServiceSecret, metav1.UpdateOptions{})
-					if err != nil {
-						return false, err
-					}
-				} else {
-					return false, err
-				}
-			}
-
 			container.VolumeMounts = append(container.VolumeMounts, []corev1.VolumeMount{
 				{
 					Name:      authSecretVolumeName,
@@ -286,6 +273,21 @@ func (p podWebHook) mutatePodSpec(ctx context.Context, pod *corev1.Pod) error {
 		authServiceSecret, err = p.authService.NewPodSecret(pod, p.namespace, p.mutationID)
 		if err != nil {
 			return err
+		}
+	}
+
+	if p.useAuthService && (len(podSpec.InitContainers) > 0 || len(podSpec.Containers) > 0) {
+		klog.InfoS("create authentication service secret", klog.KRef(p.namespace, pod.Name))
+		_, err := p.clientset.CoreV1().Secrets(p.namespace).Create(context.TODO(), authServiceSecret, metav1.CreateOptions{})
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				_, err = p.clientset.CoreV1().Secrets(p.namespace).Update(context.TODO(), authServiceSecret, metav1.UpdateOptions{})
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
 		}
 	}
 
