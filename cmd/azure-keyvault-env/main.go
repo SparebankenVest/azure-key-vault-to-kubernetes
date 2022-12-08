@@ -36,7 +36,7 @@ import (
 	"github.com/spf13/viper"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
-	componentBaseConfig "k8s.io/component-base/config"
+	logConfig "k8s.io/component-base/logs/api/v1"
 	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 )
@@ -160,7 +160,7 @@ func main() {
 
 	if logFormat == "json" {
 		loggerFactory := jsonlogs.Factory{}
-		logger, _ := loggerFactory.Create(componentBaseConfig.FormatOptions{})
+		logger, _ := loggerFactory.Create(logConfig.LoggingConfiguration{})
 		klog.SetLogger(logger)
 	}
 
