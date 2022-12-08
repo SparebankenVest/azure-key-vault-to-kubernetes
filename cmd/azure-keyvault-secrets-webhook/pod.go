@@ -112,6 +112,7 @@ func (p podWebHook) mutateContainers(ctx context.Context, containers []corev1.Co
 	mutated := false
 
 	for i, container := range containers {
+		useAuthService := p.useAuthService
 		klog.InfoS("found container to mutate", "container", klog.KRef(p.namespace, container.Name))
 
 		var envVars []corev1.EnvVar
