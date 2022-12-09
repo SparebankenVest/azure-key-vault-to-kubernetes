@@ -19,6 +19,7 @@
 package credentialprovider
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -26,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -252,6 +254,8 @@ func getCredentials(envSettings *azureAuth.EnvironmentSettings, resource string)
 		}, nil
 	}
 
+	// TODO: anything to add here?
+
 	msi := envSettings.GetMSI()
 
 	token, err := getServicePrincipalTokenFromMSI(msi.ClientID, resource)
@@ -293,11 +297,93 @@ func getServicePrincipalTokenFromMSI(userAssignedIdentityID string, resource str
 	}
 
 	return token, err
-
 }
+
+func getServicePrincipalTokenFromFederatedToken(config AzureCloudConfig, resource string) (*adal.ServicePrincipalToken, error) {
+	// NOTE: all related environment variables are described here: https://azure.github.io/azure-workload-identity/docs/installation/mutating-admission-webhook.html
+
+	// AZURE_CLIENT_ID will be empty in case azure.workload.identity/client-id annotation is not set
+	// Also, some users might want to use a different MSI for a particular DNS zone
+	// Thus, it's important to offer optional ClientID overrides
+	clientID := os.Getenv("AZURE_CLIENT_ID")
+	if config.UserAssignedIdentityID != "" {
+		clientID = config.UserAssignedIdentityID
+	}
+
+	klog.V(4).InfoS("azure: using workload identity extension to retrieve access token", "id", clientID)
+
+	// If workload identity webhook is installed via helm chart and tenant id is not configured there,
+	// the environment variable will be empty
+	tenantID := os.Getenv("AZURE_TENANT_ID")
+	if config.TenantID != "" {
+		tenantID = config.TenantID
+	}
+
+	// TODO: let it override tenantid? (can be taken from the config)
+	oauthConfig, err := adal.NewOAuthConfig(os.Getenv("AZURE_AUTHORITY_HOST"), tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve OAuth config: %v", err)
+	}
+
+	jwt, err := os.ReadFile(os.Getenv("AZURE_FEDERATED_TOKEN_FILE"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read a file with a federated token: %v", err)
+	}
+
+	token, err := adal.NewServicePrincipalTokenFromFederatedToken(*oauthConfig, clientID, string(jwt), resource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a workload identity token: %v", err)
+	}
+
+	return token, err
+}
+
+// getServicePrincipalTokenFromFederatedTokenWithCustomRefreshFunc returns a token with customRefreshFunc set to workaround adal limitations
+func getServicePrincipalTokenFromFederatedTokenWithCustomRefreshFunc(config AzureCloudConfig, resource string) (*adal.ServicePrincipalToken, error) {
+	token, err := getServicePrincipalTokenFromFederatedToken(config, resource)
+	if err != nil {
+		return nil, err
+	}
+
+	// adal does not offer methods to dynamically replace a federated token, thus we need to have a wrapper to make sure
+	// we're using up-to-date secret while requesting an access token.
+	// NOTE: There's no RefreshToken in the whole process (in fact, it's absent in AAD responses). An AccessToken can be
+	// received only in exchange for a federated token.
+	// TODO: any issues with the "resource" variable?
+	var refreshFunc adal.TokenRefresh = func(context context.Context, resource string) (*adal.Token, error) {
+		newToken, err := getServicePrincipalTokenFromFederatedToken(config, resource)
+		if err != nil {
+			return nil, err
+		}
+
+		// An AccessToken gets populated into an spt only when .Refresh() is called. Normally, it's something that happens implicitly when
+		// a first request to manipulate Azure resources is made. Since our goal here is only to receive a fresh AccessToken, we need to make
+		// an explicit call.
+		// .Refresh() itself results in a call to Oauth endpoint. During the process, a federated token is exchanged for an AccessToken.
+		// RefreshToken is absent from responses.
+		err = newToken.Refresh()
+		if err != nil {
+			return nil, err
+		}
+
+		accessToken := newToken.Token()
+
+		return &accessToken, nil
+	}
+
+	token.SetCustomRefreshFunc(refreshFunc)
+
+	return token, nil
+}
+
 func getServicePrincipalTokenFromCloudConfig(config *AzureCloudConfig, env *azure.Environment, resource string) (*adal.ServicePrincipalToken, error) {
 	if config.UseManagedIdentityExtension {
 		return getServicePrincipalTokenFromMSI(config.UserAssignedIdentityID, resource)
+	}
+
+	// TODO: move above managed identities?
+	if config.UseWorkloadIdentityExtension {
+		return getServicePrincipalTokenFromFederatedTokenWithCustomRefreshFunc(*config, resource)
 	}
 
 	oauthConfig, err := adal.NewOAuthConfig(env.ActiveDirectoryEndpoint, config.TenantID)
@@ -371,9 +457,14 @@ type AzureCloudConfig struct {
 	AADClientCertPassword string `json:"aadClientCertPassword,omitempty" yaml:"aadClientCertPassword,omitempty"`
 	// Use managed service identity for the virtual machine to access Azure ARM APIs
 	UseManagedIdentityExtension bool `json:"useManagedIdentityExtension,omitempty" yaml:"useManagedIdentityExtension,omitempty"`
-	// UserAssignedIdentityID contains the Client ID of the user assigned MSI which is assigned to the underlying VMs. If empty the user assigned identity is not used.
+	// Use workload identity extension to obtain an access token to talk to Azure RM APIs
+	UseWorkloadIdentityExtension bool `json:"useWorkloadIdentityExtension,omitempty" yaml:"useWorkloadIdentityExtension,omitempty"`
+	// UserAssignedIdentityID contains the Client ID of the user assigned MSI which is either assigned to the underlying VMs (in case of Managed Identity extension) or
+	// delegated to a pod's service account (in case of Workload Identity extension). Two cases:
+	// - UseManagedIdentityExtension: If empty, the user assigned identity is not used.
+	// - UseWorkloadIdentityExtension: If empty, the value specified in AZURE_CLIENT_ID is used.
 	// More details of the user assigned identity can be found at: https://docs.microsoft.com/en-us/azure/active-directory/managed-service-identity/overview
-	// For the user assigned identity specified here to be used, the UseManagedIdentityExtension has to be set to true.
+	// For the user assigned identity specified here to be used, the UseManagedIdentityExtension or UseWorkloadIdentityExtension has to be set to true.
 	UserAssignedIdentityID string `json:"userAssignedIdentityID,omitempty" yaml:"userAssignedIdentityID,omitempty"`
 	// The location of the resource group that the cluster is deployed in
 	Location string `json:"location,omitempty" yaml:"location,omitempty"`
