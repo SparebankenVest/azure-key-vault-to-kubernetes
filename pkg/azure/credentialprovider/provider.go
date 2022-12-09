@@ -254,8 +254,6 @@ func getCredentials(envSettings *azureAuth.EnvironmentSettings, resource string)
 		}, nil
 	}
 
-	// TODO: anything to add here?
-
 	msi := envSettings.GetMSI()
 
 	token, err := getServicePrincipalTokenFromMSI(msi.ClientID, resource)
@@ -319,7 +317,6 @@ func getServicePrincipalTokenFromFederatedToken(config AzureCloudConfig, resourc
 		tenantID = config.TenantID
 	}
 
-	// TODO: let it override tenantid? (can be taken from the config)
 	oauthConfig, err := adal.NewOAuthConfig(os.Getenv("AZURE_AUTHORITY_HOST"), tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve OAuth config: %v", err)
@@ -349,7 +346,6 @@ func getServicePrincipalTokenFromFederatedTokenWithCustomRefreshFunc(config Azur
 	// we're using up-to-date secret while requesting an access token.
 	// NOTE: There's no RefreshToken in the whole process (in fact, it's absent in AAD responses). An AccessToken can be
 	// received only in exchange for a federated token.
-	// TODO: any issues with the "resource" variable?
 	var refreshFunc adal.TokenRefresh = func(context context.Context, resource string) (*adal.Token, error) {
 		newToken, err := getServicePrincipalTokenFromFederatedToken(config, resource)
 		if err != nil {
@@ -381,7 +377,6 @@ func getServicePrincipalTokenFromCloudConfig(config *AzureCloudConfig, env *azur
 		return getServicePrincipalTokenFromMSI(config.UserAssignedIdentityID, resource)
 	}
 
-	// TODO: move above managed identities?
 	if config.UseWorkloadIdentityExtension {
 		return getServicePrincipalTokenFromFederatedTokenWithCustomRefreshFunc(*config, resource)
 	}
