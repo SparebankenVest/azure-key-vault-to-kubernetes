@@ -34,16 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/tools/cache"
 )
-
-func (c *Controller) getConfigMapByKey(key string) (*corev1.ConfigMap, error) {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("invalid resource key: %s", key)
-	}
-	return c.getConfigMap(namespace, name)
-}
 
 func (c *Controller) getConfigMap(ns, name string) (*corev1.ConfigMap, error) {
 	klog.V(4).InfoS("getting configmap", "configmap", klog.KRef(ns, name))
@@ -77,7 +68,7 @@ func (c *Controller) deleteKubernetesConfigMapValues(akvs *akv.AzureKeyVaultSecr
 		return err
 	}
 
-	cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(context.TODO(), newCM, metav1.UpdateOptions{})
+	_, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(context.TODO(), newCM, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -283,7 +274,7 @@ func getMD5HashOfStringValues(values map[string]string) string {
 	}
 
 	hasher := md5.New()
-	hasher.Write([]byte(mergedValues.String()))
+	hasher.Write(mergedValues.Bytes())
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 

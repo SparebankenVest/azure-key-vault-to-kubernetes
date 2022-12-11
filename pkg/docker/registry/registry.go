@@ -20,9 +20,9 @@ package registry
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 
-	"emperror.dev/errors"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -136,22 +136,22 @@ func getImageConfig(ctx context.Context, client kubernetes.Interface, container 
 
 	ref, err := name.ParseReference(container.Image)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse image reference")
+		return nil, fmt.Errorf("failed to parse image reference: %w", err)
 	}
 
 	descriptor, err := remote.Get(ref, options...)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot fetch image descriptor")
+		return nil, fmt.Errorf("cannot fetch image descriptor: %w", err)
 	}
 
 	image, err := descriptor.Image()
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot convert image descriptor to v1.Image")
+		return nil, fmt.Errorf("cannot convert image descriptor to v1.Image: %w", err)
 	}
 
 	configFile, err := image.ConfigFile()
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot extract config file of image")
+		return nil, fmt.Errorf("cannot extract config file of image: %w", err)
 	}
 
 	return &configFile.Config, nil

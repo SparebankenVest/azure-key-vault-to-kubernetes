@@ -22,14 +22,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
+	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azcertificates"
+	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
+	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
 	akvs "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
 )
 
 const (
 	certificateTypePem string = "application/x-pem-file"
-	certificateTypePfx        = "application/x-pkcs12"
+	certificateTypePfx string = "application/x-pkcs12"
 )
 
 // Service is an interface for implementing vaults
@@ -39,21 +41,25 @@ type Service interface {
 	GetCertificate(secret *akvs.AzureKeyVault, options *CertificateOptions) (*Certificate, error)
 }
 
-type azureKeyVaultService struct {
-	credentials credentialprovider.AzureKeyVaultCredentials
-}
-
-// NewService creates a new AzureKeyVaultService
-func NewService(credentials credentialprovider.AzureKeyVaultCredentials) Service {
-	return &azureKeyVaultService{
-		credentials: credentials,
-	}
-}
-
 // CertificateOptions has options for exporting certificate
 type CertificateOptions struct {
 	ExportPrivateKey  bool
 	EnsureServerFirst bool
+}
+
+type azureKeyVaultService struct {
+	credentials azure.LegacyTokenCredential
+}
+
+// NewService creates a new AzureKeyVaultService
+func NewService(creds azure.LegacyTokenCredential) Service {
+	return &azureKeyVaultService{
+		credentials: creds,
+	}
+}
+
+func vaultNameToURL(name string) string {
+	return fmt.Sprintf("https://%s.vault.azure.net", name)
 }
 
 // GetSecret download secrets from Azure Key Vault
@@ -62,22 +68,18 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvs.AzureKeyVault) (string,
 		return "", fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
 	}
 
-	//Get secret value from Azure Key Vault
-	vaultClient, err := a.getClient()
+	client, err := azsecrets.NewClient(vaultNameToURL(vaultSpec.Name), a.credentials, nil)
 	if err != nil {
 		return "", err
 	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	baseURL := a.credentials.Endpoint(vaultSpec.Name)
-	secretBundle, err := vaultClient.GetSecret(ctx, baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
+	response, err := client.GetSecret(ctx, vaultSpec.Object.Name, vaultSpec.Object.Version, &azsecrets.GetSecretOptions{})
 
 	if err != nil {
 		return "", err
 	}
-	return *secretBundle.Value, nil
+	return *response.Value, nil
 }
 
 // GetKey download encryption keys from Azure Key Vault
@@ -86,46 +88,45 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvs.AzureKeyVault) (string, er
 		return "", fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
 	}
 
-	vaultClient, err := a.getClient()
+	client, err := azkeys.NewClient(vaultNameToURL(vaultSpec.Name), a.credentials, nil)
 	if err != nil {
 		return "", err
 	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	baseURL := a.credentials.Endpoint(vaultSpec.Name)
-	keyBundle, err := vaultClient.GetKey(ctx, baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
+	response, err := client.GetKey(ctx, vaultSpec.Object.Name, vaultSpec.Object.Version, &azkeys.GetKeyOptions{})
 
 	if err != nil {
 		return "", err
 	}
+	data := &response.Key.N
 
-	return *keyBundle.Key.N, nil
+	return string(*data), nil
 }
 
 // GetCertificate download public/private certificates from Azure Key Vault
 func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, options *CertificateOptions) (*Certificate, error) {
-	vaultClient, err := a.getClient()
+	client, err := azcertificates.NewClient(vaultNameToURL(vaultSpec.Name), a.credentials, &azcertificates.ClientOptions{})
 	if err != nil {
 		return nil, err
 	}
-
+	clientSecret, err := azsecrets.NewClient(vaultNameToURL(vaultSpec.Name), a.credentials, &azsecrets.ClientOptions{})
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	baseURL := a.credentials.Endpoint(vaultSpec.Name)
-
-	certBundle, err := vaultClient.GetCertificate(ctx, baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
+	response, err := client.GetCertificate(ctx, vaultSpec.Object.Name, vaultSpec.Object.Version, &azcertificates.GetCertificateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get certificate from azure key vault, error: %+v", err)
 	}
 
 	if options.ExportPrivateKey {
-		if !*certBundle.Policy.KeyProperties.Exportable {
+		if !*response.Policy.KeyProperties.Exportable {
 			return nil, fmt.Errorf("cannot export private key because key is not exportable in azure key vault")
 		}
-		secretBundle, err := vaultClient.GetSecret(ctx, baseURL, vaultSpec.Object.Name, vaultSpec.Object.Version)
+		secretBundle, err := clientSecret.GetSecret(ctx, vaultSpec.Object.Name, vaultSpec.Object.Version, &azsecrets.GetSecretOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get private certificate from azure key vault, error: %+v", err)
 		}
@@ -147,21 +148,5 @@ func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, opt
 		}
 	}
 
-	return NewCertificateFromDer(*certBundle.Cer)
-}
-
-func (a *azureKeyVaultService) getClient() (*keyvault.BaseClient, error) {
-	authorizer, err := a.credentials.Authorizer()
-	if err != nil {
-		return nil, err
-	}
-
-	keyClient := keyvault.New()
-	keyClient.Client.PollingDelay = 5 * time.Second
-	keyClient.Client.PollingDuration = 20 * time.Second
-	keyClient.Client.RetryAttempts = 2
-	keyClient.Client.RetryDuration = 5 * time.Second
-	keyClient.Authorizer = authorizer
-
-	return &keyClient, nil
+	return NewCertificateFromDer(response.CER)
 }

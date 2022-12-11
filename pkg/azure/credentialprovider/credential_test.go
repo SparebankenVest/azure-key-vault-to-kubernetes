@@ -22,7 +22,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/azure"
 	akv2k8sTesting "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/testing"
 )
 
@@ -68,30 +67,6 @@ func TestIntegrationAuthFromUserAssignedManagedIdentity(t *testing.T) {
 	akv2k8sTesting.EnsureIntegrationEnvironment(t)
 
 	// provider, err := NewUserAssignedManagedIdentityProvider()
-}
-
-func TestIntegrationAuthFromEnvironmentAudience(t *testing.T) {
-	akv2k8sTesting.EnsureIntegrationEnvironment(t)
-
-	provider, err := NewFromEnvironment()
-	if err != nil {
-		t.Error(err)
-	}
-
-	creds, err := provider.GetAzureKeyVaultCredentials()
-	if err != nil {
-		t.Error(err)
-	}
-
-	token := creds.(azureKeyVaultCredentials).Token
-	err = token.Refresh()
-	if err != nil {
-		t.Error(err)
-	}
-
-	if token.Token().Resource != azure.PublicCloud.ResourceIdentifiers.KeyVault {
-		t.Errorf("expected resource uri '%s', got '%s'", azure.PublicCloud.ResourceIdentifiers.KeyVault, token.Token().Resource)
-	}
 }
 
 func TestIntegrationAuthFromConfigAudience(t *testing.T) {
@@ -146,18 +121,9 @@ func TestIntegrationAuthFromConfigAudience(t *testing.T) {
 		t.Error(err)
 	}
 
-	creds, err := conf.GetAzureKeyVaultCredentials()
+	_, err = conf.GetAzureKeyVaultCredentials()
 	if err != nil {
 		t.Error(err)
 	}
 
-	token := creds.(azureKeyVaultCredentials).Token
-	err = token.Refresh()
-	if err != nil {
-		t.Error(err)
-	}
-
-	if token.Token().Resource != azure.PublicCloud.ResourceIdentifiers.KeyVault {
-		t.Errorf("expected resource uri '%s', got '%s'", azure.PublicCloud.ResourceIdentifiers.KeyVault, token.Token().Resource)
-	}
 }
