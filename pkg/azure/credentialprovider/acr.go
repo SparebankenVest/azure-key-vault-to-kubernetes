@@ -121,13 +121,13 @@ func (c EnvironmentCredentialProvider) GetAcrCredentials(image string) (k8sCrede
 	return cred, nil
 }
 
-func (c NativeCredentialProvider) GetAcrCredentials(image string) (k8sCredentialProvider.DockerConfigEntry, error) {
+func (c AzidentityCredentialProvider) GetAcrCredentials(image string) (k8sCredentialProvider.DockerConfigEntry, error) {
 	cred := k8sCredentialProvider.DockerConfigEntry{
 		Username: "",
 		Password: "",
 	}
 
-	creds, err := getCredentialsNative()
+	creds, err := getCredentialsAzidentity()
 	if err != nil {
 		return cred, err
 	}

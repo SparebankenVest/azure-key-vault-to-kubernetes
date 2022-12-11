@@ -95,7 +95,7 @@ func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (azure.Lega
 
 }
 
-func getCredentialsNative() (azure.LegacyTokenCredential, error) {
+func getCredentialsAzidentity() (azure.LegacyTokenCredential, error) {
 	creds, err := azidentity.NewDefaultAzureCredential(&azidentity.DefaultAzureCredentialOptions{})
 	if err != nil {
 		klog.ErrorS(err, "failed to create azure credentials provider, error: %+v", err)
@@ -105,6 +105,6 @@ func getCredentialsNative() (azure.LegacyTokenCredential, error) {
 }
 
 // GetAzureKeyVaultCredentials will get Azure credentials
-func (c NativeCredentialProvider) GetAzureKeyVaultCredentials() (azure.LegacyTokenCredential, error) {
-	return getCredentialsNative()
+func (c AzidentityCredentialProvider) GetAzureKeyVaultCredentials() (azure.LegacyTokenCredential, error) {
+	return getCredentialsAzidentity()
 }

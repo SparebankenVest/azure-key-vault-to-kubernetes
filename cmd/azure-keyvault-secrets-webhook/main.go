@@ -344,8 +344,8 @@ func getCredentials() (azure.LegacyTokenCredential, credentialprovider.Credentia
 
 		credentials, err := cProvider.GetAzureKeyVaultCredentials()
 		return credentials, cProvider, err
-	case "native":
-		cProvider, err := credentialprovider.NewFromNative()
+	case "environment-azidentity":
+		cProvider, err := credentialprovider.NewFromAzidentity()
 		if err != nil {
 			return nil, cProvider, err
 		}

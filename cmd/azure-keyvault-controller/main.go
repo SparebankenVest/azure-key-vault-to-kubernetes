@@ -190,16 +190,16 @@ func main() {
 			klog.ErrorS(err, "failed to create credentials provider from environment for azure key vault")
 			os.Exit(1)
 		}
-	case "native":
+	case "environment-azidentity":
 		logLevel, _ := strconv.Atoi(flag.Lookup("v").Value.String())
 		if logLevel >= 4 {
 			azlog.SetListener(func(cls azlog.Event, msg string) {
 				klog.Infof(msg)
 			})
 		}
-		token, err = getCredentialsFromNative()
+		token, err = getCredentialsFromAzidentity()
 		if err != nil {
-			klog.ErrorS(err, "failed to create credentials provider from native for azure key vault")
+			klog.ErrorS(err, "failed to create credentials provider from azidentity for azure key vault")
 			os.Exit(1)
 		}
 
@@ -280,10 +280,10 @@ func getCredentialsFromEnvironment() (azure.LegacyTokenCredential, error) {
 	return provider.GetAzureKeyVaultCredentials()
 }
 
-func getCredentialsFromNative() (azure.LegacyTokenCredential, error) {
-	provider, err := credentialprovider.NewFromNative()
+func getCredentialsFromAzidentity() (azure.LegacyTokenCredential, error) {
+	provider, err := credentialprovider.NewFromAzidentity()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create azure native provider, error: %+v", err)
+		return nil, fmt.Errorf("failed to create azure identity provider, error: %+v", err)
 	}
 	return provider.GetAzureKeyVaultCredentials()
 }

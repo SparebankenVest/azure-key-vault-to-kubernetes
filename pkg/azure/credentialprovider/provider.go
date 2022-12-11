@@ -84,7 +84,7 @@ type EnvironmentCredentialProvider struct {
 }
 
 // EnvironmentCredentialProvider provides credentials for Azure using environment vars
-type NativeCredentialProvider struct {
+type AzidentityCredentialProvider struct {
 	envSettings *azureAuth.EnvironmentSettings
 }
 
@@ -176,12 +176,12 @@ func NewFromEnvironment() (*EnvironmentCredentialProvider, error) {
 }
 
 // NewFromEnvironment creates a credentials object based on available environment settings to use with Azure Key Vault
-func NewFromNative() (*NativeCredentialProvider, error) {
+func NewFromAzidentity() (*AzidentityCredentialProvider, error) {
 	envSettings, err := azureAuth.GetSettingsFromEnvironment()
 	if err != nil {
 		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
 	}
-	return &NativeCredentialProvider{
+	return &AzidentityCredentialProvider{
 		envSettings: &envSettings,
 	}, nil
 }
