@@ -281,25 +281,6 @@ func getCredentials(envSettings *azureAuth.EnvironmentSettings, resource string)
 }
 
 func getServicePrincipalTokenFromMSI(activeDirectoryEndpoint, userAssignedIdentityID string, resource string) (*adal.ServicePrincipalToken, error) {
-	federatedTokenFile := os.Getenv("AZURE_FEDERATED_TOKEN_FILE")
-	if federatedTokenFile != "" {
-		klog.V(4).InfoS("azure: using federated token to retrieve access token", "id", userAssignedIdentityID)
-		oauthConfig, err := adal.NewOAuthConfig(activeDirectoryEndpoint, os.Getenv("AZURE_TENANT_ID"))
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve OAuth config: %v", err)
-		}
-		federatedToken, err := os.ReadFile(federatedTokenFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read a file with a federated token: %v", err)
-		}
-		token, err := adal.NewServicePrincipalTokenFromFederatedToken(*oauthConfig, userAssignedIdentityID, string(federatedToken), resource)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to create a workload identity token: %v", err)
-		}
-		return token, nil
-	}
-
 	klog.V(4).InfoS("azure: using managed identity extension to retrieve access token", "id", userAssignedIdentityID)
 	msiEndpoint, err := adal.GetMSIVMEndpoint()
 	if err != nil {
