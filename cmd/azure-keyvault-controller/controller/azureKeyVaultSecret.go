@@ -42,6 +42,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			akvs, err := convertToAzureKeyVaultSecret(obj)
 			if err != nil {
 				klog.ErrorS(err, "failed to convert to azurekeyvaultsecret")
+				syncFailures.WithLabelValues("add", "AzureKeyVaultSecret").Inc()
 				return
 			}
 
@@ -55,12 +56,14 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			newAkvs, err := convertToAzureKeyVaultSecret(new)
 			if err != nil {
 				klog.ErrorS(err, "failed to convert to azurekeyvaultsecret")
+				syncFailures.WithLabelValues("update", "AzureKeyVault").Inc()
 				return
 			}
 
 			oldAkvs, err := convertToAzureKeyVaultSecret(old)
 			if err != nil {
 				klog.ErrorS(err, "failed to convert to azurekeyvaultsecret")
+				syncFailures.WithLabelValues("update", "AzureKeyVault").Inc()
 				return
 			}
 
@@ -82,6 +85,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			akvs, err := convertToAzureKeyVaultSecret(obj)
 			if err != nil {
 				klog.ErrorS(err, "failed to convert to azurekeyvaultsecret")
+				syncFailures.WithLabelValues("delete", "AzureKeyVaultSecret").Inc()
 				return
 			}
 
@@ -93,6 +97,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 				err = c.deleteKubernetesValues(akvs)
 				if err != nil {
 					klog.ErrorS(err, "failed to delete secret data from azurekeyvaultsecret", "azurekeyvaultsecret", klog.KObj(akvs))
+					syncFailures.WithLabelValues("delete", "AzureKeyVaultSecret").Inc()
 				}
 
 				// Getting default key to remove from Azure work queue
