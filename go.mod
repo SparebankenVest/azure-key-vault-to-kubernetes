@@ -3,7 +3,7 @@ module github.com/SparebankenVest/azure-key-vault-to-kubernetes
 go 1.19
 
 require (
-	github.com/Azure/aad-pod-identity v1.8.13
+	github.com/Azure/aad-pod-identity v1.8.14
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azcertificates v0.8.0
 	github.com/Azure/go-autorest/autorest v0.11.28
@@ -12,7 +12,7 @@ require (
 	github.com/appscode/go v0.0.0-20201105063637-5613f3b8169f
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.12.1
-	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20221207205823-37bf5df38e6f
+	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20221228015047-804866391d77
 	github.com/gorilla/mux v1.8.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
@@ -27,18 +27,18 @@ require (
 	k8s.io/client-go v0.26.0
 	k8s.io/component-base v0.26.0
 	k8s.io/klog/v2 v2.80.1
-	kmodules.xyz/client-go v0.25.12
-	sigs.k8s.io/controller-runtime v0.13.1
+	kmodules.xyz/client-go v0.25.14
+	sigs.k8s.io/controller-runtime v0.14.1
 	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go v67.1.0+incompatible // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.1.1 // indirect
+	github.com/Azure/azure-sdk-for-go v67.2.0+incompatible // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.1.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/internal v0.7.1 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v0.7.0 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20221207205823-37bf5df38e6f // indirect
+	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20221228015047-804866391d77 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
@@ -46,9 +46,9 @@ require (
 
 require (
 	cloud.google.com/go/compute v1.14.0 // indirect
-	cloud.google.com/go/compute/metadata v0.2.2 // indirect
+	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.2.1-0.20221210003119-f8cb16d25c43
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0-beta.1
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys v0.9.0
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets v0.11.0
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
@@ -58,29 +58,29 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.17.2 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.18.4 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.13.4 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.20 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.26 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.20 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.27 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.17.24 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.13.21 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.20 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.11.26 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.17.6 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.17.3 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.18.7 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.13.7 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.21 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.27 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.21 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.28 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.17.25 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.13.22 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.21 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.11.28 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.11 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.17.7 // indirect
 	github.com/aws/smithy-go v1.13.5 // indirect
-	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20221206183240-3b42f427f89a // indirect
+	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20221221165957-55f4180e6214 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20221129204813-6a4d6ed5d396 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
-	github.com/docker/cli v20.10.21+incompatible // indirect
+	github.com/docker/cli v20.10.22+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/docker v20.10.21+incompatible // indirect
+	github.com/docker/docker v20.10.22+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
@@ -120,8 +120,8 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
-	github.com/prometheus/common v0.38.0 // indirect
-	github.com/prometheus/procfs v0.8.0 // indirect
+	github.com/prometheus/common v0.39.0 // indirect
+	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/prometheus/statsd_exporter v0.23.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
@@ -135,7 +135,7 @@ require (
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/multierr v1.8.0 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/net v0.4.0 // indirect
 	golang.org/x/oauth2 v0.3.0 // indirect
