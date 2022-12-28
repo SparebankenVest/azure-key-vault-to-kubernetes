@@ -27,12 +27,12 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
 	"time"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	"k8s.io/klog/v2"
 )
@@ -63,17 +63,17 @@ func createHTTPClientWithTrustedCAAndMtls(caCert, clientCert, clientKey []byte) 
 
 func createMtlsClient(clientCertDir string) (*http.Client, error) {
 	// caCert, clientCert, clientKey []byte
-	caCert, err := ioutil.ReadFile(path.Join(clientCertDir, "ca.crt"))
+	caCert, err := os.ReadFile(path.Join(clientCertDir, "ca.crt"))
 	if err != nil {
 		return nil, err
 	}
 
-	clientCert, err := ioutil.ReadFile(path.Join(clientCertDir, "tls.crt"))
+	clientCert, err := os.ReadFile(path.Join(clientCertDir, "tls.crt"))
 	if err != nil {
 		return nil, err
 	}
 
-	clientKey, err := ioutil.ReadFile(path.Join(clientCertDir, "tls.key"))
+	clientKey, err := os.ReadFile(path.Join(clientCertDir, "tls.key"))
 	if err != nil {
 		return nil, err
 	}
@@ -87,88 +87,7 @@ func createMtlsClient(clientCertDir string) (*http.Client, error) {
 	return client, nil
 }
 
-func getCredentials(useAuthService bool, authServiceAddress string, authServiceValidationAddress string, clientCertDir string) (credentialprovider.AzureKeyVaultCredentials, error) {
-	if useAuthService {
-		startupCACert, err := ioutil.ReadFile(path.Join(clientCertDir, "ca.crt"))
-		if err != nil {
-			return nil, err
-		}
-
-		validationUrl := fmt.Sprintf("%s/auth/%s/%s?secret=%s", authServiceValidationAddress, config.namespace, config.podName, config.authServiceSecret)
-		klog.InfoS("checking if current auth service credentials are stale", "url", validationUrl)
-
-		stale := false
-		valClient := &http.Client{
-			Timeout: time.Second * 10,
-		}
-		valRes, err := valClient.Get(validationUrl)
-		if err != nil {
-			return nil, fmt.Errorf("failed to check for stale credentials: %w", err)
-		}
-		defer valRes.Body.Close()
-
-		if valRes.StatusCode == http.StatusOK {
-			klog.InfoS("auth service credentials ok", "url", validationUrl)
-		} else if valRes.StatusCode == http.StatusCreated {
-			klog.InfoS("auth service credentials were stale, but now updated - expect some time before the pod gets updated with the new secret", "url", validationUrl)
-			stale = true
-		} else {
-			klog.ErrorS(nil, "failed to validate credentials", "url", validationUrl, "status", valRes.Status, "statusCode", valRes.StatusCode)
-			return nil, fmt.Errorf("failed to validate credentials, got http status code %v", valRes.StatusCode)
-		}
-
-		if stale {
-			klog.InfoS("checking for updated credentials", "retryTimes", 20)
-			err = retry(20, time.Second*5, func() error {
-				currentCACert, err := ioutil.ReadFile(path.Join(clientCertDir, "ca.crt"))
-				if err != nil {
-					return err
-				}
-
-				if string(startupCACert) == string(currentCACert) {
-					return fmt.Errorf("credentials are still stale")
-				}
-
-				klog.InfoS("credentials updated - good to go!")
-				return nil
-			})
-
-			if err != nil {
-				return nil, fmt.Errorf("credentials was never updated, failedTimes: %v, err: %w", 20, err)
-			}
-		}
-
-		client, err := createMtlsClient(clientCertDir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create mtls http client, err: %w", err)
-		}
-
-		url := fmt.Sprintf("%s/auth/%s/%s", authServiceAddress, config.namespace, config.podName)
-		klog.InfoS("requesting azure key vault oauth token", "url", url)
-
-		res, err := client.Get(url)
-		if err != nil {
-			klog.ErrorS(err, "request token failed", "url", url)
-			return nil, fmt.Errorf("request token failed, err: %w", err)
-		}
-		defer res.Body.Close()
-
-		if res.StatusCode != http.StatusOK {
-			klog.ErrorS(err, "failed to get credentials", "url", url, "status", res.Status, "statusCode", res.StatusCode)
-			return nil, fmt.Errorf("request token failed with status code %v", res.StatusCode)
-		}
-
-		var creds *credentialprovider.OAuthCredentials
-		err = json.NewDecoder(res.Body).Decode(&creds)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode body, error %w", err)
-		}
-
-		klog.InfoS("successfully received oauth token")
-		return creds, nil
-	}
-
-	// Not using auth service - getting credentials from environment
+func getCredentials() (azure.LegacyTokenCredential, error) {
 	provider, err := credentialprovider.NewFromEnvironment()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create credentials provider for azure key vault, error: %w", err)
@@ -179,6 +98,86 @@ func getCredentials(useAuthService bool, authServiceAddress string, authServiceV
 		return nil, fmt.Errorf("failed to get credentials for azure key vault, error: %w", err)
 	}
 	return creds, nil
+}
+
+func getCredentialsAuthService(authServiceAddress string, authServiceValidationAddress string, clientCertDir string) (azure.LegacyTokenCredential, error) {
+	startupCACert, err := os.ReadFile(path.Join(clientCertDir, "ca.crt"))
+	if err != nil {
+		return nil, err
+	}
+
+	validationUrl := fmt.Sprintf("%s/auth/%s/%s?secret=%s", authServiceValidationAddress, config.namespace, config.podName, config.authServiceSecret)
+	klog.InfoS("checking if current auth service credentials are stale", "url", validationUrl)
+
+	stale := false
+	valClient := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	valRes, err := valClient.Get(validationUrl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for stale credentials: %w", err)
+	}
+	defer valRes.Body.Close()
+
+	if valRes.StatusCode == http.StatusOK {
+		klog.InfoS("auth service credentials ok", "url", validationUrl)
+	} else if valRes.StatusCode == http.StatusCreated {
+		klog.InfoS("auth service credentials were stale, but now updated - expect some time before the pod gets updated with the new secret", "url", validationUrl)
+		stale = true
+	} else {
+		klog.ErrorS(nil, "failed to validate credentials", "url", validationUrl, "status", valRes.Status, "statusCode", valRes.StatusCode)
+		return nil, fmt.Errorf("failed to validate credentials, got http status code %v", valRes.StatusCode)
+	}
+
+	if stale {
+		klog.InfoS("checking for updated credentials", "retryTimes", 20)
+		err = retry(20, time.Second*5, func() error {
+			currentCACert, err := os.ReadFile(path.Join(clientCertDir, "ca.crt"))
+			if err != nil {
+				return err
+			}
+
+			if string(startupCACert) == string(currentCACert) {
+				return fmt.Errorf("credentials are still stale")
+			}
+
+			klog.InfoS("credentials updated - good to go!")
+			return nil
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("credentials was never updated, failedTimes: %v, err: %w", 20, err)
+		}
+	}
+
+	client, err := createMtlsClient(clientCertDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create mtls http client, err: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/auth/%s/%s", authServiceAddress, config.namespace, config.podName)
+	klog.InfoS("requesting azure key vault oauth token", "url", url)
+
+	res, err := client.Get(url)
+	if err != nil {
+		klog.ErrorS(err, "request token failed", "url", url)
+		return nil, fmt.Errorf("request token failed, err: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		klog.ErrorS(err, "failed to get credentials", "url", url, "status", res.Status, "statusCode", res.StatusCode)
+		return nil, fmt.Errorf("request token failed with status code %v", res.StatusCode)
+	}
+
+	var creds *credentialprovider.OAuthCredentials
+	err = json.NewDecoder(res.Body).Decode(&creds)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode body, error %w", err)
+	}
+
+	klog.InfoS("successfully received oauth token")
+	return azure.NewLegacyTokenCredentialOauth(creds.OAuthToken), nil
 }
 
 func verifyPKCS(signature string, plaintext string, pubkey rsa.PublicKey) bool {
@@ -205,7 +204,7 @@ func parseRsaPublicKey(pubPem string) (*rsa.PublicKey, error) {
 	default:
 		break // fall through
 	}
-	return nil, fmt.Errorf("Key type is not RSA")
+	return nil, fmt.Errorf("key type is not RSA")
 }
 
 func validateArgsSignature(origArgs, signatureB64, pubKeyBase64 string) {

@@ -6,14 +6,14 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -28,7 +28,7 @@ import (
 
 type AuthService struct {
 	kubeclient  kubernetes.Interface
-	credentials credentialprovider.Credentials
+	credentials azure.LegacyTokenCredential
 	caCert      []byte
 	caKey       []byte
 }
@@ -42,7 +42,7 @@ func fileExists(filename string) bool {
 }
 
 // NewAuthService creates a new authentication service for akv2k8s
-func NewAuthService(kubeclient kubernetes.Interface, credentials credentialprovider.Credentials) (*AuthService, error) {
+func NewAuthService(kubeclient kubernetes.Interface, credentials azure.LegacyTokenCredential) (*AuthService, error) {
 	caCertDir := viper.GetString("ca_cert_dir")
 	if caCertDir == "" {
 		klog.InfoS("missing env var - must exist to use auth service", "env", "CA_CERT_DIR")
@@ -65,7 +65,7 @@ func NewAuthService(kubeclient kubernetes.Interface, credentials credentialprovi
 	}
 
 	var err error
-	caCert, err := ioutil.ReadFile(caCertFile)
+	caCert, err := os.ReadFile(caCertFile)
 	if err != nil {
 		klog.ErrorS(err, "failed to read pem file for ca cert", "file", caCertFile)
 		return nil, err
@@ -76,7 +76,7 @@ func NewAuthService(kubeclient kubernetes.Interface, credentials credentialprovi
 		return nil, fmt.Errorf("file %s is empty", caCertFile)
 	}
 
-	caKey, err := ioutil.ReadFile(caKeyFile)
+	caKey, err := os.ReadFile(caKeyFile)
 	if err != nil {
 		klog.ErrorS(err, "failed to read pem file for ca key", "file", caKeyFile)
 		return nil, err
@@ -104,16 +104,6 @@ var (
 	authRequestsFailures = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "akv2k8s_auth_requests_failed_total",
 		Help: "The total number failed auth requests",
-	})
-
-	authValidationCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "akv2k8s_auth_validations_total",
-		Help: "The total number of successful auth validations",
-	})
-
-	authValidationFailures = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "akv2k8s_auth_validations_failed_total",
-		Help: "The total number of failed auth validations",
 	})
 )
 
@@ -146,8 +136,12 @@ func (a AuthService) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
-
-		if err := json.NewEncoder(w).Encode(a.credentials); err != nil {
+		token, err := a.credentials.GetToken(context.TODO(), policy.TokenRequestOptions{Scopes: []string{"https://vault.azure.net/.default"}})
+		if err != nil {
+			klog.ErrorS(err, "failed to get token", "pod", pod.name, "namespace", pod.namespace)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(map[string]string{"oauth_token": token.Token}); err != nil {
 			klog.ErrorS(err, "failed to json encode token", "pod", pod.name, "namespace", pod.namespace)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {

@@ -25,7 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -34,6 +34,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
+	myazure "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
 
 	aadProvider "github.com/Azure/aad-pod-identity/pkg/cloudprovider"
 	azureAuth "github.com/Azure/go-autorest/autorest/azure/auth"
@@ -58,7 +59,7 @@ const (
 // }
 
 type CredentialProvider interface {
-	GetAzureKeyVaultCredentials() (AzureKeyVaultCredentials, error)
+	GetAzureKeyVaultCredentials() (myazure.LegacyTokenCredential, error)
 	GetAcrCredentials(image string) (k8sCredentialProvider.DockerConfigEntry, error)
 	// IsAcrRegistry(image string) bool
 }
@@ -74,13 +75,17 @@ type UserAssignedManagedIdentityProvider struct {
 type CloudConfigCredentialProvider struct {
 	config      *AzureCloudConfig
 	environment *azure.Environment
-	aadClient   *aadProvider.Client
 }
 
 // EnvironmentCredentialProvider provides credentials for Azure using environment vars
 type EnvironmentCredentialProvider struct {
 	envSettings *azureAuth.EnvironmentSettings
 	// environment *azure.Environment
+}
+
+// EnvironmentCredentialProvider provides credentials for Azure using environment vars
+type AzidentityCredentialProvider struct {
+	envSettings *azureAuth.EnvironmentSettings
 }
 
 func FakeCloudConfigProvider() CloudConfigCredentialProvider {
@@ -170,6 +175,17 @@ func NewFromEnvironment() (*EnvironmentCredentialProvider, error) {
 	}, nil
 }
 
+// NewFromEnvironment creates a credentials object based on available environment settings to use with Azure Key Vault
+func NewFromAzidentity() (*AzidentityCredentialProvider, error) {
+	envSettings, err := azureAuth.GetSettingsFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("failed getting settings from environment, err: %+v", err)
+	}
+	return &AzidentityCredentialProvider{
+		envSettings: &envSettings,
+	}, nil
+}
+
 // NewFromServicePrincipalToken gets a credentials object from a service principal token to use with Azure Key Vault
 func NewFromServicePrincipalToken(token *adal.ServicePrincipalToken) (Credentials, error) {
 	resourceSplit := strings.SplitAfterN(token.Token().Resource, "https://", 2)
@@ -254,23 +270,17 @@ func getCredentials(envSettings *azureAuth.EnvironmentSettings, resource string)
 
 	msi := envSettings.GetMSI()
 
-	token, err := getServicePrincipalTokenFromMSI(msi.ClientID, resource)
+	token, err := getServicePrincipalTokenFromMSI(envSettings.Environment.ActiveDirectoryEndpoint, msi.ClientID, resource)
 	if err != nil {
 		return nil, err
 	}
-
 	return &azureToken{
 		token:    token,
 		clientID: msi.ClientID,
 	}, nil
 }
 
-func getServicePrincipalTokenFromMSI(userAssignedIdentityID string, resource string) (*adal.ServicePrincipalToken, error) {
-	// err := adal.AddToUserAgent(akv2k8s.)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to add MIC to user agent, error: %+v", err)
-	// }
-
+func getServicePrincipalTokenFromMSI(activeDirectoryEndpoint, userAssignedIdentityID string, resource string) (*adal.ServicePrincipalToken, error) {
 	klog.V(4).InfoS("azure: using managed identity extension to retrieve access token", "id", userAssignedIdentityID)
 	msiEndpoint, err := adal.GetMSIVMEndpoint()
 	if err != nil {
@@ -297,7 +307,8 @@ func getServicePrincipalTokenFromMSI(userAssignedIdentityID string, resource str
 }
 func getServicePrincipalTokenFromCloudConfig(config *AzureCloudConfig, env *azure.Environment, resource string) (*adal.ServicePrincipalToken, error) {
 	if config.UseManagedIdentityExtension {
-		return getServicePrincipalTokenFromMSI(config.UserAssignedIdentityID, resource)
+
+		return getServicePrincipalTokenFromMSI(env.ActiveDirectoryEndpoint, config.UserAssignedIdentityID, resource)
 	}
 
 	oauthConfig, err := adal.NewOAuthConfig(env.ActiveDirectoryEndpoint, config.TenantID)
@@ -318,7 +329,7 @@ func getServicePrincipalTokenFromCloudConfig(config *AzureCloudConfig, env *azur
 
 	if len(config.AADClientCertPath) > 0 && len(config.AADClientCertPassword) > 0 {
 		klog.V(4).InfoS("azure: using jwt client_assertion (client_cert+client_private_key) to retrieve access token", "path", config.AADClientCertPath)
-		certData, err := ioutil.ReadFile(config.AADClientCertPath)
+		certData, err := os.ReadFile(config.AADClientCertPath)
 		if err != nil {
 			return nil, fmt.Errorf("reading the client certificate from file %s: %v", config.AADClientCertPath, err)
 		}
@@ -335,7 +346,7 @@ func getServicePrincipalTokenFromCloudConfig(config *AzureCloudConfig, env *azur
 		return token, err
 	}
 
-	return nil, fmt.Errorf("No credentials provided for AAD application %s", config.AADClientID)
+	return nil, fmt.Errorf("no credentials provided for AAD application %s", config.AADClientID)
 }
 
 func createAuthorizerFromServicePrincipalToken(token *adal.ServicePrincipalToken) (autorest.Authorizer, error) {
@@ -389,7 +400,7 @@ func ParseConfig(configReader io.Reader) (*AzureCloudConfig, error) {
 	}
 
 	limitedReader := &io.LimitedReader{R: configReader, N: maxReadLength}
-	configContents, err := ioutil.ReadAll(limitedReader)
+	configContents, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return nil, err
 	}

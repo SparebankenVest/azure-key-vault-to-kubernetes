@@ -34,17 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/tools/cache"
 )
-
-func (c *Controller) getSecretByKey(key string) (*corev1.Secret, error) {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("invalid resource key: %s", key)
-	}
-
-	return c.getSecret(namespace, name)
-}
 
 func (c *Controller) getSecret(ns, name string) (*corev1.Secret, error) {
 	klog.V(4).InfoS("getting secret", "secret", klog.KRef(ns, name))
@@ -78,7 +68,7 @@ func (c *Controller) deleteKubernetesSecretValues(akvs *akv.AzureKeyVaultSecret)
 		return err
 	}
 
-	secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(context.TODO(), newSecret, metav1.UpdateOptions{})
+	_, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(context.TODO(), newSecret, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -320,7 +310,7 @@ func getMD5HashOfByteValues(values map[string][]byte) string {
 	}
 
 	hasher := md5.New()
-	hasher.Write([]byte(mergedValues.String()))
+	hasher.Write(mergedValues.Bytes())
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 

@@ -17,12 +17,12 @@
 package credentialprovider
 
 import (
-	"encoding/json"
-	"fmt"
-	"strings"
+	"os"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/adal"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -36,45 +36,13 @@ type AzureKeyVaultCredentials interface {
 	Endpoint(keyVaultName string) string
 }
 
-type azureKeyVaultCredentials struct {
-	ClientID        string
-	Token           *adal.ServicePrincipalToken
-	EndpointPartial string
-}
-
-// Authorizer gets an Authorizer from credentials
-func (c azureKeyVaultCredentials) Authorizer() (autorest.Authorizer, error) {
-	return createAuthorizerFromServicePrincipalToken(c.Token)
-}
-
-// Endpoint takes the name of the keyvault and creates a correct andpoint url
-func (c azureKeyVaultCredentials) Endpoint(keyVaultName string) string {
-	return fmt.Sprintf(c.EndpointPartial, keyVaultName)
-}
-
-// MarshalJSON will get a fresh oauth token from the service principal token and serialize.
-// This token will expire after the default oauth token lifetime for the service principal.
-func (c azureKeyVaultCredentials) MarshalJSON() ([]byte, error) {
-	err := c.Token.Refresh()
-	if err != nil {
-		return nil, fmt.Errorf("failed to refresh token before marshalling, error: %+v", err)
-	}
-
-	return json.Marshal(&OAuthCredentials{
-		OAuthToken:      c.Token.OAuthToken(),
-		EndpointPartial: c.EndpointPartial,
-	})
-}
-
 // GetAzureKeyVaultCredentials will get Azure credentials
-func (c UserAssignedManagedIdentityProvider) GetAzureKeyVaultCredentials(azureIdentity string, hostname string) (AzureKeyVaultCredentials, error) {
+func (c UserAssignedManagedIdentityProvider) GetAzureKeyVaultCredentials(azureIdentity string, hostname string) (azure.LegacyTokenCredential, error) {
 	err := c.aadClient.Init()
 	if err != nil {
 		return nil, err
 	}
 
-	resourceSplit := strings.SplitAfterN(c.environment.ResourceIdentifiers.KeyVault, "https://", 2)
-	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
 	msiExists := false
 
 	msis, err := c.aadClient.GetUserMSIs(hostname, c.config.VMType == vmTypeVMSS)
@@ -97,47 +65,46 @@ func (c UserAssignedManagedIdentityProvider) GetAzureKeyVaultCredentials(azureId
 		}
 	}
 
-	token, err := getServicePrincipalTokenFromMSI(azureIdentity, c.environment.ResourceIdentifiers.KeyVault)
+	token, err := getServicePrincipalTokenFromMSI(c.environment.ActiveDirectoryEndpoint, azureIdentity, c.environment.ResourceIdentifiers.KeyVault)
 	if err != nil {
 		return nil, err
 	}
 
-	return &azureKeyVaultCredentials{
-		Token:           token,
-		EndpointPartial: endpoint,
-	}, nil
+	return azure.NewLegacyTokenCredentialAdal(token), nil
 }
 
 // GetAzureKeyVaultCredentials will get Azure credentials
-func (c CloudConfigCredentialProvider) GetAzureKeyVaultCredentials() (AzureKeyVaultCredentials, error) {
-	resourceSplit := strings.SplitAfterN(c.environment.ResourceIdentifiers.KeyVault, "https://", 2)
-	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
+func (c CloudConfigCredentialProvider) GetAzureKeyVaultCredentials() (azure.LegacyTokenCredential, error) {
 
 	token, err := getServicePrincipalTokenFromCloudConfig(c.config, c.environment, c.environment.ResourceIdentifiers.KeyVault)
 	if err != nil {
 		return nil, err
 	}
 
-	return azureKeyVaultCredentials{
-		Token:           token,
-		EndpointPartial: endpoint,
-	}, nil
+	return azure.NewLegacyTokenCredentialAdal(token), nil
 }
 
 // GetAzureKeyVaultCredentials will get Azure credentials
-func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (AzureKeyVaultCredentials, error) {
-	resourceSplit := strings.SplitAfterN(c.envSettings.Environment.ResourceIdentifiers.KeyVault, "https://", 2)
-	endpoint := resourceSplit[0] + "%s." + resourceSplit[1]
-
+func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (azure.LegacyTokenCredential, error) {
 	azureToken, err := getCredentials(c.envSettings, c.envSettings.Environment.ResourceIdentifiers.KeyVault)
 	if err != nil {
 		return nil, err
 	}
 
-	return azureKeyVaultCredentials{
-		ClientID:        azureToken.clientID,
-		Token:           azureToken.token,
-		EndpointPartial: endpoint,
-	}, nil
+	return azure.NewLegacyTokenCredentialAdal(azureToken.token), nil
 
+}
+
+func getCredentialsAzidentity() (azure.LegacyTokenCredential, error) {
+	creds, err := azidentity.NewDefaultAzureCredential(&azidentity.DefaultAzureCredentialOptions{})
+	if err != nil {
+		klog.ErrorS(err, "failed to create azure credentials provider, error: %+v", err)
+		os.Exit(1)
+	}
+	return creds, nil
+}
+
+// GetAzureKeyVaultCredentials will get Azure credentials
+func (c AzidentityCredentialProvider) GetAzureKeyVaultCredentials() (azure.LegacyTokenCredential, error) {
+	return getCredentialsAzidentity()
 }

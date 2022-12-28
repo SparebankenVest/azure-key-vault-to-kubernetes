@@ -20,8 +20,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Azure/go-autorest/autorest/adal"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/go-autorest/autorest/azure"
+	myazure "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
 	k8sCredentialProvider "github.com/vdemeester/k8s-pkg-credentialprovider"
 	"k8s.io/klog/v2"
 )
@@ -79,8 +80,7 @@ func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (k8sCrede
 			if err != nil {
 				return cred, err
 			}
-
-			if managedCred, err := getACRDockerEntryFromARMToken(c.config.TenantID, *c.environment, token, loginServer); err == nil {
+			if managedCred, err := getACRDockerEntryFromARMToken(c.config.TenantID, *c.environment, myazure.NewLegacyTokenCredentialAdal(token), loginServer); err == nil {
 				klog.V(4).InfoS("found acr gredentials", "url", loginServer)
 				return managedCred, nil
 			}
@@ -111,7 +111,33 @@ func (c EnvironmentCredentialProvider) GetAcrCredentials(image string) (k8sCrede
 	if loginServer == "" {
 		klog.V(4).InfoS("image is not from acr, skip msi auth", "image", image)
 	} else {
-		managedCred, err := getACRDockerEntryFromARMToken(creds.tenantID, c.envSettings.Environment, creds.token, loginServer)
+		managedCred, err := getACRDockerEntryFromARMToken(creds.tenantID, c.envSettings.Environment, myazure.NewLegacyTokenCredentialAdal(creds.token), loginServer)
+		if err != nil {
+			return cred, err
+		}
+
+		return managedCred, nil
+	}
+	return cred, nil
+}
+
+func (c AzidentityCredentialProvider) GetAcrCredentials(image string) (k8sCredentialProvider.DockerConfigEntry, error) {
+	cred := k8sCredentialProvider.DockerConfigEntry{
+		Username: "",
+		Password: "",
+	}
+
+	creds, err := getCredentialsAzidentity()
+	if err != nil {
+		return cred, err
+	}
+
+	loginServer := parseACRLoginServerFromImage(image, &c.envSettings.Environment)
+
+	if loginServer == "" {
+		klog.V(4).InfoS("image is not from acr, skip msi auth", "image", image)
+	} else {
+		managedCred, err := getACRDockerEntryFromARMToken("", c.envSettings.Environment, creds, loginServer)
 		if err != nil {
 			return cred, err
 		}
@@ -131,7 +157,7 @@ func (c EnvironmentCredentialProvider) IsAcrRegistry(image string) bool {
 	return parseACRLoginServerFromImage(image, &c.envSettings.Environment) != ""
 }
 
-func getACRDockerEntryFromARMToken(tenantID string, env azure.Environment, token *adal.ServicePrincipalToken, loginServer string) (k8sCredentialProvider.DockerConfigEntry, error) {
+func getACRDockerEntryFromARMToken(tenantID string, env azure.Environment, token myazure.LegacyTokenCredential, loginServer string) (k8sCredentialProvider.DockerConfigEntry, error) {
 	// Run EnsureFresh to make sure the token is valid and does not expire
 	// if err := token.EnsureFresh(); err != nil {
 	// 	return nil, fmt.Errorf("Failed to ensure fresh service principal token: %v", err)
@@ -144,12 +170,11 @@ func getACRDockerEntryFromARMToken(tenantID string, env azure.Environment, token
 		Password: "",
 	}
 
-	err := token.RefreshExchangeWithContext(ctx, env.ServiceManagementEndpoint)
+	result, err := token.GetToken(ctx, policy.TokenRequestOptions{Scopes: []string{env.ServiceManagementEndpoint}})
+
 	if err != nil {
 		return cred, fmt.Errorf("failed to refresh token using resource %s, error: %+v", env.ServiceManagementEndpoint, err)
 	}
-
-	armAccessToken := token.OAuthToken()
 
 	klog.V(4).InfoS("discovering auth redirects", "url", loginServer)
 	directive, err := receiveChallengeFromLoginServer(loginServer)
@@ -158,7 +183,7 @@ func getACRDockerEntryFromARMToken(tenantID string, env azure.Environment, token
 	}
 
 	klog.V(4).Info("exchanging an acr refresh_token")
-	registryRefreshToken, err := performTokenExchange(loginServer, directive, tenantID, armAccessToken)
+	registryRefreshToken, err := performTokenExchange(loginServer, directive, tenantID, result.Token)
 	if err != nil {
 		return cred, fmt.Errorf("failed to perform token exchange: %s", err)
 	}

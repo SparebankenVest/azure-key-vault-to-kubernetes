@@ -30,6 +30,7 @@ import (
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-secrets-webhook/auth"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/docker/registry"
 	"github.com/gorilla/mux"
@@ -42,7 +43,6 @@ import (
 	whcontext "github.com/slok/kubewebhook/pkg/webhook/context"
 	"github.com/slok/kubewebhook/pkg/webhook/mutating"
 	"github.com/spf13/viper"
-	k8sCredentialProvider "github.com/vdemeester/k8s-pkg-credentialprovider"
 	logConfig "k8s.io/component-base/logs/api/v1"
 	jsonlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
@@ -82,10 +82,8 @@ type azureKeyVaultConfig struct {
 	authServiceName              string
 	kubeClient                   kubernetes.Interface
 	versionEnvImage              string
-	kubeconfig                   string
-	masterURL                    string
 	injectorDir                  string
-	credentials                  credentialprovider.Credentials
+	credentials                  azure.LegacyTokenCredential
 	credentialProvider           credentialprovider.CredentialProvider
 	klogLevel                    int
 	registry                     registry.ImageRegistry
@@ -98,7 +96,6 @@ type cmdParams struct {
 	masterURL       string
 	cloudConfig     string
 	logFormat       string
-	logLevel        string
 }
 
 var config azureKeyVaultConfig
@@ -302,15 +299,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		err = validateCredentials(config.credentials)
-		if err != nil {
-			klog.ErrorS(err, "failed to get authorizer from azure key vault credentials")
-			os.Exit(1)
-		}
-
-		dockerCred := credentialprovider.NewAcrDockerProvider(config.credentialProvider)
-		k8sCredentialProvider.RegisterCredentialProvider("akv2k8s", dockerCred)
-
 		authService, err := auth.NewAuthService(config.kubeClient, config.credentials)
 		if err != nil {
 			klog.ErrorS(err, "failed to create auth service")
@@ -345,8 +333,9 @@ func newKubeClient() (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(cfg)
 }
 
-func getCredentials() (credentialprovider.Credentials, credentialprovider.CredentialProvider, error) {
-	if config.authType != "azureCloudConfig" {
+func getCredentials() (azure.LegacyTokenCredential, credentialprovider.CredentialProvider, error) {
+	switch config.authType {
+	case "environment":
 		klog.V(4).InfoS("not using cloudConfig for auth - looking for azure key vault credentials in environment")
 		cProvider, err := credentialprovider.NewFromEnvironment()
 		if err != nil {
@@ -355,7 +344,15 @@ func getCredentials() (credentialprovider.Credentials, credentialprovider.Creden
 
 		credentials, err := cProvider.GetAzureKeyVaultCredentials()
 		return credentials, cProvider, err
-	} else {
+	case "environment-azidentity":
+		cProvider, err := credentialprovider.NewFromAzidentity()
+		if err != nil {
+			return nil, cProvider, err
+		}
+
+		credentials, err := cProvider.GetAzureKeyVaultCredentials()
+		return credentials, cProvider, err
+	case "cloudConfig":
 		klog.V(4).InfoS("using cloudConfig for auth - reading credentials", "file", config.cloudConfig)
 		f, err := os.Open(config.cloudConfig)
 		if err != nil {
@@ -371,12 +368,7 @@ func getCredentials() (credentialprovider.Credentials, credentialprovider.Creden
 		credentials, err := cloudCnfProvider.GetAzureKeyVaultCredentials()
 		return credentials, cloudCnfProvider, err
 	}
-}
-
-func validateCredentials(credentials credentialprovider.Credentials) error {
-	klog.V(4).InfoS("checking credentials by getting authorizer")
-	_, err := credentials.Authorizer()
-	return err
+	return nil, nil, fmt.Errorf("authType `%s` not supported", config.authType)
 }
 
 func createHTTPEndpoint(wg *sync.WaitGroup, port string, useAuthService bool, authService *auth.AuthService) {

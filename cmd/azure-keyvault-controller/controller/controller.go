@@ -62,7 +62,7 @@ const (
 
 	// FailedAzureKeyVault is the message used for Events when a resource
 	// fails to get secret from Azure Key Vault
-	FailedAzureKeyVault = "Failed to get secret for '%s' from Azure Key Vault '%s'"
+	FailedAzureKeyVault = "Failed to get secret for '%s' from Azure Key Vault '%s': %s"
 
 	// MessageResourceExists is the message used for Events when a resource
 	// fails to sync due to a Deployment already existing
@@ -109,7 +109,6 @@ type Controller struct {
 	vaultService        vault.Service
 	recorder            record.EventRecorder
 	kubeInformerFactory informers.SharedInformerFactory
-	namespaceAkvsLabel  string
 
 	// Secret
 	secretsLister corelisters.SecretLister

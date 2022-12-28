@@ -30,6 +30,7 @@ import (
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
@@ -253,18 +254,15 @@ func main() {
 		klog.InfoS("found original container command", "cmd", origCommand, "args", origArgs)
 	}
 
-	creds, err := getCredentials(config.useAuthService, config.authServiceAddress, config.authServiceValidationAddress, config.clientCertDir)
-
-	if err != nil {
-		klog.V(4).InfoS("failed to get credentials, will retry", "retryTimes", config.retryTimes)
-		err = retry(config.retryTimes, time.Second*time.Duration(config.waitTimeBetweenRetries), func() error {
-			creds, err = getCredentials(config.useAuthService, config.authServiceAddress, config.authServiceValidationAddress, config.clientCertDir)
-			if err != nil {
-				return err
-			}
-			klog.Info("succeeded getting credentials")
-			return nil
-		})
+	var creds azure.LegacyTokenCredential
+	if config.useAuthService {
+		creds, err = getCredentialsAuthService(config.authServiceAddress, config.authServiceValidationAddress, config.clientCertDir)
+		if err != nil {
+			klog.ErrorS(err, "failed to get credentials", "failedTimes", config.retryTimes)
+			os.Exit(1)
+		}
+	} else {
+		creds, err = getCredentials()
 		if err != nil {
 			klog.ErrorS(err, "failed to get credentials", "failedTimes", config.retryTimes)
 			os.Exit(1)

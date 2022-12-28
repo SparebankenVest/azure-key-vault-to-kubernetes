@@ -9,7 +9,7 @@ FROM golang:${GO_VERSION} AS base_builder
 ARG PACKAGE
 
 WORKDIR /go/src/${PACKAGE}
-ADD go.mod go.sum /go/src/${PACKAGE}
+ADD go.mod go.sum /go/src/${PACKAGE}/
 RUN go mod download
 
 FROM base_builder AS builder
