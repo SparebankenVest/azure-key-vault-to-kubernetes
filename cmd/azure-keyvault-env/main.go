@@ -43,7 +43,7 @@ import (
 )
 
 const (
-	envLookupRegex = `^([a-z-\d]*)@azurekeyvault([\?]?[a-z-\d]*)$`
+	envLookupRegex = `^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)@azurekeyvault([\?]?[a-z-\d\.]*)$`
 )
 
 type injectorConfig struct {
