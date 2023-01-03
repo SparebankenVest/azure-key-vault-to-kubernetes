@@ -1501,8 +1501,8 @@ k8s.io/utils v0.0.0-20200729134348-d5654de09c73/go.mod h1:jPW/WVKK9YHAvNhRxK0md/
 k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
 k8s.io/utils v0.0.0-20221128185143-99ec85e7a448 h1:KTgPnR10d5zhztWptI952TNtt/4u5h3IzDXkdIMuo2Y=
 k8s.io/utils v0.0.0-20221128185143-99ec85e7a448/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
-kmodules.xyz/client-go v0.25.14 h1:8znhvnL73etOVeTGNcSQjqOAt5bK9vxin9dZPQUNtA4=
-kmodules.xyz/client-go v0.25.14/go.mod h1:PG0s5FqmCvIKXudUhaJELBVbKbX6ESoefVR1cibkl+0=
+kmodules.xyz/client-go v0.25.15 h1:oMxl0KeRP4bhR5Oz8TKe6E/EF0nwNkqSMsjErVc2MBg=
+kmodules.xyz/client-go v0.25.15/go.mod h1:PG0s5FqmCvIKXudUhaJELBVbKbX6ESoefVR1cibkl+0=
 mvdan.cc/gofumpt v0.0.0-20200709182408-4fd085cb6d5f/go.mod h1:9VQ397fNXEnF84t90W4r4TRCQK+pg9f8ugVfyj+S26w=
 mvdan.cc/interfacer v0.0.0-20180901003855-c20040233aed/go.mod h1:Xkxe497xwlCKkIaQYRfC7CSLworTXY9RMqwhhCm+8Nc=
 mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b/go.mod h1:2odslEg/xrtNQqCYg2/jCoyKnw3vv5biOc3JnIcYfL4=
