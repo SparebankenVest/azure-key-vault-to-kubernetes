@@ -11,7 +11,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11
 	github.com/appscode/go v0.0.0-20201105063637-5613f3b8169f
 	github.com/google/go-cmp v0.5.9
-	github.com/google/go-containerregistry v0.12.1
+	github.com/google/go-containerregistry v0.13.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20221228015047-804866391d77
 	github.com/gorilla/mux v1.8.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -27,7 +27,7 @@ require (
 	k8s.io/client-go v0.26.0
 	k8s.io/component-base v0.26.0
 	k8s.io/klog/v2 v2.80.1
-	kmodules.xyz/client-go v0.25.14
+	kmodules.xyz/client-go v0.25.17
 	sigs.k8s.io/controller-runtime v0.14.1
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -40,6 +40,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20221228015047-804866391d77 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 )
