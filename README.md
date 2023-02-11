@@ -3,7 +3,9 @@
 <p align="center">
 
   <a href="https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/actions">
-    <img src="https://img.shields.io/github/workflow/status/sparebankenvest/azure-key-vault-to-kubernetes/build?style=flat&label=build" alt="Build Status">
+    <img src="https://img.shields.io/github/actions/workflow/status/sparebankenvest/azure-key-vault-to-kubernetes/controller-build.yaml?style=flat&label=Controller&branch=main" alt="Controller Build Status">
+    <img src="https://img.shields.io/github/actions/workflow/status/sparebankenvest/azure-key-vault-to-kubernetes/webhook-build.yaml?style=flat&label=WebHook&branch=main" alt="WebHook Build Status">
+    <img src="https://img.shields.io/github/actions/workflow/status/sparebankenvest/azure-key-vault-to-kubernetes/vaultenv-build.yaml?style=flat&label=VaultEnv&branch=main" alt="VaultEnv Build Status">
   </a>
 
   <a href="https://goreportcard.com/report/github.com/SparebankenVest/azure-key-vault-to-kubernetes">
