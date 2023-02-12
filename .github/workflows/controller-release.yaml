@@ -7,10 +7,10 @@ on:
 
 jobs:
   build-deploy:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@master
-      
+    - uses: actions/checkout@v3
+
     - name: Version
       run: make print-v-controller
 
@@ -23,4 +23,3 @@ jobs:
       run: |
         echo "${{ secrets.PUBLIC_REGISTRY_PASSWORD }}" | docker login -u ${{ secrets.PUBLIC_REGISTRY_USERNAME }} --password-stdin
         make release-controller DOCKER_RELEASE_TAG=${GITHUB_REF##*/}
-        
