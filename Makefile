@@ -10,8 +10,14 @@ WEBHOOK_BINARY_NAME=azure-keyvault-secrets-webhook
 CONTROLLER_BINARY_NAME=azure-keyvault-controller
 KEYVAULT_ENV_BINARY_NAME=azure-keyvault-env
 
-DOCKER_INTERNAL_REG=dokken.azurecr.io
-DOCKER_RELEASE_REG=spvest
+DOCKER_INTERNAL_REG:=dokken.azurecr.io
+DOCKER_INTERNAL_URL:=dokken.azurecr.io
+DOCKER_INTERNAL_USER:=
+DOCKER_INTERNAL_PASSW:=
+DOCKER_RELEASE_REG:=spvest
+DOCKER_RELEASE_URL:=registry-1.docker.io 
+DOCKER_RELEASE_USER:=
+DOCKER_RELEASE_PASSW:=
 
 DOCKER_CONTROLLER_IMAGE=azure-keyvault-controller
 DOCKER_WEBHOOK_IMAGE=azure-keyvault-webhook
@@ -216,67 +222,72 @@ upload-kind-controller:
 upload-kind-vaultenv:
 	kind load docker-image $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG)
 
+login-to-docker:
+	@docker login $(DOCKER_INTERNAL_URL) --username $(DOCKER_INTERNAL_USER) --password $(DOCKER_INTERNAL_PASSW)
+
+setup-docker-buildx:
+	docker buildx create --name akv2k8s --use
+
 .PHONY: image-webhook
 image-webhook:
-	DOCKER_BUILDKIT=1 docker build \
+	docker buildx build \
 		--progress=plain \
 		--target webhook \
+		--platform linux/amd64,linux/arm64 \
 		--build-arg BUILD_SUB_TARGET="-webhook" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
 		--build-arg VCS_URL=$(VCS_URL) \
+		--cache-from=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):cache \
+		--cache-to=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):cache,mode=max \
+		--push \
 		-t $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG) .
 
 .PHONY: image-controller
 image-controller:
-	DOCKER_BUILDKIT=1 docker build \
+	docker buildx build \
 		--progress=plain \
 		--target controller \
+		--platform linux/amd64,linux/arm64 \
 		--build-arg BUILD_SUB_TARGET="-controller" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
 		--build-arg VCS_URL=$(VCS_URL) \
+		--cache-from=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):cache \
+		--cache-to=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):cache,mode=max \
+		--push \
 		-t $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) .
 
 .PHONY: image-vaultenv
 image-vaultenv:
-	DOCKER_BUILDKIT=1 docker build \
+	docker buildx build \
 		--progress=plain \
 		--target vaultenv \
+		--platform linux/amd64,linux/arm64 \
 		--build-arg BUILD_SUB_TARGET="-vaultenv" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
 		--build-arg VCS_URL=$(VCS_URL) \
+		--cache-from=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):cache \
+		--cache-to=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):cache,mode=max \
+		--push \
 		-t $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) .
 
 .PHONY: image-akv2k8s-env-test
 image-akv2k8s-env-test:
-	DOCKER_BUILDKIT=1 docker build \
+	docker buildx build \
 		--progress=plain \
-		-t $(DOCKER_RELEASE_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE) \
+		--platform linux/amd64,linux/arm64 \
+		-t $(DOCKER_INTERNAL_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE) \
+		--cache-from=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE):cache \
+		--cache-to=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE):cache,mode=max \
+		--push \
 		-f images/akv2k8s-test/Dockerfile .
 
-.PHONY: push
-push: push-controller push-webhook push-vaultenv
-
 .PHONY: push-controller
-push-controller:
-	docker push $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG)
-
-.PHONY: push-webhook
-push-webhook:
-	docker push $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG)
-
-.PHONY: push-vaultenv
-push-vaultenv:
-	docker push $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG)
-
-.PHONY: push-akv2k8s-env-test
-push-akv2k8s-env-test:
-	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE)
 
 .PHONY: pull-all
 pull-all: pull-webhook pull-controller pull-vaultenv
