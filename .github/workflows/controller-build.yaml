@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - multiarch
       - "*-patch"
     paths:
       - ".github/workflows/controller-build.yaml"
