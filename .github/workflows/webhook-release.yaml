@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Version
-        run: make print-v-controller
+        run: make print-v-webhook
 
       - name: Release image
         run: |
