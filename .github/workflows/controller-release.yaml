@@ -3,23 +3,26 @@ name: Release Controller
 on:
   push:
     tags:
-    - 'controller-[0-9]+.[0-9]+.[0-9]+**'
+      - "controller-[0-9]+.[0-9]+.[0-9]+**"
 
 jobs:
   build-deploy:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Version
-      run: make print-v-controller
+      - name: Version
+        run: make print-v-controller
 
-    - name: Pull images from private repo
-      run: |
-        echo "${{ secrets.PRIVATE_REGISTRY_PASSWORD }}" | docker login -u ${{ secrets.PRIVATE_REGISTRY_USERNAME }} --password-stdin dokken.azurecr.io
-        make pull-controller
-
-    - name: Push images to public repo
-      run: |
-        echo "${{ secrets.PUBLIC_REGISTRY_PASSWORD }}" | docker login -u ${{ secrets.PUBLIC_REGISTRY_USERNAME }} --password-stdin
-        make release-controller DOCKER_RELEASE_TAG=${GITHUB_REF##*/}
+      - name: Release image
+        run: |
+          make \
+          DOCKER_INTERNAL_REG=${{ secrets.PRIVATE_REGISTRY }} \
+          DOCKER_INTERNAL_URL=${{ secrets.PRIVATE_REGISTRY_URL }} \
+          DOCKER_INTERNAL_USER=${{ secrets.PRIVATE_REGISTRY_USERNAME }} \
+          DOCKER_INTERNAL_PASSW=${{ secrets.PRIVATE_REGISTRY_PASSWORD }} \
+          DOCKER_RELEASE_USER=${{ secrets.PUBLIC_REGISTRY_USERNAME }} \
+          DOCKER_RELEASE_PASSW=${{ secrets.PUBLIC_REGISTRY_PASSWORD }} \
+          DOCKER_RELEASE_REG=${{ secrets.PUBLIC_REGISTRY }} \
+          DOCKER_RELEASE_TAG=${GITHUB_REF##*/} \
+          retag-controller

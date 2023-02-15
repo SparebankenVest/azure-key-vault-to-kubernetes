@@ -330,3 +330,10 @@ release-vaultenv:
 
 	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_RELEASE_TAG_VAULTENV)
 	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_VAULTENV_IMAGE):latest
+
+
+retag-controller:
+	docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest registry login $(DOCKER_INTERNAL_URL) -u $(DOCKER_INTERNAL_USER) -p $(DOCKER_INTERNAL_PASSW)
+	docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest registry login $(DOCKER_RELEASE_URL) -u $(DOCKER_RELEASE_USER) -p $(DOCKER_RELEASE_PASSW)
+	docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest image copy $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG)
+	docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest image copy $(DOCKER_INTERNAL_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_CONTROLLER_IMAGE):$(DOCKER_RELEASE_TAG_CONTROLLER)
