@@ -6,7 +6,7 @@ on:
       - "controller-[0-9]+.[0-9]+.[0-9]+**"
 
 jobs:
-  build-deploy:
+  release:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
@@ -25,4 +25,4 @@ jobs:
           DOCKER_RELEASE_PASSW=${{ secrets.PUBLIC_REGISTRY_PASSWORD }} \
           DOCKER_RELEASE_REG=${{ secrets.PUBLIC_REGISTRY }} \
           DOCKER_RELEASE_TAG=${GITHUB_REF##*/} \
-          retag-controller
+          release-controller
