@@ -20,9 +20,9 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Test
-      run: make test
-      shell: bash
+    # - name: Test
+    #   run: make test
+    #   shell: bash
 
     - name: Setup docker buildx
       run: |

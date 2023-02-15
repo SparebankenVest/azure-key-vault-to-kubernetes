@@ -36,9 +36,9 @@ jobs:
           AKV2K8S_CLIENT_SECRET: ${{ secrets.INT_TEST_CLIENT_SECRET }}
           AKV2K8S_CLIENT_TENANT_ID: ${{ secrets.INT_TEST_TENANT_ID }}
           AKV2K8S_AZURE_SUBSCRIPTION: ${{ secrets.INT_TEST_SUBSCRIPTION }}
+        with:
+          build-make-action: image-controller
           docker-user: ${{ secrets.PRIVATE_REGISTRY_USERNAME }}
           docker-passw: ${{ secrets.PRIVATE_REGISTRY_PASSWORD }}
           docker-url: ${{ secrets.PRIVATE_REGISTRY_URL }}
           docker-reg: ${{ secrets.PRIVATE_REGISTRY }}
-        with:
-          build-make-action: image-controller
