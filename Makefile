@@ -318,16 +318,18 @@ release-controller:
 
 .PHONY: release-webhook
 release-webhook:
-	docker tag $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_RELEASE_TAG_WEBHOOK)
-	docker tag $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_WEBHOOK_IMAGE):latest
+	@docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest registry login $(DOCKER_INTERNAL_URL) -u $(DOCKER_INTERNAL_USER) -p $(DOCKER_INTERNAL_PASSW)
+	@docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest registry login $(DOCKER_RELEASE_URL) -u $(DOCKER_RELEASE_USER) -p $(DOCKER_RELEASE_PASSW)
 
-	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_RELEASE_TAG_WEBHOOK)
-	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_WEBHOOK_IMAGE):latest
+	docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest image copy $(DOCKER_INTERNAL_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG)
+	docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest image copy $(DOCKER_RELEASE_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_RELEASE_TAG_WEBHOOK)
+	docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest image copy $(DOCKER_RELEASE_REG)/$(DOCKER_WEBHOOK_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_WEBHOOK_IMAGE):latest
 
 .PHONY: release-vaultenv
 release-vaultenv:
-	docker tag $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_RELEASE_TAG_VAULTENV)
-	docker tag $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_VAULTENV_IMAGE):latest
+	@docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest registry login $(DOCKER_INTERNAL_URL) -u $(DOCKER_INTERNAL_USER) -p $(DOCKER_INTERNAL_PASSW)
+	@docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest registry login $(DOCKER_RELEASE_URL) -u $(DOCKER_RELEASE_USER) -p $(DOCKER_RELEASE_PASSW)
 
-	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_RELEASE_TAG_VAULTENV)
-	docker push $(DOCKER_RELEASE_REG)/$(DOCKER_VAULTENV_IMAGE):latest
+	docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest image copy $(DOCKER_INTERNAL_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG)
+	docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest image copy $(DOCKER_RELEASE_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_RELEASE_TAG_VAULTENV)
+	docker run --rm --net host -v regctl-conf:/home/appuser/.regctl/ regclient/regctl:latest image copy $(DOCKER_RELEASE_REG)/$(DOCKER_VAULTENV_IMAGE):$(DOCKER_INTERNAL_TAG) $(DOCKER_RELEASE_REG)/$(DOCKER_VAULTENV_IMAGE):latest
