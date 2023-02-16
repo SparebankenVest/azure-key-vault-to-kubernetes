@@ -51,6 +51,7 @@ else
 	endif
 	ifeq ($(UNAME_S), Darwin)
 		GO_BUILD_MODE = default
+		TEST_GOOS = darwin
 	endif
 endif
 
