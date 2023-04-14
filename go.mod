@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/Azure/aad-pod-identity v1.8.15
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.5.0
-	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azcertificates v0.8.0
+	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azcertificates v0.9.0
 	github.com/Azure/go-autorest/autorest v0.11.28
 	github.com/Azure/go-autorest/autorest/adal v0.9.23
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.12
