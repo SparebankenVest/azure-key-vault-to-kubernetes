@@ -62,6 +62,7 @@ type CredentialProvider interface {
 	GetAzureKeyVaultCredentials() (myazure.LegacyTokenCredential, error)
 	GetAcrCredentials(image string) (k8sCredentialProvider.DockerConfigEntry, error)
 	// IsAcrRegistry(image string) bool
+	GetAzureKeyVaultDNSSuffix() string
 }
 
 // UserAssignedManagedIdentityProvider provides credentials for Azure using managed identity

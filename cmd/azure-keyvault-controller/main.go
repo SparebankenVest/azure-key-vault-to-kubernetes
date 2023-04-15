@@ -176,16 +176,17 @@ func main() {
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	var token azcore.TokenCredential
+	var keyVaultDNSSuffix string
 	klog.Infof("use `%s` as authType", authType)
 	switch authType {
 	case "azureCloudConfig":
-		token, err = getCredentialsFromCloudConfig(cloudconfig)
+		token, keyVaultDNSSuffix, err = getCredentialsFromCloudConfig(cloudconfig)
 		if err != nil {
 			klog.ErrorS(err, "failed to create cloud config provider for azure key vault", "file", cloudconfig)
 			os.Exit(1)
 		}
 	case "environment":
-		token, err = getCredentialsFromEnvironment()
+		token, keyVaultDNSSuffix, err = getCredentialsFromEnvironment()
 		if err != nil {
 			klog.ErrorS(err, "failed to create credentials provider from environment for azure key vault")
 			os.Exit(1)
@@ -197,7 +198,7 @@ func main() {
 				klog.Infof(msg)
 			})
 		}
-		token, err = getCredentialsFromAzidentity()
+		token, keyVaultDNSSuffix, err = getCredentialsFromAzidentity()
 		if err != nil {
 			klog.ErrorS(err, "failed to create credentials provider from azidentity for azure key vault")
 			os.Exit(1)
@@ -208,7 +209,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	vaultService := vault.NewService(token)
+	vaultService := vault.NewService(token, keyVaultDNSSuffix)
 
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
@@ -256,34 +257,49 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getCredentialsFromCloudConfig(cloudconfig string) (azure.LegacyTokenCredential, error) {
+func getCredentialsFromCloudConfig(cloudconfig string) (azure.LegacyTokenCredential, string, error) {
 	f, err := os.Open(cloudconfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed reading azure config from %s, error: %+v", cloudconfig, err)
+		return nil, "", fmt.Errorf("failed reading azure config from %s, error: %+v", cloudconfig, err)
 	}
 	defer f.Close()
 
 	cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
 	if err != nil {
-		return nil, fmt.Errorf("failed reading azure config from %s, error: %+v", cloudconfig, err)
+		return nil, "", fmt.Errorf("failed reading azure config from %s, error: %+v", cloudconfig, err)
 	}
 
-	return cloudCnfProvider.GetAzureKeyVaultCredentials()
+	token, err := cloudCnfProvider.GetAzureKeyVaultCredentials()
+	if err != nil {
+		return nil, "", nil
+	}
+
+	return token, cloudCnfProvider.GetAzureKeyVaultDNSSuffix(), err
 }
 
-func getCredentialsFromEnvironment() (azure.LegacyTokenCredential, error) {
+func getCredentialsFromEnvironment() (azure.LegacyTokenCredential, string, error) {
 	provider, err := credentialprovider.NewFromEnvironment()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create azure credentials provider, error: %+v", err)
+		return nil, "", fmt.Errorf("failed to create azure credentials provider, error: %+v", err)
 	}
 
-	return provider.GetAzureKeyVaultCredentials()
+	token, err := provider.GetAzureKeyVaultCredentials()
+	if err != nil {
+		return nil, "", nil
+	}
+
+	return token, provider.GetAzureKeyVaultDNSSuffix(), err
 }
 
-func getCredentialsFromAzidentity() (azure.LegacyTokenCredential, error) {
+func getCredentialsFromAzidentity() (azure.LegacyTokenCredential, string, error) {
 	provider, err := credentialprovider.NewFromAzidentity()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create azure identity provider, error: %+v", err)
+		return nil, "", fmt.Errorf("failed to create azure identity provider, error: %+v", err)
 	}
-	return provider.GetAzureKeyVaultCredentials()
+	token, err := provider.GetAzureKeyVaultCredentials()
+	if err != nil {
+		return nil, "", nil
+	}
+
+	return token, provider.GetAzureKeyVaultDNSSuffix(), err
 }
