@@ -225,6 +225,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, akvs.Name, akvs.Spec.Vault.Name, err.Error())
 			c.recorder.Event(akvs, corev1.EventTypeWarning, ErrAzureVault, msg)
+			syncFailures.WithLabelValues("sync", "AzureKeyVault").Inc()
 			return fmt.Errorf(msg)
 		}
 
