@@ -30,6 +30,7 @@ import (
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/akv2k8s/transformers"
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure"
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
 	vault "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/keyvault/client"
 	akv "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
 	clientset "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/client/clientset/versioned"
@@ -250,21 +251,28 @@ func main() {
 	}
 
 	var creds azure.LegacyTokenCredential
+	var keyVaultDNSSuffix string
 	if config.useAuthService {
+		provider, err := credentialprovider.NewFromEnvironment()
+		if err != nil {
+			klog.ErrorS(err, "failed to get provider from environment", "failedTimes", config.retryTimes)
+			os.Exit(1)
+		}
+		keyVaultDNSSuffix = provider.GetAzureKeyVaultDNSSuffix()
 		creds, err = getCredentialsAuthService(config.authServiceAddress, config.authServiceValidationAddress, config.clientCertDir)
 		if err != nil {
 			klog.ErrorS(err, "failed to get credentials", "failedTimes", config.retryTimes)
 			os.Exit(1)
 		}
 	} else {
-		creds, err = getCredentials()
+		creds, keyVaultDNSSuffix, err = getCredentials()
 		if err != nil {
 			klog.ErrorS(err, "failed to get credentials", "failedTimes", config.retryTimes)
 			os.Exit(1)
 		}
 	}
 
-	vaultService := vault.NewService(creds)
+	vaultService := vault.NewService(creds, keyVaultDNSSuffix)
 
 	klog.V(4).InfoS("reading azurekeyvaultsecret's referenced in env variables")
 	cfg, err := rest.InClusterConfig()
