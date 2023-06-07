@@ -67,6 +67,16 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 		Image:           viper.GetString("azurekeyvault_env_image"),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Command:         []string{"sh", "-c", cmd},
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+			ReadOnlyRootFilesystem: &[]bool{viper.GetBool("webhook_container_security_context_read_only")}[0],
+			RunAsNonRoot:           &[]bool{viper.GetBool("webhook_container_security_context_non_root")}[0],
+			RunAsUser:              &[]int64{viper.GetInt64("webhook_container_security_context_user_uid")}[0],
+			RunAsGroup:             &[]int64{viper.GetInt64("webhook_container_security_context_group_gid")}[0],
+			Privileged:             &[]bool{viper.GetBool("webhook_container_security_context_privileged")}[0],
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      initContainerVolumeName,
@@ -268,7 +278,9 @@ func (p podWebHook) mutatePodSpec(ctx context.Context, pod *corev1.Pod) error {
 	var authServiceSecret *corev1.Secret
 	var err error
 	podSpec := &pod.Spec
-
+	podSpec.SecurityContext = &corev1.PodSecurityContext{
+		RunAsNonRoot: &[]bool{viper.GetBool("webhook_pod_spec_security_context_non_root")}[0],
+	}
 	if p.useAuthService {
 		klog.InfoS("creating client certificate to use with auth service", klog.KRef(p.namespace, pod.Name))
 		authServiceSecret, err = p.authService.NewPodSecret(pod, p.namespace, p.mutationID)
