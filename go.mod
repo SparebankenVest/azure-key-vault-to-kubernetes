@@ -3,7 +3,7 @@ module github.com/SparebankenVest/azure-key-vault-to-kubernetes
 go 1.20
 
 require (
-	github.com/Azure/aad-pod-identity v1.8.16
+	github.com/Azure/aad-pod-identity v1.8.17
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azcertificates v0.9.0
 	github.com/Azure/go-autorest/autorest v0.11.29
