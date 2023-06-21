@@ -149,7 +149,7 @@ func (h *azureSecretHandler) HandleSecret() (map[string][]byte, error) {
 	default:
 		if h.secretSpec.Spec.Vault.Object.Type != akv.AzureKeyVaultObjectTypeMultiKeyValueSecret &&
 			h.secretSpec.Spec.Output.Secret.DataKey == "" {
-			return nil, fmt.Errorf("no datakey spesified for output secret")
+			return nil, fmt.Errorf("no datakey specified for output secret")
 		}
 		values[h.secretSpec.Spec.Output.Secret.DataKey] = []byte(secret)
 	}
@@ -177,7 +177,7 @@ func (h *azureSecretHandler) HandleConfigMap() (map[string]string, error) {
 
 	if h.secretSpec.Spec.Vault.Object.Type != akv.AzureKeyVaultObjectTypeMultiKeyValueSecret &&
 		h.secretSpec.Spec.Output.ConfigMap.DataKey == "" {
-		return nil, fmt.Errorf("no datakey spesified for output configmap")
+		return nil, fmt.Errorf("no datakey specified for output configmap")
 	}
 	values[h.secretSpec.Spec.Output.ConfigMap.DataKey] = secret
 

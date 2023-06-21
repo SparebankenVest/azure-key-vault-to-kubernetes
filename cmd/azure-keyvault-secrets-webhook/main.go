@@ -356,13 +356,13 @@ func getCredentials() (azure.LegacyTokenCredential, credentialprovider.Credentia
 		klog.V(4).InfoS("using cloudConfig for auth - reading credentials", "file", config.cloudConfig)
 		f, err := os.Open(config.cloudConfig)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to read azure config")
+			return nil, nil, fmt.Errorf("failed to read azure config: %+v", err)
 		}
 		defer f.Close()
 
 		cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
 		if err != nil {
-			return nil, cloudCnfProvider, fmt.Errorf("failed to create cloud config provider for azure key vault")
+			return nil, cloudCnfProvider, fmt.Errorf("failed to create cloud config provider for azure key vault: %+v", err)
 		}
 
 		credentials, err := cloudCnfProvider.GetAzureKeyVaultCredentials()
