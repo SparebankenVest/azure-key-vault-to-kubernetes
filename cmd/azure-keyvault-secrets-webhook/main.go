@@ -206,6 +206,7 @@ func initConfig() {
 	viper.SetDefault("metrics_enabled", false)
 	viper.SetDefault("env_injector_exec_dir", "/azure-keyvault/")
 
+	viper.SetDefault("webhook_container_image_pull_policy", "IfNotPresent")
 	viper.SetDefault("webhook_container_security_context_read_only", false)
 	viper.SetDefault("webhook_container_security_context_non_root", false)
 	viper.SetDefault("webhook_container_security_context_user_uid", 1000)

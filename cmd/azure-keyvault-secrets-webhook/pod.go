@@ -65,7 +65,7 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 	container := corev1.Container{
 		Name:            "copy-azurekeyvault-env",
 		Image:           viper.GetString("azurekeyvault_env_image"),
-		ImagePullPolicy: corev1.PullIfNotPresent,
+		ImagePullPolicy: corev1.PullPolicy(viper.GetString("webhook_container_image_pull_policy")),
 		Command:         []string{"sh", "-c", cmd},
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
