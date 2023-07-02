@@ -114,7 +114,7 @@ func TestHandleSecretWithNoDataKey(t *testing.T) {
 	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
 	values, err := handler.HandleSecret()
 	if err == nil {
-		t.Error("Should fail when no datakey is spesified")
+		t.Error("Should fail when no datakey is specified")
 	}
 	if values != nil {
 		t.Error("handler should not have returned values")
@@ -134,7 +134,7 @@ func TestHandleConfigMapWithNoDataKey(t *testing.T) {
 	handler := NewAzureSecretHandler(secret, fakeVault, *transformator)
 	values, err := handler.HandleConfigMap()
 	if err == nil {
-		t.Error("Should fail when no datakey is spesified")
+		t.Error("Should fail when no datakey is specified")
 	}
 	if values != nil {
 		t.Error("handler should not have returned values")
