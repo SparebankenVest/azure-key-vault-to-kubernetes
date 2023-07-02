@@ -205,6 +205,14 @@ func initConfig() {
 	viper.SetDefault("use_auth_service", true)
 	viper.SetDefault("metrics_enabled", false)
 	viper.SetDefault("env_injector_exec_dir", "/azure-keyvault/")
+
+	viper.SetDefault("webhook_container_security_context_read_only", false)
+	viper.SetDefault("webhook_container_security_context_non_root", false)
+	viper.SetDefault("webhook_container_security_context_user_uid", 1000)
+	viper.SetDefault("webhook_container_security_context_group_gid", 3000)
+	viper.SetDefault("webhook_container_security_context_privileged", true)
+	viper.SetDefault("webhook_pod_spec_security_context_non_root", false)
+
 	viper.AutomaticEnv()
 }
 
