@@ -361,7 +361,7 @@ func getCredentials() (azure.LegacyTokenCredential, credentialprovider.Credentia
 
 		credentials, err := cProvider.GetAzureKeyVaultCredentials()
 		return credentials, cProvider, err
-	case "cloudConfig":
+	case "azureCloudConfig":
 		klog.V(4).InfoS("using cloudConfig for auth - reading credentials", "file", config.cloudConfig)
 		f, err := os.Open(config.cloudConfig)
 		if err != nil {
