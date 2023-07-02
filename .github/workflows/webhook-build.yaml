@@ -1,6 +1,7 @@
 name: Build WebHook
 
 on:
+  workflow_dispatch:
   push:
     branches:
     - master
