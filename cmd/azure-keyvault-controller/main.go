@@ -75,7 +75,7 @@ var (
 func initConfig() {
 	viper.SetDefault("auth_type", "azureCloudConfig")
 	viper.SetDefault("metrics_enabled", false)
-	viper.SetDefault("metrics_port", "9000")
+	viper.SetDefault("http_port", "9000")
 
 	viper.AutomaticEnv()
 }
@@ -111,13 +111,9 @@ func main() {
 	akv2k8s.LogVersion()
 
 	authType := viper.GetString("auth_type")
-	serveMetrics := viper.GetBool("metrics_enabled")
-	metricsPort := viper.GetString("metrics_port")
 	objectLabels := viper.GetString("object_labels")
 
-	if serveMetrics {
-		createMetricsServer(metricsPort)
-	}
+	createHttpServer()
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -227,12 +223,17 @@ func main() {
 	controller.Run(stopCh)
 }
 
-func createMetricsServer(metricsPort string) {
-	router := mux.NewRouter()
-	httpURL := fmt.Sprintf(":%s", metricsPort)
+func createHttpServer() {
+	httpPort := viper.GetString("http_port")
+	serveMetrics := viper.GetBool("metrics_enabled")
 
-	router.Handle("/metrics", promhttp.Handler())
-	klog.InfoS("serving metrics endpoint", "path", fmt.Sprintf("%s/metrics", httpURL))
+	router := mux.NewRouter()
+	httpURL := fmt.Sprintf(":%s", httpPort)
+
+	if serveMetrics {
+		router.Handle("/metrics", promhttp.Handler())
+		klog.InfoS("serving metrics endpoint", "path", fmt.Sprintf("%s/metrics", httpURL))
+	}
 
 	router.HandleFunc("/healthz", healthHandler)
 	klog.InfoS("serving health endpoint", "path", fmt.Sprintf("%s/healthz", httpURL))
@@ -240,7 +241,7 @@ func createMetricsServer(metricsPort string) {
 	go func() {
 		err := http.ListenAndServe(httpURL, router)
 		if err != nil {
-			klog.ErrorS(err, "error serving metrics", "url", httpURL)
+			klog.ErrorS(err, "error serving http server", "url", httpURL)
 			os.Exit(1)
 		}
 	}()
