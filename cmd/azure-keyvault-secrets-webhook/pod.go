@@ -279,9 +279,6 @@ func (p podWebHook) mutatePodSpec(ctx context.Context, pod *corev1.Pod) error {
 	var err error
 	podSpec := &pod.Spec
 	podSpec.AutomountServiceAccountToken = &[]bool{false}[0]
-	podSpec.SecurityContext = &corev1.PodSecurityContext{
-		RunAsNonRoot: &[]bool{viper.GetBool("webhook_pod_spec_security_context_non_root")}[0],
-	}
 
 	if p.useAuthService {
 		klog.InfoS("creating client certificate to use with auth service", klog.KRef(p.namespace, pod.Name))
