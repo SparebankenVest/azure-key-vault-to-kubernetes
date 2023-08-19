@@ -278,7 +278,7 @@ func (p podWebHook) mutatePodSpec(ctx context.Context, pod *corev1.Pod) error {
 	var authServiceSecret *corev1.Secret
 	var err error
 	podSpec := &pod.Spec
-        podSpec.AutomountServiceAccountToken = &[]bool{false}[0]
+	podSpec.AutomountServiceAccountToken = &[]bool{false}[0]
 	podSpec.SecurityContext = &corev1.PodSecurityContext{
 		RunAsNonRoot: &[]bool{viper.GetBool("webhook_pod_spec_security_context_non_root")}[0],
 	}
