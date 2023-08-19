@@ -61,22 +61,57 @@ type podWebHook struct {
 // the /azure-keyvault/ folder to use as auth
 func (p podWebHook) getInitContainers() []corev1.Container {
 	cmd := fmt.Sprintf("cp /usr/local/bin/%s %s", injectorExecutable, p.injectorDir)
+	uid := &[]int64{viper.GetInt64("webhook_container_security_context_user_uid")}[0]
+	gid := &[]int64{viper.GetInt64("webhook_container_security_context_group_gid")}[0]
+
+	if uid != 0 && gid != 0 {
+		securityContext := &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+			ReadOnlyRootFilesystem: &[]bool{viper.GetBool("webhook_container_security_context_read_only")}[0],
+			RunAsNonRoot:           &[]bool{viper.GetBool("webhook_container_security_context_non_root")}[0],
+			RunAsUser:              uid,
+			RunAsGroup:             gid,
+			Privileged:             &[]bool{viper.GetBool("webhook_container_security_context_privileged")}[0],
+		}
+	} else if uid != 0 {
+		securityContext := &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+			ReadOnlyRootFilesystem: &[]bool{viper.GetBool("webhook_container_security_context_read_only")}[0],
+			RunAsNonRoot:           &[]bool{viper.GetBool("webhook_container_security_context_non_root")}[0],
+			RunAsUser:              uid,
+			Privileged:             &[]bool{viper.GetBool("webhook_container_security_context_privileged")}[0],
+		}
+	} else if gid != 0 {
+		securityContext := &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+			ReadOnlyRootFilesystem: &[]bool{viper.GetBool("webhook_container_security_context_read_only")}[0],
+			RunAsNonRoot:           &[]bool{viper.GetBool("webhook_container_security_context_non_root")}[0],
+			RunAsGroup:             gid,
+			Privileged:             &[]bool{viper.GetBool("webhook_container_security_context_privileged")}[0],
+		}
+	} else {
+		securityContext := &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+			ReadOnlyRootFilesystem: &[]bool{viper.GetBool("webhook_container_security_context_read_only")}[0],
+			RunAsNonRoot:           &[]bool{viper.GetBool("webhook_container_security_context_non_root")}[0],
+			Privileged:             &[]bool{viper.GetBool("webhook_container_security_context_privileged")}[0],
+		}
+	}
 
 	container := corev1.Container{
 		Name:            "copy-azurekeyvault-env",
 		Image:           viper.GetString("azurekeyvault_env_image"),
 		ImagePullPolicy: corev1.PullPolicy(viper.GetString("webhook_container_image_pull_policy")),
 		Command:         []string{"sh", "-c", cmd},
-		SecurityContext: &corev1.SecurityContext{
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
-			},
-			ReadOnlyRootFilesystem: &[]bool{viper.GetBool("webhook_container_security_context_read_only")}[0],
-			RunAsNonRoot:           &[]bool{viper.GetBool("webhook_container_security_context_non_root")}[0],
-			RunAsUser:              &[]int64{viper.GetInt64("webhook_container_security_context_user_uid")}[0],
-			RunAsGroup:             &[]int64{viper.GetInt64("webhook_container_security_context_group_gid")}[0],
-			Privileged:             &[]bool{viper.GetBool("webhook_container_security_context_privileged")}[0],
-		},
+		SecurityContext: securityContext,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      initContainerVolumeName,

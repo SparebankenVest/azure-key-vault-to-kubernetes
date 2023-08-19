@@ -209,8 +209,8 @@ func initConfig() {
 	viper.SetDefault("webhook_container_image_pull_policy", corev1.PullIfNotPresent)
 	viper.SetDefault("webhook_container_security_context_read_only", false)
 	viper.SetDefault("webhook_container_security_context_non_root", false)
-	viper.SetDefault("webhook_container_security_context_user_uid", 1000)
-	viper.SetDefault("webhook_container_security_context_group_gid", 3000)
+	viper.SetDefault("webhook_container_security_context_user_uid", 0)
+	viper.SetDefault("webhook_container_security_context_group_gid", 0)
 	viper.SetDefault("webhook_container_security_context_privileged", true)
 	viper.SetDefault("webhook_pod_spec_security_context_non_root", false)
 
