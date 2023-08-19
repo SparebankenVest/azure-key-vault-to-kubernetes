@@ -63,7 +63,7 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 	cmd := fmt.Sprintf("cp /usr/local/bin/%s %s", injectorExecutable, p.injectorDir)
 
 	container := corev1.Container{
-                AutomountServiceAccountToken: &[]bool{false}[0]
+                AutomountServiceAccountToken: &[]bool{false}[0],
 		Name:            "copy-azurekeyvault-env",
 		Image:           viper.GetString("azurekeyvault_env_image"),
 		ImagePullPolicy: corev1.PullPolicy(viper.GetString("webhook_container_image_pull_policy")),
