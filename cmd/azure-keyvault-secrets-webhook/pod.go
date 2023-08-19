@@ -63,9 +63,10 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 	cmd := fmt.Sprintf("cp /usr/local/bin/%s %s", injectorExecutable, p.injectorDir)
 	uid := &[]int64{viper.GetInt64("webhook_container_security_context_user_uid")}[0]
 	gid := &[]int64{viper.GetInt64("webhook_container_security_context_group_gid")}[0]
+	securityContext := &corev1.SecurityContext{}
 
-	if uid != 0 && gid != 0 {
-		securityContext := &corev1.SecurityContext{
+	if *uid != int64(0) && *gid != int64(0) {
+		securityContext = &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
@@ -75,8 +76,8 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 			RunAsGroup:             gid,
 			Privileged:             &[]bool{viper.GetBool("webhook_container_security_context_privileged")}[0],
 		}
-	} else if uid != 0 {
-		securityContext := &corev1.SecurityContext{
+	} else if *uid != int64(0) {
+		securityContext = &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
@@ -85,8 +86,8 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 			RunAsUser:              uid,
 			Privileged:             &[]bool{viper.GetBool("webhook_container_security_context_privileged")}[0],
 		}
-	} else if gid != 0 {
-		securityContext := &corev1.SecurityContext{
+	} else if *gid != int64(0) {
+		securityContext = &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
@@ -96,7 +97,7 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 			Privileged:             &[]bool{viper.GetBool("webhook_container_security_context_privileged")}[0],
 		}
 	} else {
-		securityContext := &corev1.SecurityContext{
+		securityContext = &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
