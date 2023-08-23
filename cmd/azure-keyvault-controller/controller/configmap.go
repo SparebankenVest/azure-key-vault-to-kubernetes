@@ -104,7 +104,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 			if err = c.updateAzureKeyVaultSecretStatusForConfigMap(akvs, getMD5HashOfStringValues(cmValues)); err != nil {
 				return nil, fmt.Errorf("failed to update status for azurekeyvaultsecret %s, error: %+v", akvs.Name, err)
 			}
-
+			c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 			return cm, nil
 		}
 	}
@@ -131,6 +131,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 		if cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Create(context.TODO(), createNewConfigMap(akvs, cmValues), metav1.CreateOptions{}); err != nil {
 			return nil, err
 		}
+		c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		return cm, nil
 	}
 
@@ -145,6 +146,7 @@ func (c *Controller) getOrCreateKubernetesConfigMap(akvs *akv.AzureKeyVaultSecre
 		cm, err = c.kubeclientset.CoreV1().ConfigMaps(akvs.Namespace).Update(context.TODO(), updatedCM, metav1.UpdateOptions{})
 		if err == nil {
 			klog.InfoS("configmap updated", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
+			c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		}
 	}
 
