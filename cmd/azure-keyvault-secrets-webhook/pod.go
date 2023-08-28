@@ -73,8 +73,6 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 			},
 			ReadOnlyRootFilesystem: &[]bool{viper.GetBool("webhook_container_security_context_read_only")}[0],
 			RunAsNonRoot:           &[]bool{viper.GetBool("webhook_container_security_context_non_root")}[0],
-			RunAsUser:              &[]int64{viper.GetInt64("webhook_container_security_context_user_uid")}[0],
-			RunAsGroup:             &[]int64{viper.GetInt64("webhook_container_security_context_group_gid")}[0],
 			Privileged:             &[]bool{viper.GetBool("webhook_container_security_context_privileged")}[0],
 		},
 		VolumeMounts: []corev1.VolumeMount{
@@ -83,6 +81,12 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 				MountPath: p.injectorDir,
 			},
 		},
+	}
+	if viper.IsSet("webhook_container_security_context_user_uid") {
+		container.SecurityContext.RunAsUser = &[]int64{viper.GetInt64("webhook_container_security_context_user_uid")}[0]
+	}
+	if viper.IsSet("webhook_container_security_context_group_gid") {
+		container.SecurityContext.RunAsGroup = &[]int64{viper.GetInt64("webhook_container_security_context_group_gid")}[0]
 	}
 
 	return []corev1.Container{container}
