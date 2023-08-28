@@ -27,7 +27,6 @@ import (
 	v2beta1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v2beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -39,9 +38,9 @@ type FakeAzureKeyVaultSecrets struct {
 	ns   string
 }
 
-var azurekeyvaultsecretsResource = schema.GroupVersionResource{Group: "spv.no", Version: "v2beta1", Resource: "azurekeyvaultsecrets"}
+var azurekeyvaultsecretsResource = v2beta1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets")
 
-var azurekeyvaultsecretsKind = schema.GroupVersionKind{Group: "spv.no", Version: "v2beta1", Kind: "AzureKeyVaultSecret"}
+var azurekeyvaultsecretsKind = v2beta1.SchemeGroupVersion.WithKind("AzureKeyVaultSecret")
 
 // Get takes name of the azureKeyVaultSecret, and returns the corresponding azureKeyVaultSecret object, and an error if there is any.
 func (c *FakeAzureKeyVaultSecrets) Get(ctx context.Context, name string, options v1.GetOptions) (result *v2beta1.AzureKeyVaultSecret, err error) {

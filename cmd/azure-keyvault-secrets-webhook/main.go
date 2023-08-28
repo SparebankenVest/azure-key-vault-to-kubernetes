@@ -231,7 +231,7 @@ func main() {
 
 	if params.logFormat == "json" {
 		loggerFactory := jsonlogs.Factory{}
-		logger, _ := loggerFactory.Create(logConfig.LoggingConfiguration{})
+		logger, _ := loggerFactory.Create(logConfig.LoggingConfiguration{}, logConfig.LoggingOptions{})
 		klog.SetLogger(logger)
 	}
 
