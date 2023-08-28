@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine
+FROM golang:1.21-alpine
 
 ENV GO111MODULE=on
 ENV XDG_CACHE_HOME /tmp/.cache

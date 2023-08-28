@@ -1,6 +1,6 @@
 module github.com/SparebankenVest/azure-key-vault-to-kubernetes
 
-go 1.20
+go 1.21
 
 require (
 	github.com/Azure/aad-pod-identity v1.8.17
