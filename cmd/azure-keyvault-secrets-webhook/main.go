@@ -212,7 +212,6 @@ func initConfig() {
 	viper.SetDefault("webhook_container_security_context_user_uid", 1000)
 	viper.SetDefault("webhook_container_security_context_group_gid", 3000)
 	viper.SetDefault("webhook_container_security_context_privileged", true)
-	viper.SetDefault("webhook_pod_spec_security_context_non_root", false)
 
 	viper.AutomaticEnv()
 }
