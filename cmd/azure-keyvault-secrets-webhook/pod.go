@@ -82,12 +82,20 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 			},
 		},
 	}
+        if viper.IsSet("webhook_container_security_context_allow_privilege_escalation") {
+                container.SecurityContext.AllowPrivilegeEscalation = &[]bool{viper.GetBool("webhook_container_security_context_allow_privilege_escalation")}[0]
+        }
 	if viper.IsSet("webhook_container_security_context_user_uid") {
 		container.SecurityContext.RunAsUser = &[]int64{viper.GetInt64("webhook_container_security_context_user_uid")}[0]
 	}
 	if viper.IsSet("webhook_container_security_context_group_gid") {
 		container.SecurityContext.RunAsGroup = &[]int64{viper.GetInt64("webhook_container_security_context_group_gid")}[0]
 	}
+        if viper.IsSet("webhook_container_security_context_seccomp_runtime_default") && viper.GetBool("webhook_container_security_context_seccomp_runtime_default") {
+                container.SecurityContext.SeccompProfile = &corev1.SeccompProfile{
+                        Type: corev1.SeccompProfileTypeRuntimeDefault,
+                }
+        }
 
 	return []corev1.Container{container}
 }
