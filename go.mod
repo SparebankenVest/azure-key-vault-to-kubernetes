@@ -27,7 +27,7 @@ require (
 	k8s.io/client-go v0.28.3
 	k8s.io/component-base v0.28.3
 	k8s.io/klog/v2 v2.100.1
-	kmodules.xyz/client-go v0.25.31-0.20230822082932-98ad0759c201
+	kmodules.xyz/client-go v0.25.40
 	sigs.k8s.io/controller-runtime v0.16.3
 	sigs.k8s.io/yaml v1.4.0
 )
