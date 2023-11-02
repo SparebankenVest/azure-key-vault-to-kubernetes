@@ -58,7 +58,7 @@ type Registry struct {
 }
 
 // NewRegistry creates and initializes registry
-func NewRegistry(authType string, credentialProvider credentialprovider.CredentialProvider) ImageRegistry { //, credentialProvider credentialprovider.CredentialProvider
+func NewRegistry(authType string, credentialProvider credentialprovider.CredentialProvider) ImageRegistry {
 	return &Registry{
 		authType:           authType,
 		imageCache:         cache.New(cache.NoExpiration, cache.NoExpiration),
