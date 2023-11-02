@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/azure/credentialprovider"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -50,13 +52,17 @@ type ImageRegistryOptions struct {
 
 // Registry impl
 type Registry struct {
-	imageCache *cache.Cache
+	authType           string
+	imageCache         *cache.Cache
+	credentialProvider credentialprovider.CredentialProvider
 }
 
 // NewRegistry creates and initializes registry
-func NewRegistry(cloudConfigPath string) ImageRegistry {
+func NewRegistry(authType string, credentialProvider credentialprovider.CredentialProvider) ImageRegistry { //, credentialProvider credentialprovider.CredentialProvider
 	return &Registry{
-		imageCache: cache.New(cache.NoExpiration, cache.NoExpiration),
+		authType:           authType,
+		imageCache:         cache.New(cache.NoExpiration, cache.NoExpiration),
+		credentialProvider: credentialProvider,
 	}
 }
 
@@ -100,7 +106,12 @@ func (r *Registry) GetImageConfig(
 		containerInfo.ImagePullSecrets = append(containerInfo.ImagePullSecrets, imagePullSecret.Name)
 	}
 
-	imageConfig, err := getImageConfig(ctx, client, containerInfo, opt)
+	remoteOptions, err := getContainerRegistryRemoteOptions(ctx, client, containerInfo, r.authType, opt, r.credentialProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get remote options: %w", err)
+	}
+
+	imageConfig, err := getImageConfig(containerInfo, remoteOptions)
 	if imageConfig != nil && allowToCache {
 		r.imageCache.Set(container.Image, imageConfig, cache.DefaultExpiration)
 	}
@@ -108,23 +119,56 @@ func (r *Registry) GetImageConfig(
 	return imageConfig, err
 }
 
-// getImageConfig download image blob from registry
-func getImageConfig(ctx context.Context, client kubernetes.Interface, container containerInfo, opt ImageRegistryOptions) (*v1.Config, error) {
-	authChain, err := k8schain.New(
-		ctx,
-		client,
-		k8schain.Options{
-			Namespace:          container.Namespace,
-			ServiceAccountName: container.ServiceAccountName,
-			ImagePullSecrets:   container.ImagePullSecrets,
-		},
-	)
+// getContainerRegistryRemoteOptions get container registry remote option
+func getContainerRegistryRemoteOptions(ctx context.Context, client kubernetes.Interface, container containerInfo, authType string, opt ImageRegistryOptions, r credentialprovider.CredentialProvider) ([]remote.Option, error) {
+	ref, err := name.ParseReference(container.Image)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse image reference: %w", err)
+	}
+	registry := ref.Context().Registry.Name()
+
+	klog.InfoS("using registry", "imageRegistry", registry)
+
+	authChain := new(authn.Keychain)
+	switch authType {
+	case "azureCloudConfig":
+		klog.InfoS("using cloudConfig for registry authentication", "config.authType", authType)
+		dockerConfigEntry, err := r.GetAcrCredentials(container.Image)
+		if err != nil {
+			return nil, fmt.Errorf("cannot fetch acr credentials: %w", err)
+		}
+
+		sec := []corev1.Secret{ //{
+			*dockerCfgSecretType.Create(container.Namespace, "secret", registry, authn.AuthConfig{
+				Username: dockerConfigEntry.Username, Password: dockerConfigEntry.Password,
+			}),
+		}
+		*authChain, err = k8schain.NewFromPullSecrets(
+			ctx,
+			sec,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+	default:
+		klog.InfoS("using imagePullSecrets for registry authentication", "config.authType", authType)
+		*authChain, err = k8schain.New(
+			ctx,
+			client,
+			k8schain.Options{
+				Namespace:          container.Namespace,
+				ServiceAccountName: container.ServiceAccountName,
+				ImagePullSecrets:   container.ImagePullSecrets,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	options := []remote.Option{
-		remote.WithAuthFromKeychain(authChain),
+		remote.WithAuthFromKeychain(*authChain),
 	}
 
 	if opt.SkipVerify {
@@ -133,7 +177,11 @@ func getImageConfig(ctx context.Context, client kubernetes.Interface, container 
 		}
 		options = append(options, remote.WithTransport(tr))
 	}
+	return options, err
+}
 
+// getImageConfig download image blob from registry
+func getImageConfig(container containerInfo, options []remote.Option) (*v1.Config, error) {
 	ref, err := name.ParseReference(container.Image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse image reference: %w", err)
