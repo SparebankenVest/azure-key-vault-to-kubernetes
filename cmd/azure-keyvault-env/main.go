@@ -157,7 +157,10 @@ func main() {
 
 	if logFormat == "json" {
 		loggerFactory := jsonlogs.Factory{}
-		logger, _ := loggerFactory.Create(logConfig.LoggingConfiguration{}, logConfig.LoggingOptions{})
+		logger, _ := loggerFactory.Create(*logConfig.NewLoggingConfiguration(), logConfig.LoggingOptions{
+			ErrorStream: os.Stderr,
+			InfoStream:  os.Stdout,
+		})
 		klog.SetLogger(logger)
 	}
 
