@@ -39,6 +39,7 @@ import (
 	"k8s.io/client-go/rest"
 	logConfig "k8s.io/component-base/logs/api/v1"
 	jsonlogs "k8s.io/component-base/logs/json"
+	"k8s.io/klog/examples/util/require"
 	"k8s.io/klog/v2"
 )
 
@@ -144,6 +145,7 @@ func validateConfig(requiredEnvVars map[string]string) error {
 }
 
 func main() {
+
 	initConfig()
 
 	akv2k8s.Version = viper.GetString("version")
@@ -163,6 +165,7 @@ func main() {
 
 	klog.InitFlags(nil)
 	defer klog.Flush()
+	require.NoError(flag.Set("skip_headers", "true"))
 
 	if logLevel == "debug" {
 		err = flag.Set("v", "4")
