@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	envLookupRegex = `^([a-zA-Z0-9]([a-zA-Z0-9-]{0,239}[a-zA-Z0-9])?)@azurekeyvault(\?([a-zA-Z_][a-zA-Z0-9_\.]*)?)?$`
+	envLookupRegex = `^([a-zA-Z0-9]([a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?)@azurekeyvault(\?([a-zA-Z_][a-zA-Z0-9_\.]*)?)?$`
 )
 
 type EnvSecret struct {
