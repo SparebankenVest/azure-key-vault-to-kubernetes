@@ -69,6 +69,11 @@ func (c CloudConfigCredentialProvider) GetAcrCredentials(image string) (k8sCrede
 		Password: "",
 	}
 
+	if !c.IsAcrRegistry(image) {
+		klog.V(4).Info("image not from acr, returning empty credentials")
+		return cred, nil
+	}
+
 	if c.config.UseManagedIdentityExtension {
 		klog.V(4).Info("using managed identity for acr credentials")
 		loginServer := parseACRLoginServerFromImage(image, c.environment)

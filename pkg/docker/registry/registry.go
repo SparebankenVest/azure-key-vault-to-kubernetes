@@ -138,17 +138,31 @@ func getContainerRegistryRemoteOptions(ctx context.Context, client kubernetes.In
 			return nil, fmt.Errorf("cannot fetch acr credentials: %w", err)
 		}
 
-		sec := []corev1.Secret{ //{
-			*dockerCfgSecretType.Create(container.Namespace, "secret", registry, authn.AuthConfig{
-				Username: dockerConfigEntry.Username, Password: dockerConfigEntry.Password,
-			}),
-		}
-		*authChain, err = k8schain.NewFromPullSecrets(
-			ctx,
-			sec,
-		)
-		if err != nil {
-			return nil, err
+		if dockerConfigEntry.Username != "" {
+
+			sec := []corev1.Secret{ //{
+				*dockerCfgSecretType.Create(container.Namespace, "secret", registry, authn.AuthConfig{
+					Username: dockerConfigEntry.Username, Password: dockerConfigEntry.Password,
+				}),
+			}
+			*authChain, err = k8schain.NewFromPullSecrets(
+				ctx,
+				sec,
+			)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			*authChain, err = k8schain.New(
+				ctx,
+				client,
+				k8schain.Options{
+					Namespace:          container.Namespace,
+					ServiceAccountName: container.ServiceAccountName},
+			)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 	default:
