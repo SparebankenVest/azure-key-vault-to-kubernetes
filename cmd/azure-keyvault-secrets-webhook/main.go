@@ -231,7 +231,11 @@ func main() {
 
 	if params.logFormat == "json" {
 		loggerFactory := jsonlogs.Factory{}
-		logger, _ := loggerFactory.Create(logConfig.LoggingConfiguration{}, logConfig.LoggingOptions{})
+		logger, _ := loggerFactory.Create(*logConfig.NewLoggingConfiguration(), logConfig.LoggingOptions{
+			ErrorStream: os.Stderr,
+			InfoStream:  os.Stdout,
+		})
+
 		klog.SetLogger(logger)
 	}
 
@@ -319,7 +323,7 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
 
-	config.registry = registry.NewRegistry(config.cloudConfig)
+	config.registry = registry.NewRegistry(config.authType, config.credentialProvider)
 
 	createHTTPEndpoint(wg, config.httpPort, config.useAuthService, config.authService)
 	createMTLSEndpoint(wg, config.mtlsPort, config.useAuthService, config.authService)
