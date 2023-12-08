@@ -100,6 +100,19 @@ func getCredentials() (azure.LegacyTokenCredential, string, error) {
 	return creds, provider.GetAzureKeyVaultDNSSuffix(), nil
 }
 
+func getCredentialsIdentity() (azure.LegacyTokenCredential, string, error) {
+	provider, err := credentialprovider.NewFromAzidentity()
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to create credentials provider for azure key vault, error: %w", err)
+	}
+
+	creds, err := provider.GetAzureKeyVaultCredentials()
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get credentials for azure key vault, error: %w", err)
+	}
+	return creds, provider.GetAzureKeyVaultDNSSuffix(), nil
+}
+
 func getCredentialsAuthService(authServiceAddress string, authServiceValidationAddress string, clientCertDir string) (azure.LegacyTokenCredential, error) {
 	startupCACert, err := os.ReadFile(path.Join(clientCertDir, "ca.crt"))
 	if err != nil {
