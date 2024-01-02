@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"time"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azcertificates"
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
@@ -65,7 +66,7 @@ func (a *azureKeyVaultService) vaultNameToURL(name string) string {
 	if suffix == "" {
 		suffix = "vault.azure.net"
 	}
-	return fmt.Sprintf("https://%s.%s", name, suffix)
+	return fmt.Sprintf("https://%s.%s", strings.TrimSuffix(name, "."), strings.TrimPrefix(suffix, "."))
 }
 
 // GetSecret download secrets from Azure Key Vault
