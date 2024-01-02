@@ -66,7 +66,7 @@ func (a *azureKeyVaultService) vaultNameToURL(name string) string {
 	if suffix == "" {
 		suffix = "vault.azure.net"
 	}
-	return fmt.Sprintf("https://%s.%s", strings.TrimSuffix(name, "."), strings.TrimPrefix(suffix, "."))
+	return fmt.Sprintf("https://%s.%s", name, strings.TrimPrefix(suffix, "."))
 }
 
 // GetSecret download secrets from Azure Key Vault
