@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-secrets-webhook/auth"
@@ -99,6 +100,21 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 	if viper.IsSet("webhook_container_security_context_read_only_root_fs") {
 		container.SecurityContext.ReadOnlyRootFilesystem = &[]bool{viper.GetBool("webhook_container_security_context_read_only_root_fs")}[0]
 	}
+
+	resourceList := corev1.ResourceList{}
+	if viper.IsSet(("webhook_container_memory_limit")) {
+		memory, err := resource.ParseQuantity(viper.GetString("webhook_container_memory_limit"))
+		if err == nil {
+			resourceList["memory"] = memory
+		}
+	}
+	if viper.IsSet(("webhook_container_cpu_limit")) {
+		cpu, err := resource.ParseQuantity(viper.GetString("webhook_container_cpu_limit"))
+		if err == nil {
+			resourceList["cpu"] = cpu
+		}
+	}
+	container.Resources.Limits = resourceList
 
 	return []corev1.Container{container}
 }
