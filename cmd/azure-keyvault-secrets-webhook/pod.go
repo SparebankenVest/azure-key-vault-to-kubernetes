@@ -96,6 +96,9 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
 		}
 	}
+	if viper.IsSet("webhook_container_security_context_read_only_root_fs") {
+		container.SecurityContext.ReadOnlyRootFilesystem = &[]bool{viper.GetBool("webhook_container_security_context_read_only_root_fs")}[0]
+	}
 
 	return []corev1.Container{container}
 }
