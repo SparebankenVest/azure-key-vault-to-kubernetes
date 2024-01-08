@@ -207,9 +207,12 @@ func initConfig() {
 	viper.SetDefault("env_injector_exec_dir", "/azure-keyvault/")
 
 	viper.SetDefault("webhook_container_image_pull_policy", corev1.PullIfNotPresent)
-	viper.SetDefault("webhook_container_security_context_read_only", false)
-	viper.SetDefault("webhook_container_security_context_non_root", false)
-	viper.SetDefault("webhook_container_security_context_privileged", true)
+	viper.SetDefault("webhook_container_security_context_read_only", true)
+	viper.SetDefault("webhook_container_security_context_non_root", true)
+	viper.SetDefault("webhook_container_security_context_privileged", false)
+	viper.SetDefault("webhook_container_security_context_allow_privilege_escalation", false)
+	viper.SetDefault("webhook_container_security_context_user_uid", 10000)
+	viper.SetDefault("webhook_container_security_context_read_only_root_fs", true)
 
 	viper.AutomaticEnv()
 }
