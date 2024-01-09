@@ -213,6 +213,8 @@ func initConfig() {
 	viper.SetDefault("webhook_container_security_context_allow_privilege_escalation", false)
 	viper.SetDefault("webhook_container_security_context_user_uid", 10000)
 	viper.SetDefault("webhook_container_security_context_read_only_root_fs", true)
+	viper.SetDefault("webhook_container_memory_limit", "512Mi")
+	viper.SetDefault("webhook_container_cpu_limit", "500m")
 
 	viper.AutomaticEnv()
 }
