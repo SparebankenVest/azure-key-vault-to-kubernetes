@@ -37,7 +37,6 @@ LABEL org.label-schema.url=$VCS_URL
 LABEL org.label-schema.description="A Kubernetes Mutating Admission Webhook that adds an init container to a pod that will inject environment variables from Azure Key Vault"
 LABEL org.label-schema.vendor="Sparebanken Vest"
 LABEL org.label-schema.author="Jon Arild Tørresdal"
-RUN apk update && apk upgrade
 
 COPY --from=builder /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes/bin/azure-key-vault-to-kubernetes/azure-keyvault-secrets-webhook /usr/local/bin/
 ENV DEBUG false
@@ -58,7 +57,6 @@ LABEL org.label-schema.url=$VCS_URL
 LABEL org.label-schema.description="A Kubernetes Mutating Admission Webhook that adds an init container to a pod that will inject environment variables from Azure Key Vault"
 LABEL org.label-schema.vendor="Sparebanken Vest"
 LABEL org.label-schema.author="Jon Arild Tørresdal"
-RUN apk update && apk upgrade
 
 COPY --from=builder /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes/bin/azure-key-vault-to-kubernetes/azure-keyvault-controller /usr/local/bin/
 ENV DEBUG false
@@ -79,7 +77,6 @@ LABEL org.label-schema.url=$VCS_URL
 LABEL org.label-schema.description="A Kubernetes Mutating Admission Webhook that adds an init container to a pod that will inject environment variables from Azure Key Vault"
 LABEL org.label-schema.vendor="Sparebanken Vest"
 LABEL org.label-schema.author="Jon Arild Tørresdal"
-RUN apk update && apk upgrade
 
 COPY --from=builder /go/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes/bin/azure-key-vault-to-kubernetes/azure-keyvault-env /usr/local/bin/
 ENV DEBUG false
