@@ -205,6 +205,12 @@ func initConfig() {
 	viper.SetDefault("use_auth_service", true)
 	viper.SetDefault("metrics_enabled", false)
 	viper.SetDefault("env_injector_exec_dir", "/azure-keyvault/")
+
+	viper.SetDefault("webhook_container_image_pull_policy", corev1.PullIfNotPresent)
+	viper.SetDefault("webhook_container_security_context_read_only", false)
+	viper.SetDefault("webhook_container_security_context_non_root", false)
+	viper.SetDefault("webhook_container_security_context_privileged", true)
+
 	viper.AutomaticEnv()
 }
 
@@ -225,7 +231,11 @@ func main() {
 
 	if params.logFormat == "json" {
 		loggerFactory := jsonlogs.Factory{}
-		logger, _ := loggerFactory.Create(logConfig.LoggingConfiguration{})
+		logger, _ := loggerFactory.Create(*logConfig.NewLoggingConfiguration(), logConfig.LoggingOptions{
+			ErrorStream: os.Stderr,
+			InfoStream:  os.Stdout,
+		})
+
 		klog.SetLogger(logger)
 	}
 
@@ -313,7 +323,7 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
 
-	config.registry = registry.NewRegistry(config.cloudConfig)
+	config.registry = registry.NewRegistry(config.authType, config.credentialProvider)
 
 	createHTTPEndpoint(wg, config.httpPort, config.useAuthService, config.authService)
 	createMTLSEndpoint(wg, config.mtlsPort, config.useAuthService, config.authService)
@@ -352,17 +362,17 @@ func getCredentials() (azure.LegacyTokenCredential, credentialprovider.Credentia
 
 		credentials, err := cProvider.GetAzureKeyVaultCredentials()
 		return credentials, cProvider, err
-	case "cloudConfig":
+	case "azureCloudConfig":
 		klog.V(4).InfoS("using cloudConfig for auth - reading credentials", "file", config.cloudConfig)
 		f, err := os.Open(config.cloudConfig)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to read azure config")
+			return nil, nil, fmt.Errorf("failed to read azure config: %+v", err)
 		}
 		defer f.Close()
 
 		cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
 		if err != nil {
-			return nil, cloudCnfProvider, fmt.Errorf("failed to create cloud config provider for azure key vault")
+			return nil, cloudCnfProvider, fmt.Errorf("failed to create cloud config provider for azure key vault: %+v", err)
 		}
 
 		credentials, err := cloudCnfProvider.GetAzureKeyVaultCredentials()

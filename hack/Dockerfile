@@ -1,16 +1,17 @@
-FROM golang:1.18.1-alpine
+FROM golang:1.21-alpine
 
 ENV GO111MODULE=on
 ENV XDG_CACHE_HOME /tmp/.cache
 ENV GOPATH /tmp/go
 ENV GOBIN /tmp/gobin
 
-ARG KUBERNETES_VERSION="v0.23.5"
+ARG KUBERNETES_VERSION="v0.28.3"
 ARG REPO="${GOPATH}/src/github.com/SparebankenVest/azure-key-vault-to-kubernetes"
 
 RUN apk add --no-cache bash git openssh \
   && git clone --depth 1 --branch ${KUBERNETES_VERSION} \
-  https://github.com/kubernetes/code-generator.git ${GOPATH}/src/k8s.io/code-generator
+  https://github.com/kubernetes/code-generator.git ${GOPATH}/src/k8s.io/code-generator \
+  && git config --global --add safe.directory '*'
 
 RUN cd ${GOPATH}/src/k8s.io/code-generator \
   && go mod download \

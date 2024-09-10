@@ -88,7 +88,7 @@ func TestIntegrationGetSecret(t *testing.T) {
 		t.Error(err)
 	}
 
-	srvc := NewService(creds)
+	srvc := NewService(creds, provider.GetAzureKeyVaultDNSSuffix())
 	akvSecret := newAzureKeyVaultSecret("mySecret", "akv2k8s-test", "my-secret")
 
 	secret, err := srvc.GetSecret(&akvSecret.Spec.Vault)
@@ -115,7 +115,7 @@ func TestIntegrationEnvironmentGetSecret(t *testing.T) {
 		t.Error(err)
 	}
 
-	srvc := NewService(creds)
+	srvc := NewService(creds, provider.GetAzureKeyVaultDNSSuffix())
 	akvSecret := newAzureKeyVaultSecret("mySecret", "akv2k8s-test", "my-secret")
 
 	secret, err := srvc.GetSecret(&akvSecret.Spec.Vault)

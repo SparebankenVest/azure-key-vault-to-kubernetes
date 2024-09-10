@@ -135,7 +135,6 @@ func (c *Controller) syncDeletedAzureKeyVaultSecret(key string) error {
 		}
 
 		klog.V(4).InfoS("sync successful", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
-		c.recorder.Event(secret, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		outputObject = secret
 	}
 
@@ -146,7 +145,6 @@ func (c *Controller) syncDeletedAzureKeyVaultSecret(key string) error {
 		}
 
 		klog.V(4).InfoS("sync successful", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
-		c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		outputObject = cm
 	}
 
@@ -179,7 +177,6 @@ func (c *Controller) syncAzureKeyVaultSecret(key string) error {
 		}
 
 		klog.V(4).InfoS("sync successful", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
-		c.recorder.Event(secret, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		outputObject = secret
 	}
 
@@ -190,7 +187,6 @@ func (c *Controller) syncAzureKeyVaultSecret(key string) error {
 		}
 
 		klog.V(4).InfoS("sync successful", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
-		c.recorder.Event(cm, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		outputObject = cm
 	}
 
@@ -225,6 +221,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, akvs.Name, akvs.Spec.Vault.Name, err.Error())
 			c.recorder.Event(akvs, corev1.EventTypeWarning, ErrAzureVault, msg)
+			syncFailures.WithLabelValues("sync", "AzureKeyVault").Inc()
 			return fmt.Errorf(msg)
 		}
 
@@ -257,6 +254,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 				}
 
 				secretName = secret.Name
+				c.recorder.Event(akvs, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSyncedWithAzureKeyVault)
 				klog.InfoS("secret changed - any resources (like pods) using this secret must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(secret), "secret", klog.KObj(akvs))
 			}
 		}
@@ -298,6 +296,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 					return fmt.Errorf("failed to update configmap, error: %+v", err)
 				}
 				cmName = cm.Name
+				c.recorder.Event(akvs, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSyncedWithAzureKeyVault)
 				klog.InfoS("configmap changed - any resources (like pods) using this configmap must be restarted to pick up the new value - details: https://github.com/kubernetes/kubernetes/issues/22368", "azurekeyvaultsecret", klog.KObj(akvs), "configmap", klog.KObj(cm))
 			}
 		}
@@ -309,7 +308,6 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 	}
 
 	klog.V(4).InfoS("sync successful", "azurekeyvaultsecret", klog.KObj(akvs))
-	c.recorder.Event(akvs, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSyncedWithAzureKeyVault)
 	return nil
 }
 

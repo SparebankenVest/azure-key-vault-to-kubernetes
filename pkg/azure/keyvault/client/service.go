@@ -48,18 +48,24 @@ type CertificateOptions struct {
 }
 
 type azureKeyVaultService struct {
-	credentials azure.LegacyTokenCredential
+	credentials       azure.LegacyTokenCredential
+	keyVaultDNSSuffix string
 }
 
 // NewService creates a new AzureKeyVaultService
-func NewService(creds azure.LegacyTokenCredential) Service {
+func NewService(creds azure.LegacyTokenCredential, keyVaultDNSSuffix string) Service {
 	return &azureKeyVaultService{
-		credentials: creds,
+		credentials:       creds,
+		keyVaultDNSSuffix: keyVaultDNSSuffix,
 	}
 }
 
-func vaultNameToURL(name string) string {
-	return fmt.Sprintf("https://%s.vault.azure.net", name)
+func (a *azureKeyVaultService) vaultNameToURL(name string) string {
+	suffix := a.keyVaultDNSSuffix
+	if suffix == "" {
+		suffix = "vault.azure.net"
+	}
+	return fmt.Sprintf("https://%s.%s", name, suffix)
 }
 
 // GetSecret download secrets from Azure Key Vault
@@ -68,7 +74,7 @@ func (a *azureKeyVaultService) GetSecret(vaultSpec *akvs.AzureKeyVault) (string,
 		return "", fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
 	}
 
-	client, err := azsecrets.NewClient(vaultNameToURL(vaultSpec.Name), a.credentials, nil)
+	client, err := azsecrets.NewClient(a.vaultNameToURL(vaultSpec.Name), a.credentials, nil)
 	if err != nil {
 		return "", err
 	}
@@ -88,7 +94,7 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvs.AzureKeyVault) (string, er
 		return "", fmt.Errorf("azurekeyvaultsecret.spec.vault.object.name not set")
 	}
 
-	client, err := azkeys.NewClient(vaultNameToURL(vaultSpec.Name), a.credentials, nil)
+	client, err := azkeys.NewClient(a.vaultNameToURL(vaultSpec.Name), a.credentials, nil)
 	if err != nil {
 		return "", err
 	}
@@ -107,11 +113,11 @@ func (a *azureKeyVaultService) GetKey(vaultSpec *akvs.AzureKeyVault) (string, er
 
 // GetCertificate download public/private certificates from Azure Key Vault
 func (a *azureKeyVaultService) GetCertificate(vaultSpec *akvs.AzureKeyVault, options *CertificateOptions) (*Certificate, error) {
-	client, err := azcertificates.NewClient(vaultNameToURL(vaultSpec.Name), a.credentials, &azcertificates.ClientOptions{})
+	client, err := azcertificates.NewClient(a.vaultNameToURL(vaultSpec.Name), a.credentials, &azcertificates.ClientOptions{})
 	if err != nil {
 		return nil, err
 	}
-	clientSecret, err := azsecrets.NewClient(vaultNameToURL(vaultSpec.Name), a.credentials, &azsecrets.ClientOptions{})
+	clientSecret, err := azsecrets.NewClient(a.vaultNameToURL(vaultSpec.Name), a.credentials, &azsecrets.ClientOptions{})
 	if err != nil {
 		return nil, err
 	}

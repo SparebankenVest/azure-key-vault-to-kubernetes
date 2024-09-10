@@ -84,6 +84,11 @@ func (c CloudConfigCredentialProvider) GetAzureKeyVaultCredentials() (azure.Lega
 	return azure.NewLegacyTokenCredentialAdal(token), nil
 }
 
+// GetAzureKeyVaultDNSSuffix returns the environment specific Azure Key Vault DNS suffix
+func (c CloudConfigCredentialProvider) GetAzureKeyVaultDNSSuffix() string {
+	return c.environment.KeyVaultDNSSuffix
+}
+
 // GetAzureKeyVaultCredentials will get Azure credentials
 func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (azure.LegacyTokenCredential, error) {
 	azureToken, err := getCredentials(c.envSettings, c.envSettings.Environment.ResourceIdentifiers.KeyVault)
@@ -92,7 +97,11 @@ func (c EnvironmentCredentialProvider) GetAzureKeyVaultCredentials() (azure.Lega
 	}
 
 	return azure.NewLegacyTokenCredentialAdal(azureToken.token), nil
+}
 
+// GetAzureKeyVaultDNSSuffix returns the environment specific Azure Key Vault DNS suffix
+func (c EnvironmentCredentialProvider) GetAzureKeyVaultDNSSuffix() string {
+	return c.envSettings.Environment.KeyVaultDNSSuffix
 }
 
 func getCredentialsAzidentity() (azure.LegacyTokenCredential, error) {
@@ -107,4 +116,9 @@ func getCredentialsAzidentity() (azure.LegacyTokenCredential, error) {
 // GetAzureKeyVaultCredentials will get Azure credentials
 func (c AzidentityCredentialProvider) GetAzureKeyVaultCredentials() (azure.LegacyTokenCredential, error) {
 	return getCredentialsAzidentity()
+}
+
+// GetAzureKeyVaultDNSSuffix returns the environment specific Azure Key Vault DNS suffix
+func (c AzidentityCredentialProvider) GetAzureKeyVaultDNSSuffix() string {
+	return c.envSettings.Environment.KeyVaultDNSSuffix
 }

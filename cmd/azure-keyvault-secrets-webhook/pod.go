@@ -65,14 +65,36 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 	container := corev1.Container{
 		Name:            "copy-azurekeyvault-env",
 		Image:           viper.GetString("azurekeyvault_env_image"),
-		ImagePullPolicy: corev1.PullIfNotPresent,
+		ImagePullPolicy: corev1.PullPolicy(viper.GetString("webhook_container_image_pull_policy")),
 		Command:         []string{"sh", "-c", cmd},
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+			ReadOnlyRootFilesystem: &[]bool{viper.GetBool("webhook_container_security_context_read_only")}[0],
+			RunAsNonRoot:           &[]bool{viper.GetBool("webhook_container_security_context_non_root")}[0],
+			Privileged:             &[]bool{viper.GetBool("webhook_container_security_context_privileged")}[0],
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      initContainerVolumeName,
 				MountPath: p.injectorDir,
 			},
 		},
+	}
+	if viper.IsSet("webhook_container_security_context_allow_privilege_escalation") {
+		container.SecurityContext.AllowPrivilegeEscalation = &[]bool{viper.GetBool("webhook_container_security_context_allow_privilege_escalation")}[0]
+	}
+	if viper.IsSet("webhook_container_security_context_user_uid") {
+		container.SecurityContext.RunAsUser = &[]int64{viper.GetInt64("webhook_container_security_context_user_uid")}[0]
+	}
+	if viper.IsSet("webhook_container_security_context_group_gid") {
+		container.SecurityContext.RunAsGroup = &[]int64{viper.GetInt64("webhook_container_security_context_group_gid")}[0]
+	}
+	if viper.IsSet("webhook_container_security_context_seccomp_runtime_default") && viper.GetBool("webhook_container_security_context_seccomp_runtime_default") {
+		container.SecurityContext.SeccompProfile = &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		}
 	}
 
 	return []corev1.Container{container}

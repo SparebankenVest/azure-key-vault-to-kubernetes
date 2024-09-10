@@ -101,7 +101,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 			if err = c.updateAzureKeyVaultSecretStatusForSecret(akvs, getMD5HashOfByteValues(secretValues)); err != nil {
 				return nil, err
 			}
-
+			c.recorder.Event(secret, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 			return secret, nil
 		}
 	}
@@ -128,6 +128,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 		if secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Create(context.TODO(), createNewSecret(akvs, secretValues), metav1.CreateOptions{}); err != nil {
 			return nil, err
 		}
+		c.recorder.Event(secret, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		return secret, nil
 	}
 
@@ -141,6 +142,7 @@ func (c *Controller) getOrCreateKubernetesSecret(akvs *akv.AzureKeyVaultSecret) 
 		secret, err = c.kubeclientset.CoreV1().Secrets(akvs.Namespace).Update(context.TODO(), updatedSecret, metav1.UpdateOptions{})
 		if err == nil {
 			klog.InfoS("secret updated", "azurekeyvaultsecret", klog.KObj(akvs), "secret", klog.KObj(secret))
+			c.recorder.Event(secret, corev1.EventTypeNormal, SuccessSynced, MessageAzureKeyVaultSecretSynced)
 		}
 	}
 
@@ -200,9 +202,9 @@ func createNewSecretFromExisting(akvs *akv.AzureKeyVaultSecret, values map[strin
 		if !isOwnedBy(existingSecret, akvs) {
 			controlledBy := metav1.GetControllerOf(existingSecret)
 			if controlledBy != nil {
-				return nil, fmt.Errorf("cannot update existing secret %s/%s of type %s controlled by %s, as this azurekeyvalutsecret %s would overwrite keys", existingSecret.Namespace, existingSecret.Name, existingSecret.Type, controlledBy.Name, akvs.Name)
+				return nil, fmt.Errorf("cannot update existing secret %s/%s of type %s controlled by %s, as this azurekeyvaultsecret %s would overwrite keys", existingSecret.Namespace, existingSecret.Name, existingSecret.Type, controlledBy.Name, akvs.Name)
 			}
-			return nil, fmt.Errorf("cannot update existing secret %s/%s of type %s not controlled by akv2k8s, as this azurekeyvalutsecret %s would overwrite keys", existingSecret.Namespace, existingSecret.Name, existingSecret.Type, akvs.Name)
+			return nil, fmt.Errorf("cannot update existing secret %s/%s of type %s not controlled by akv2k8s, as this azurekeyvaultsecret %s would overwrite keys", existingSecret.Namespace, existingSecret.Name, existingSecret.Type, akvs.Name)
 		}
 	}
 

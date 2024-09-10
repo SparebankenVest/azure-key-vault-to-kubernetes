@@ -24,10 +24,9 @@ package fake
 import (
 	"context"
 
-	azurekeyvaultv1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/SparebankenVest/azure-key-vault-to-kubernetes/pkg/k8s/apis/azurekeyvault/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -39,25 +38,25 @@ type FakeAzureKeyVaultSecrets struct {
 	ns   string
 }
 
-var azurekeyvaultsecretsResource = schema.GroupVersionResource{Group: "spv.no", Version: "v1", Resource: "azurekeyvaultsecrets"}
+var azurekeyvaultsecretsResource = v1.SchemeGroupVersion.WithResource("azurekeyvaultsecrets")
 
-var azurekeyvaultsecretsKind = schema.GroupVersionKind{Group: "spv.no", Version: "v1", Kind: "AzureKeyVaultSecret"}
+var azurekeyvaultsecretsKind = v1.SchemeGroupVersion.WithKind("AzureKeyVaultSecret")
 
 // Get takes name of the azureKeyVaultSecret, and returns the corresponding azureKeyVaultSecret object, and an error if there is any.
-func (c *FakeAzureKeyVaultSecrets) Get(ctx context.Context, name string, options v1.GetOptions) (result *azurekeyvaultv1.AzureKeyVaultSecret, err error) {
+func (c *FakeAzureKeyVaultSecrets) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.AzureKeyVaultSecret, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(azurekeyvaultsecretsResource, c.ns, name), &azurekeyvaultv1.AzureKeyVaultSecret{})
+		Invokes(testing.NewGetAction(azurekeyvaultsecretsResource, c.ns, name), &v1.AzureKeyVaultSecret{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*azurekeyvaultv1.AzureKeyVaultSecret), err
+	return obj.(*v1.AzureKeyVaultSecret), err
 }
 
 // List takes label and field selectors, and returns the list of AzureKeyVaultSecrets that match those selectors.
-func (c *FakeAzureKeyVaultSecrets) List(ctx context.Context, opts v1.ListOptions) (result *azurekeyvaultv1.AzureKeyVaultSecretList, err error) {
+func (c *FakeAzureKeyVaultSecrets) List(ctx context.Context, opts metav1.ListOptions) (result *v1.AzureKeyVaultSecretList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(azurekeyvaultsecretsResource, azurekeyvaultsecretsKind, c.ns, opts), &azurekeyvaultv1.AzureKeyVaultSecretList{})
+		Invokes(testing.NewListAction(azurekeyvaultsecretsResource, azurekeyvaultsecretsKind, c.ns, opts), &v1.AzureKeyVaultSecretList{})
 
 	if obj == nil {
 		return nil, err
@@ -67,8 +66,8 @@ func (c *FakeAzureKeyVaultSecrets) List(ctx context.Context, opts v1.ListOptions
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &azurekeyvaultv1.AzureKeyVaultSecretList{ListMeta: obj.(*azurekeyvaultv1.AzureKeyVaultSecretList).ListMeta}
-	for _, item := range obj.(*azurekeyvaultv1.AzureKeyVaultSecretList).Items {
+	list := &v1.AzureKeyVaultSecretList{ListMeta: obj.(*v1.AzureKeyVaultSecretList).ListMeta}
+	for _, item := range obj.(*v1.AzureKeyVaultSecretList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -77,69 +76,69 @@ func (c *FakeAzureKeyVaultSecrets) List(ctx context.Context, opts v1.ListOptions
 }
 
 // Watch returns a watch.Interface that watches the requested azureKeyVaultSecrets.
-func (c *FakeAzureKeyVaultSecrets) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeAzureKeyVaultSecrets) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(azurekeyvaultsecretsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a azureKeyVaultSecret and creates it.  Returns the server's representation of the azureKeyVaultSecret, and an error, if there is any.
-func (c *FakeAzureKeyVaultSecrets) Create(ctx context.Context, azureKeyVaultSecret *azurekeyvaultv1.AzureKeyVaultSecret, opts v1.CreateOptions) (result *azurekeyvaultv1.AzureKeyVaultSecret, err error) {
+func (c *FakeAzureKeyVaultSecrets) Create(ctx context.Context, azureKeyVaultSecret *v1.AzureKeyVaultSecret, opts metav1.CreateOptions) (result *v1.AzureKeyVaultSecret, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(azurekeyvaultsecretsResource, c.ns, azureKeyVaultSecret), &azurekeyvaultv1.AzureKeyVaultSecret{})
+		Invokes(testing.NewCreateAction(azurekeyvaultsecretsResource, c.ns, azureKeyVaultSecret), &v1.AzureKeyVaultSecret{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*azurekeyvaultv1.AzureKeyVaultSecret), err
+	return obj.(*v1.AzureKeyVaultSecret), err
 }
 
 // Update takes the representation of a azureKeyVaultSecret and updates it. Returns the server's representation of the azureKeyVaultSecret, and an error, if there is any.
-func (c *FakeAzureKeyVaultSecrets) Update(ctx context.Context, azureKeyVaultSecret *azurekeyvaultv1.AzureKeyVaultSecret, opts v1.UpdateOptions) (result *azurekeyvaultv1.AzureKeyVaultSecret, err error) {
+func (c *FakeAzureKeyVaultSecrets) Update(ctx context.Context, azureKeyVaultSecret *v1.AzureKeyVaultSecret, opts metav1.UpdateOptions) (result *v1.AzureKeyVaultSecret, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(azurekeyvaultsecretsResource, c.ns, azureKeyVaultSecret), &azurekeyvaultv1.AzureKeyVaultSecret{})
+		Invokes(testing.NewUpdateAction(azurekeyvaultsecretsResource, c.ns, azureKeyVaultSecret), &v1.AzureKeyVaultSecret{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*azurekeyvaultv1.AzureKeyVaultSecret), err
+	return obj.(*v1.AzureKeyVaultSecret), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeAzureKeyVaultSecrets) UpdateStatus(ctx context.Context, azureKeyVaultSecret *azurekeyvaultv1.AzureKeyVaultSecret, opts v1.UpdateOptions) (*azurekeyvaultv1.AzureKeyVaultSecret, error) {
+func (c *FakeAzureKeyVaultSecrets) UpdateStatus(ctx context.Context, azureKeyVaultSecret *v1.AzureKeyVaultSecret, opts metav1.UpdateOptions) (*v1.AzureKeyVaultSecret, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(azurekeyvaultsecretsResource, "status", c.ns, azureKeyVaultSecret), &azurekeyvaultv1.AzureKeyVaultSecret{})
+		Invokes(testing.NewUpdateSubresourceAction(azurekeyvaultsecretsResource, "status", c.ns, azureKeyVaultSecret), &v1.AzureKeyVaultSecret{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*azurekeyvaultv1.AzureKeyVaultSecret), err
+	return obj.(*v1.AzureKeyVaultSecret), err
 }
 
 // Delete takes name of the azureKeyVaultSecret and deletes it. Returns an error if one occurs.
-func (c *FakeAzureKeyVaultSecrets) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+func (c *FakeAzureKeyVaultSecrets) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(azurekeyvaultsecretsResource, c.ns, name, opts), &azurekeyvaultv1.AzureKeyVaultSecret{})
+		Invokes(testing.NewDeleteActionWithOptions(azurekeyvaultsecretsResource, c.ns, name, opts), &v1.AzureKeyVaultSecret{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeAzureKeyVaultSecrets) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakeAzureKeyVaultSecrets) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(azurekeyvaultsecretsResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &azurekeyvaultv1.AzureKeyVaultSecretList{})
+	_, err := c.Fake.Invokes(action, &v1.AzureKeyVaultSecretList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched azureKeyVaultSecret.
-func (c *FakeAzureKeyVaultSecrets) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *azurekeyvaultv1.AzureKeyVaultSecret, err error) {
+func (c *FakeAzureKeyVaultSecrets) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.AzureKeyVaultSecret, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(azurekeyvaultsecretsResource, c.ns, name, pt, data, subresources...), &azurekeyvaultv1.AzureKeyVaultSecret{})
+		Invokes(testing.NewPatchSubresourceAction(azurekeyvaultsecretsResource, c.ns, name, pt, data, subresources...), &v1.AzureKeyVaultSecret{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*azurekeyvaultv1.AzureKeyVaultSecret), err
+	return obj.(*v1.AzureKeyVaultSecret), err
 }

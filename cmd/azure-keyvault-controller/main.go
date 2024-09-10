@@ -75,7 +75,7 @@ var (
 func initConfig() {
 	viper.SetDefault("auth_type", "azureCloudConfig")
 	viper.SetDefault("metrics_enabled", false)
-	viper.SetDefault("metrics_port", "9000")
+	viper.SetDefault("http_port", "9000")
 
 	viper.AutomaticEnv()
 }
@@ -102,7 +102,10 @@ func main() {
 
 	if logFormat == "json" {
 		loggerFactory := jsonlogs.Factory{}
-		logger, _ := loggerFactory.Create(logConfig.LoggingConfiguration{})
+		logger, _ := loggerFactory.Create(*logConfig.NewLoggingConfiguration(), logConfig.LoggingOptions{
+			ErrorStream: os.Stderr,
+			InfoStream:  os.Stdout,
+		})
 		klog.SetLogger(logger)
 	}
 	klog.InfoS("log settings", "format", logFormat, "level", flag.Lookup("v").Value)
@@ -111,13 +114,9 @@ func main() {
 	akv2k8s.LogVersion()
 
 	authType := viper.GetString("auth_type")
-	serveMetrics := viper.GetBool("metrics_enabled")
-	metricsPort := viper.GetString("metrics_port")
 	objectLabels := viper.GetString("object_labels")
 
-	if serveMetrics {
-		createMetricsServer(metricsPort)
-	}
+	createHttpServer()
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -160,9 +159,6 @@ func main() {
 			m := labels.Merge(curLabelSet, newLabels)
 			return m.String()
 		}
-		kubeInformerOptions = append(kubeInformerOptions, kubeinformers.WithTweakListOptions(func(options *metav1.ListOptions) {
-			options.LabelSelector = labelSelectorAppender(options.LabelSelector, objectLabelSet)
-		}))
 		akvInformerOptions = append(akvInformerOptions, informers.WithTweakListOptions(func(options *metav1.ListOptions) {
 			options.LabelSelector = labelSelectorAppender(options.LabelSelector, objectLabelSet)
 		}))
@@ -176,16 +172,17 @@ func main() {
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	var token azcore.TokenCredential
+	var keyVaultDNSSuffix string
 	klog.Infof("use `%s` as authType", authType)
 	switch authType {
 	case "azureCloudConfig":
-		token, err = getCredentialsFromCloudConfig(cloudconfig)
+		token, keyVaultDNSSuffix, err = getCredentialsFromCloudConfig(cloudconfig)
 		if err != nil {
 			klog.ErrorS(err, "failed to create cloud config provider for azure key vault", "file", cloudconfig)
 			os.Exit(1)
 		}
 	case "environment":
-		token, err = getCredentialsFromEnvironment()
+		token, keyVaultDNSSuffix, err = getCredentialsFromEnvironment()
 		if err != nil {
 			klog.ErrorS(err, "failed to create credentials provider from environment for azure key vault")
 			os.Exit(1)
@@ -197,7 +194,7 @@ func main() {
 				klog.Infof(msg)
 			})
 		}
-		token, err = getCredentialsFromAzidentity()
+		token, keyVaultDNSSuffix, err = getCredentialsFromAzidentity()
 		if err != nil {
 			klog.ErrorS(err, "failed to create credentials provider from azidentity for azure key vault")
 			os.Exit(1)
@@ -208,7 +205,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	vaultService := vault.NewService(token)
+	vaultService := vault.NewService(token, keyVaultDNSSuffix)
 
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
@@ -229,12 +226,17 @@ func main() {
 	controller.Run(stopCh)
 }
 
-func createMetricsServer(metricsPort string) {
-	router := mux.NewRouter()
-	httpURL := fmt.Sprintf(":%s", metricsPort)
+func createHttpServer() {
+	httpPort := viper.GetString("http_port")
+	serveMetrics := viper.GetBool("metrics_enabled")
 
-	router.Handle("/metrics", promhttp.Handler())
-	klog.InfoS("serving metrics endpoint", "path", fmt.Sprintf("%s/metrics", httpURL))
+	router := mux.NewRouter()
+	httpURL := fmt.Sprintf(":%s", httpPort)
+
+	if serveMetrics {
+		router.Handle("/metrics", promhttp.Handler())
+		klog.InfoS("serving metrics endpoint", "path", fmt.Sprintf("%s/metrics", httpURL))
+	}
 
 	router.HandleFunc("/healthz", healthHandler)
 	klog.InfoS("serving health endpoint", "path", fmt.Sprintf("%s/healthz", httpURL))
@@ -242,7 +244,7 @@ func createMetricsServer(metricsPort string) {
 	go func() {
 		err := http.ListenAndServe(httpURL, router)
 		if err != nil {
-			klog.ErrorS(err, "error serving metrics", "url", httpURL)
+			klog.ErrorS(err, "error serving http server", "url", httpURL)
 			os.Exit(1)
 		}
 	}()
@@ -256,34 +258,49 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getCredentialsFromCloudConfig(cloudconfig string) (azure.LegacyTokenCredential, error) {
+func getCredentialsFromCloudConfig(cloudconfig string) (azure.LegacyTokenCredential, string, error) {
 	f, err := os.Open(cloudconfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed reading azure config from %s, error: %+v", cloudconfig, err)
+		return nil, "", fmt.Errorf("failed reading azure config from %s, error: %+v", cloudconfig, err)
 	}
 	defer f.Close()
 
 	cloudCnfProvider, err := credentialprovider.NewFromCloudConfig(f)
 	if err != nil {
-		return nil, fmt.Errorf("failed reading azure config from %s, error: %+v", cloudconfig, err)
+		return nil, "", fmt.Errorf("failed reading azure config from %s, error: %+v", cloudconfig, err)
 	}
 
-	return cloudCnfProvider.GetAzureKeyVaultCredentials()
+	token, err := cloudCnfProvider.GetAzureKeyVaultCredentials()
+	if err != nil {
+		return nil, "", nil
+	}
+
+	return token, cloudCnfProvider.GetAzureKeyVaultDNSSuffix(), err
 }
 
-func getCredentialsFromEnvironment() (azure.LegacyTokenCredential, error) {
+func getCredentialsFromEnvironment() (azure.LegacyTokenCredential, string, error) {
 	provider, err := credentialprovider.NewFromEnvironment()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create azure credentials provider, error: %+v", err)
+		return nil, "", fmt.Errorf("failed to create azure credentials provider, error: %+v", err)
 	}
 
-	return provider.GetAzureKeyVaultCredentials()
+	token, err := provider.GetAzureKeyVaultCredentials()
+	if err != nil {
+		return nil, "", nil
+	}
+
+	return token, provider.GetAzureKeyVaultDNSSuffix(), err
 }
 
-func getCredentialsFromAzidentity() (azure.LegacyTokenCredential, error) {
+func getCredentialsFromAzidentity() (azure.LegacyTokenCredential, string, error) {
 	provider, err := credentialprovider.NewFromAzidentity()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create azure identity provider, error: %+v", err)
+		return nil, "", fmt.Errorf("failed to create azure identity provider, error: %+v", err)
 	}
-	return provider.GetAzureKeyVaultCredentials()
+	token, err := provider.GetAzureKeyVaultCredentials()
+	if err != nil {
+		return nil, "", nil
+	}
+
+	return token, provider.GetAzureKeyVaultDNSSuffix(), err
 }
