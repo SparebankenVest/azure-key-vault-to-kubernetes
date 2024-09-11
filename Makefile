@@ -10,8 +10,8 @@ WEBHOOK_BINARY_NAME=azure-keyvault-secrets-webhook
 CONTROLLER_BINARY_NAME=azure-keyvault-controller
 KEYVAULT_ENV_BINARY_NAME=azure-keyvault-env
 
-DOCKER_INTERNAL_REG:=dokken.azurecr.io
-DOCKER_INTERNAL_URL:=dokken.azurecr.io
+DOCKER_INTERNAL_REG:=akv2k8s.azurecr.io
+DOCKER_INTERNAL_URL:=akv2k8s.azurecr.io
 DOCKER_INTERNAL_USER:=
 DOCKER_INTERNAL_PASSW:=
 DOCKER_RELEASE_REG:=spvest
