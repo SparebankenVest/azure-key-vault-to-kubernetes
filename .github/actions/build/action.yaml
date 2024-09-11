@@ -1,17 +1,35 @@
-name: 'Build'
-description: 'Build Go packages'
+name: "Build"
+description: "Build Go packages"
 inputs:
-  build-make-action:  
-    description: 'Action in makefile to build package'
+  build-make-action:
+    description: "Action in makefile to build package"
     required: true
-  
+  docker-user:
+    description: "Username to authenticate with docker repository"
+    required: true
+  docker-passw:
+    description: "Password to authenticate with docker repository"
+    required: true
+  docker-reg:
+    description: "Docker registry docker repository"
+    default: "dokken.azurecr.io"
+  docker-url:
+    description: "Docker registry url docker repository"
+    default: "dokken.azurecr.io"
+
 runs:
   using: "composite"
-  steps: 
+  steps:
     - name: Test
       run: make test
       shell: bash
 
+    - name: Setup docker buildx
+      run: |
+        make login-to-docker DOCKER_INTERNAL_URL=${{ inputs.docker-url }} DOCKER_INTERNAL_USER=${{ inputs.docker-user }} DOCKER_INTERNAL_PASSW=${{ inputs.docker-passw}} 
+        make setup-docker-buildx
+      shell: bash
+
     - name: Build docker image
-      run: make ${{ inputs.build-make-action }}
+      run: make ${{ inputs.build-make-action }} DOCKER_INTERNAL_REG=${{ inputs.docker-reg }}
       shell: bash

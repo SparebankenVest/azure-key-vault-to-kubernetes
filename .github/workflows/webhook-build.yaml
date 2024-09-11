@@ -4,44 +4,42 @@ on:
   workflow_dispatch:
   push:
     branches:
-    - master
-    - '*-patch'
+      - master
+      - multiarch
+      - "*-patch"
     paths:
-    - '.github/workflows/webhook-build.yaml'
-    - '.github/actions/**'
-    - 'Dockerfile'
-    - 'Makefile'
-    - 'go.mod'
-    - 'go.sum'
-    - 'cmd/azure-keyvault-secrets-webhook/**'
-    - 'pkg/**'
-    - '!docs/**'
-    - '!crds/**'
+      - ".github/workflows/webhook-build.yaml"
+      - ".github/actions/**"
+      - "Dockerfile"
+      - "Makefile"
+      - "go.mod"
+      - "go.sum"
+      - "cmd/azure-keyvault-secrets-webhook/**"
+      - "pkg/**"
+      - "!docs/**"
+      - "!crds/**"
 
 jobs:
   build-deploy:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
     - name: Setup Golang
       uses: actions/setup-go@v3
       with:
         go-version: '1.21.3'
 
-    - name: Build
-      uses: ./.github/actions/build
-      env:
-        AKV2K8S_CLIENT_ID: ${{ secrets.INT_TEST_CLIENT_ID }}
-        AKV2K8S_CLIENT_SECRET: ${{ secrets.INT_TEST_CLIENT_SECRET }}
-        AKV2K8S_CLIENT_TENANT_ID: ${{ secrets.INT_TEST_TENANT_ID }}
-        AKV2K8S_AZURE_SUBSCRIPTION: ${{ secrets.INT_TEST_SUBSCRIPTION }}
-      with:
-        build-make-action: image-webhook
-
-    - name: Push
-      uses: ./.github/actions/push
-      with:
-        push-make-action: push-webhook
-        docker-user: ${{ secrets.PRIVATE_REGISTRY_USERNAME }}
-        docker-passw: ${{ secrets.PRIVATE_REGISTRY_PASSWORD }}
+      - name: Build
+        uses: ./.github/actions/build
+        env:
+          AKV2K8S_CLIENT_ID: ${{ secrets.INT_TEST_CLIENT_ID }}
+          AKV2K8S_CLIENT_SECRET: ${{ secrets.INT_TEST_CLIENT_SECRET }}
+          AKV2K8S_CLIENT_TENANT_ID: ${{ secrets.INT_TEST_TENANT_ID }}
+          AKV2K8S_AZURE_SUBSCRIPTION: ${{ secrets.INT_TEST_SUBSCRIPTION }}
+        with:
+          build-make-action: image-webhook
+          docker-user: ${{ secrets.PRIVATE_REGISTRY_USERNAME }}
+          docker-passw: ${{ secrets.PRIVATE_REGISTRY_PASSWORD }}
+          docker-url: ${{ secrets.PRIVATE_REGISTRY_URL }}
+          docker-reg: ${{ secrets.PRIVATE_REGISTRY }}
