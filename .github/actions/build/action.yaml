@@ -12,10 +12,10 @@ inputs:
     required: true
   docker-reg:
     description: "Docker registry docker repository"
-    default: "dokken.azurecr.io"
+    default: "akv2k8s.azurecr.io"
   docker-url:
     description: "Docker registry url docker repository"
-    default: "dokken.azurecr.io"
+    default: "akv2k8s.azurecr.io"
 
 runs:
   using: "composite"
@@ -27,7 +27,7 @@ runs:
     - name: Setup docker buildx
       run: |
         make login-to-docker DOCKER_INTERNAL_URL=${{ inputs.docker-url }} DOCKER_INTERNAL_USER=${{ inputs.docker-user }} DOCKER_INTERNAL_PASSW=${{ inputs.docker-passw}} 
-        make setup-docker-buildx
+        make setup-docker-buildx 
       shell: bash
 
     - name: Build docker image
