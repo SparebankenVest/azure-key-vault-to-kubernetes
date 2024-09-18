@@ -1,6 +1,6 @@
 # Accept the Go version for the image to be set as a build argument.
-# Default to Go 1.13.0
-ARG GO_VERSION=1.13.0
+# Default to Go 1.23.1
+ARG GO_VERSION=1.23.1
 ARG VCS_REF
 ARG BUILD_DATE
 ARG VCS_URL
