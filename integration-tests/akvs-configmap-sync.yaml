@@ -1,0 +1,15 @@
+apiVersion: spv.no/v2beta1
+kind: AzureKeyVaultSecret
+metadata:
+  name: secret-configmap-sync 
+  namespace: akv-test
+spec:
+  vault:
+    name: akv2k8sinttestskv # name of key vault
+    object:
+      name: akv2k8s-test-secret # name of the akv object
+      type: secret # akv object type
+  output: 
+    configMap: 
+      name: my-secret-from-akv # kubernetes configmap name
+      dataKey: secret-value # key to store object value in kubernetes configmap
