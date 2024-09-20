@@ -1,0 +1,15 @@
+apiVersion: spv.no/v2beta1
+kind: AzureKeyVaultSecret
+metadata:
+  name: certificate-sync 
+  namespace: akv-test
+spec:
+  vault:
+    name: akv2k8sinttestskv # name of key vault
+    object:
+      name: akv2k8s-test-cert
+      type: certificate
+  output: 
+    secret:
+      name: my-certificate-from-akv # kubernetes secret name
+      type: kubernetes.io/tls # kubernetes secret type

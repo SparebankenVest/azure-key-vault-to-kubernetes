@@ -1,0 +1,15 @@
+apiVersion: spv.no/v2beta1
+kind: AzureKeyVaultSecret
+metadata:
+  name: signing-key-sync 
+  namespace: akv-test
+spec:
+  vault:
+    name: akv2k8sinttestskv # name of key vault
+    object:
+      name: akv2k8s-test-key # name of the akv object
+      type: key # akv object type
+  output: 
+    secret: 
+      name: my-signing-key-from-akv # kubernetes secret name
+      dataKey: signing-key # key to store object value in kubernetes secret
