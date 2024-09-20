@@ -22,6 +22,7 @@ WORKDIR /go/src/${PACKAGE}
 ADD . .
 RUN GIT_TAG=${VCS_REF} make build${BUILD_SUB_TARGET}
 
+
 # ------------
 # Env Injector
 # ------------
