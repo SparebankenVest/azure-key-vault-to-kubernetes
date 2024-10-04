@@ -12,7 +12,7 @@ KEYVAULT_ENV_BINARY_NAME=azure-keyvault-env
 
 DOCKER_INTERNAL_REG:=akv2k8s.azurecr.io
 DOCKER_INTERNAL_URL:=akv2k8s.azurecr.io
-DOCKER_INTERNAL_USER:=
+DOCKER_INTERNAL_USER:=akv2k8s
 DOCKER_INTERNAL_PASSW:=
 DOCKER_RELEASE_REG:=spvest
 DOCKER_RELEASE_URL:=registry-1.docker.io 
@@ -33,6 +33,7 @@ DOCKER_RELEASE_TAG_VAULTENV := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"vault
 
 TAG=
 GOOS ?= linux
+GOARCH ?= amd64
 TEST_GOOS ?= linux
 
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -174,7 +175,7 @@ init-int-test-local:
 int-test-local: init-int-test-local test
 
 bin/%:
-	GOOS=$(GOOS) GOARCH=amd64 go build $(GO_BUILD_OPTIONS) -o "$(@)" "$(PKG_NAME)"
+	GOOS=$(GOOS) GOARCH=$(GOARCH) go build $(GO_BUILD_OPTIONS) -o "$(@)" "$(PKG_NAME)"
 
 .PHONY: clean
 clean:
