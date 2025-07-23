@@ -1,5 +1,5 @@
 ARG BASEIMAGE=gcr.io/distroless/static:nonroot
-ARG BASE_ALPINE=alpine:3.20.3
+ARG BASE_ALPINE=alpine:3.22.1
 ARG GO_VERSION=1.23.11
 
 # -------
