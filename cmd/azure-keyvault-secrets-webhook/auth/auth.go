@@ -26,11 +26,28 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// AzureCloudEnv defines the different Azure cloud environments
+type AzureCloudEnv string
+
+const (
+	AzurePublicCloud       AzureCloudEnv = "AzurePublicCloud"
+	AzureUSGovernmentCloud AzureCloudEnv = "AzureUSGovernment"
+	// Add other environments if needed, e.g., AzureChinaCloud, AzureGermanyCloud
+)
+
+// keyVaultScopes maps AzureCloudEnv to its corresponding Key Vault default scope
+var keyVaultScopes = map[AzureCloudEnv]string{
+	AzurePublicCloud:       "https://vault.azure.net/.default",
+	AzureUSGovernmentCloud: "https://vault.usgovcloudapi.net/.default",
+	// Add other environments as they are needed
+}
+
 type AuthService struct {
-	kubeclient  kubernetes.Interface
-	credentials azure.LegacyTokenCredential
-	caCert      []byte
-	caKey       []byte
+	kubeclient    kubernetes.Interface
+	credentials   azure.LegacyTokenCredential
+	caCert        []byte
+	caKey         []byte
+	keyVaultScope string // Added field for configurable Key Vault scope
 }
 
 func fileExists(filename string) bool {
@@ -87,11 +104,26 @@ func NewAuthService(kubeclient kubernetes.Interface, credentials azure.LegacyTok
 		return nil, fmt.Errorf("file %s is empty", caKeyFile)
 	}
 
+	// Determine the Azure environment from environment variable
+	azureEnvStr := os.Getenv("AZURE_ENVIRONMENT")
+	if azureEnvStr == "" {
+		azureEnvStr = string(AzurePublicCloud) // Default to Azure Public Cloud if not set
+	}
+
+	azureEnv := AzureCloudEnv(azureEnvStr)
+	keyVaultScope, found := keyVaultScopes[azureEnv]
+	if !found {
+		klog.InfoS("unsupported AZURE_ENVIRONMENT specified, defaulting to Azure Public Cloud Key Vault scope", "environment", azureEnvStr)
+		keyVaultScope = keyVaultScopes[AzurePublicCloud]
+	}
+	klog.InfoS("using Azure Key Vault scope", "environment", azureEnvStr, "scope", keyVaultScope)
+
 	return &AuthService{
-		kubeclient:  kubeclient,
-		credentials: credentials,
-		caCert:      caCert,
-		caKey:       caKey,
+		kubeclient:    kubeclient,
+		credentials:   credentials,
+		caCert:        caCert,
+		caKey:         caKey,
+		keyVaultScope: keyVaultScope, // Initialize the new field
 	}, nil
 }
 
@@ -136,10 +168,12 @@ func (a AuthService) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
-		token, err := a.credentials.GetToken(context.TODO(), policy.TokenRequestOptions{Scopes: []string{"https://vault.azure.net/.default"}})
+		token, err := a.credentials.GetToken(context.TODO(), policy.TokenRequestOptions{Scopes: []string{a.keyVaultScope}})
 		if err != nil {
 			klog.ErrorS(err, "failed to get token", "pod", pod.name, "namespace", pod.namespace)
-			return
+			// Ensure an error response is sent to the client
+			http.Error(w, "Failed to get Azure token", http.StatusInternalServerError)
+			return // Added return to prevent further execution after error
 		}
 		if err := json.NewEncoder(w).Encode(map[string]string{"oauth_token": token.Token}); err != nil {
 			klog.ErrorS(err, "failed to json encode token", "pod", pod.name, "namespace", pod.namespace)
