@@ -1,6 +1,6 @@
 module github.com/SparebankenVest/azure-key-vault-to-kubernetesl/tools
 
-go 1.23.11
+go 1.23.12
 
 require (
 	github.com/client9/misspell v0.3.4
