@@ -87,3 +87,11 @@ Azure Key Vault to Kubernetes is licensed under Apache License 2.0.
 
 The documentation is located in a separate repository at https://github.com/SparebankenVest/akv2k8s-website. We're using Gatsby + MDX (Markdown + JSX) to generate static docs for https://akv2k8s.io.
 
+## Creating a release ##
+
+* Merge relevant PRs to master
+* Wait for the builds to finish
+* Run relevant tests
+
+* When tested OK, run `make tag-all TAG=1.8.1`
+* When push/tag is OK, update helm-chart
