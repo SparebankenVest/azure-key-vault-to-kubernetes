@@ -191,7 +191,7 @@ func main() {
 		logLevel, _ := strconv.Atoi(flag.Lookup("v").Value.String())
 		if logLevel >= 4 {
 			azlog.SetListener(func(cls azlog.Event, msg string) {
-				klog.Infof(msg)
+				klog.Infof("%s", msg)
 			})
 		}
 		token, keyVaultDNSSuffix, err = getCredentialsFromAzidentity()
