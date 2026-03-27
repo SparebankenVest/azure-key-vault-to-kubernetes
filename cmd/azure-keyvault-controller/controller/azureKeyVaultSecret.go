@@ -32,7 +32,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-
 )
 
 // enqueueObj extracts a namespaced key from obj and adds it to the typed queue.
