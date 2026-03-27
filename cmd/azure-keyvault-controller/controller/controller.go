@@ -119,9 +119,9 @@ type Controller struct {
 	// AzureKeyVaultSecret
 	azureKeyVaultSecretLister listers.AzureKeyVaultSecretLister
 	akvsInformerFactory       akvInformers.SharedInformerFactory
-	akvsCrdQueue              *queue.Worker
-	akvsCrdDeletionQueue      *queue.Worker
-	azureKeyVaultQueue        *queue.Worker
+	akvsCrdQueue              *queue.Worker[string]
+	akvsCrdDeletionQueue      *queue.Worker[string]
+	azureKeyVaultQueue        *queue.Worker[string]
 
 	options *Options
 	clock   Timer
