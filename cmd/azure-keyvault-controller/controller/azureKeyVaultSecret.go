@@ -151,7 +151,7 @@ func (c *Controller) syncDeletedAzureKeyVaultSecret(key string) error {
 	if !isOwnedBy(outputObject, akvs) { // checks if the object has a controllerRef set to the given owner
 		msg := fmt.Sprintf(MessageResourceExists, outputObject.GetName())
 		c.recorder.Event(akvs, corev1.EventTypeWarning, ErrResourceExists, msg)
-		return fmt.Errorf(msg)
+		return fmt.Errorf("%s", msg)
 	}
 
 	return nil
@@ -193,7 +193,7 @@ func (c *Controller) syncAzureKeyVaultSecret(key string) error {
 	if !isOwnedBy(outputObject, akvs) { // checks if the object has a controllerRef set to the given owner
 		msg := fmt.Sprintf(MessageResourceExists, outputObject.GetName())
 		c.recorder.Event(akvs, corev1.EventTypeWarning, ErrResourceExists, msg)
-		return fmt.Errorf(msg)
+		return fmt.Errorf("%s", msg)
 	}
 
 	return nil
@@ -222,7 +222,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 			msg := fmt.Sprintf(FailedAzureKeyVault, akvs.Name, akvs.Spec.Vault.Name, err.Error())
 			c.recorder.Event(akvs, corev1.EventTypeWarning, ErrAzureVault, msg)
 			syncFailures.WithLabelValues("sync", "AzureKeyVault").Inc()
-			return fmt.Errorf(msg)
+			return fmt.Errorf("%s", msg)
 		}
 
 		secretHash = getMD5HashOfByteValues(secretValue)
@@ -266,7 +266,7 @@ func (c *Controller) syncAzureKeyVault(key string) error {
 		if err != nil {
 			msg := fmt.Sprintf(FailedAzureKeyVault, akvs.Name, akvs.Spec.Vault.Name, err.Error())
 			c.recorder.Event(akvs, corev1.EventTypeWarning, ErrAzureVault, msg)
-			return fmt.Errorf(msg)
+			return fmt.Errorf("%s", msg)
 		}
 
 		cmHash = getMD5HashOfStringValues(cmValue)
