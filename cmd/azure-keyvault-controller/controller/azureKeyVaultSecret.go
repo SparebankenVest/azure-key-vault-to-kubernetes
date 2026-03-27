@@ -32,9 +32,17 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-
-	"kmodules.xyz/client-go/tools/queue"
 )
+
+// enqueueObj extracts a namespaced key from obj and adds it to the typed queue.
+func enqueueObj(q interface{ Add(string) }, obj interface{}) {
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		klog.Errorf("Couldn't get key for object %+v: %v", obj, err)
+		return
+	}
+	q.Add(key)
+}
 
 func (c *Controller) initAzureKeyVaultSecret() {
 	_, err := c.akvsInformerFactory.AzureKeyVault().V2beta1().AzureKeyVaultSecrets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -49,7 +57,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			if c.akvsHasOutputDefined(akvs) {
 				klog.V(4).InfoS("adding to queue", "azurekeyvaultsecret", klog.KObj(akvs))
 				syncCounter.WithLabelValues("add", "AzureKeyVaultSecret").Inc()
-				queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
+				enqueueObj(c.akvsCrdQueue.GetQueue(), obj)
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
@@ -71,14 +79,14 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			if newAkvs.ResourceVersion == oldAkvs.ResourceVersion && c.akvsHasOutputDefined(newAkvs) {
 				klog.V(4).InfoS("adding to azure key vault queue to check if secret has changed in azure key vault", "azurekeyvaultsecret", klog.KObj(newAkvs))
 				syncCounter.WithLabelValues("update", "AzureKeyVault").Inc()
-				queue.Enqueue(c.azureKeyVaultQueue.GetQueue(), new)
+				enqueueObj(c.azureKeyVaultQueue.GetQueue(), new)
 				return
 			}
 
 			if c.akvsHasOutputDefined(newAkvs) || c.akvsHasOutputDefined(oldAkvs) {
 				klog.V(4).InfoS("azurekeyvaultsecret changed - adding to queue", "azurekeyvaultsecret", klog.KObj(newAkvs))
 				syncCounter.WithLabelValues("update", "AzureKeyVaultSecret").Inc()
-				queue.Enqueue(c.akvsCrdQueue.GetQueue(), new)
+				enqueueObj(c.akvsCrdQueue.GetQueue(), new)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -92,7 +100,7 @@ func (c *Controller) initAzureKeyVaultSecret() {
 			if c.akvsHasOutputDefined(akvs) {
 				klog.V(4).InfoS("azurekeyvaultsecret deleted - adding to queue", "azurekeyvaultsecret", klog.KObj(akvs))
 				syncCounter.WithLabelValues("delete", "AzureKeyVaultSecret").Inc()
-				queue.Enqueue(c.akvsCrdQueue.GetQueue(), obj)
+				enqueueObj(c.akvsCrdQueue.GetQueue(), obj)
 
 				err = c.deleteKubernetesValues(akvs)
 				if err != nil {
