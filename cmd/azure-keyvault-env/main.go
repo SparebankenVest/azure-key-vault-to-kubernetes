@@ -49,6 +49,7 @@ type injectorConfig struct {
 	retryTimes                   int
 	waitTimeBetweenRetries       int
 	useAuthService               bool
+	useWorkloadIdentity          bool
 	skipArgsValidation           bool
 	authServiceAddress           string
 	authServiceValidationAddress string
@@ -126,6 +127,7 @@ func initConfig() {
 	viper.SetDefault("env_injector_retries", 3)
 	viper.SetDefault("env_injector_wait_before_retry", 3)
 	viper.SetDefault("env_injector_use_auth_service", true)
+	viper.SetDefault("env_injector_use_workload_identity", false)
 
 	viper.SetDefault("env_injector_skip_args_validation", false)
 	viper.SetDefault("env_injector_log_level", "info")
@@ -185,9 +187,10 @@ func main() {
 
 	config = injectorConfig{
 		// required
-		signatureB64:   viper.GetString("env_injector_args_signature"),
-		pubKeyBase64:   viper.GetString("env_injector_args_key"),
-		useAuthService: viper.GetBool("env_injector_use_auth_service"),
+		signatureB64:        viper.GetString("env_injector_args_signature"),
+		pubKeyBase64:        viper.GetString("env_injector_args_key"),
+		useAuthService:      viper.GetBool("env_injector_use_auth_service"),
+		useWorkloadIdentity: viper.GetBool("env_injector_use_workload_identity"),
 
 		// required if auth service
 		clientCertDir:                viper.GetString("env_injector_client_cert_dir"),
@@ -255,7 +258,14 @@ func main() {
 
 	var creds azure.LegacyTokenCredential
 	var keyVaultDNSSuffix string
-	if config.useAuthService {
+	if config.useWorkloadIdentity {
+		creds, keyVaultDNSSuffix, err = getCredentialsIdentity()
+		if err != nil {
+			klog.ErrorS(err, "failed to get credentials", "failedTimes", config.retryTimes)
+			os.Exit(1)
+		}
+	}
+	else if config.useAuthService {
 		provider, err := credentialprovider.NewFromEnvironment()
 		if err != nil {
 			klog.ErrorS(err, "failed to get provider from environment", "failedTimes", config.retryTimes)
