@@ -1,4 +1,4 @@
-module github.com/SparebankenVest/azure-key-vault-to-kubernetesl/tools
+module github.com/SparebankenVest/azure-key-vault-to-kubernetes/tools
 
 go 1.25.11
 
