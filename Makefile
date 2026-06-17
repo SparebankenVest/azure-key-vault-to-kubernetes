@@ -31,6 +31,8 @@ DOCKER_RELEASE_TAG_WEBHOOK := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"webhoo
 DOCKER_RELEASE_TAG_CONTROLLER := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"controller-"/""/g)
 DOCKER_RELEASE_TAG_VAULTENV := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"vaultenv-"/""/g)
 
+DOCKER_BUILD_ATTESTATIONS := --attest type=provenance,mode=max --attest type=sbom
+
 TAG=
 GOOS ?= linux
 GOARCH ?= amd64
@@ -236,6 +238,7 @@ image-webhook:
 		--progress=plain \
 		--target webhook \
 		--platform linux/amd64,linux/arm64 \
+		$(DOCKER_BUILD_ATTESTATIONS) \
 		--build-arg BUILD_SUB_TARGET="-webhook" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
@@ -252,6 +255,7 @@ image-controller:
 		--progress=plain \
 		--target controller \
 		--platform linux/amd64,linux/arm64 \
+		$(DOCKER_BUILD_ATTESTATIONS) \
 		--build-arg BUILD_SUB_TARGET="-controller" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
@@ -268,6 +272,7 @@ image-vaultenv:
 		--progress=plain \
 		--target vaultenv \
 		--platform linux/amd64,linux/arm64 \
+		$(DOCKER_BUILD_ATTESTATIONS) \
 		--build-arg BUILD_SUB_TARGET="-vaultenv" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
@@ -283,6 +288,7 @@ image-akv2k8s-env-test:
 	docker buildx build \
 		--progress=plain \
 		--platform linux/amd64,linux/arm64 \
+		$(DOCKER_BUILD_ATTESTATIONS) \
 		-t $(DOCKER_INTERNAL_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE) \
 		--cache-from=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE):cache \
 		--cache-to=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE):cache,mode=max \

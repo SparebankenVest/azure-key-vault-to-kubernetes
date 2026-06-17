@@ -1,5 +1,11 @@
 name: "Build"
 description: "Build Go packages"
+
+# Attestation signing with GitHub OIDC requires the calling workflow to grant:
+# permissions:
+#   id-token: write
+# The build step emits provenance and SBOM attestations. If images are copied
+# to another registry later, that release flow must also preserve OCI referrers.
 inputs:
   build-make-action:
     description: "Action in makefile to build package"

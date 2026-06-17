@@ -34,6 +34,17 @@
 
 <p align="center"><i>Documentation available at <a href="https://akv2k8s.io">https://akv2k8s.io</a>. Join our <a href="https://join.slack.com/t/akv2k8s/shared_invite/zt-lfx2qdky-SGjwN8qTfca6bdeIyk46lg">Slack Workspace</a> to ask questions to the akv2k8s community.</i></p>
 
+## Image Attestations
+
+Container builds in this repository emit BuildKit provenance and SBOM attestations.
+
+GitHub Actions workflows invoking `.github/actions/build` must grant `id-token: write`
+permissions if you want GitHub OIDC-backed signatures for those attestations.
+
+The current release flow copies images from the internal registry to the release registry.
+That promotion step must also preserve OCI referrers, or released images may lose their
+attached attestations even when the source build produced them successfully.
+
 ## Overview
 
 Azure Key Vault to Kubernetes (akv2k8s) will make Azure Key Vault objects available to Kubernetes in two ways:
