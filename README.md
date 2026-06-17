@@ -45,6 +45,16 @@ The current release flow copies images from the internal registry to the release
 That promotion step must also preserve OCI referrers, or released images may lose their
 attached attestations even when the source build produced them successfully.
 
+Release workflows also apply a keyless cosign signature to the final published image digest.
+You can verify a released controller image with:
+
+```sh
+cosign verify \
+  --certificate-identity-regexp 'https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/.github/workflows/controller-release.yaml@.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  docker.io/spvest/azure-keyvault-controller:1.8.4-alpha2
+```
+
 ## Overview
 
 Azure Key Vault to Kubernetes (akv2k8s) will make Azure Key Vault objects available to Kubernetes in two ways:
