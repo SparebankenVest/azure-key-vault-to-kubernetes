@@ -52,7 +52,20 @@ You can verify a released controller image with:
 cosign verify \
   --certificate-identity-regexp 'https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/.github/workflows/controller-release.yaml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  docker.io/spvest/azure-keyvault-controller:1.8.4-alpha2
+  docker.io/spvest/azure-keyvault-controller:1.8.4-alpha3
+```
+
+Release workflows also sign the published BuildKit attestation manifests. You can list the
+attestation digests from the published multi-arch index and verify one directly with:
+
+```sh
+docker buildx imagetools inspect --raw docker.io/spvest/azure-keyvault-controller:1.8.4-alpha3 \
+  | jq -r '.manifests[] | select(.platform.architecture == "unknown" and .platform.os == "unknown") | .digest'
+
+cosign verify \
+  --certificate-identity-regexp 'https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/.github/workflows/controller-release.yaml@.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  docker.io/spvest/azure-keyvault-controller@sha256:<attestation-digest>
 ```
 
 ## Overview

@@ -39,9 +39,17 @@ jobs:
           DOCKER_RELEASE_TAG=${GITHUB_REF##*/} \
           release-controller
 
-      - name: Sign released image
+      - name: Sign released image and attestations
         env:
           RELEASE_REGISTRY: ${{ secrets.PUBLIC_REGISTRY }}
         run: |
+          set -euo pipefail
+
           IMAGE_REF="${RELEASE_REGISTRY}/azure-keyvault-controller:${GITHUB_REF_NAME#controller-}"
           cosign sign --yes "$IMAGE_REF"
+
+          docker buildx imagetools inspect --raw "$IMAGE_REF" \
+            | jq -r '.manifests[] | select(.platform.architecture == "unknown" and .platform.os == "unknown") | .digest' \
+            | while read -r digest; do
+                cosign sign --yes "$IMAGE_REF@$digest"
+              done
