@@ -66,17 +66,18 @@ jobs:
           IMAGE_REF="${RELEASE_REGISTRY}/azure-keyvault-env:${GITHUB_REF_NAME#vaultenv-}"
           VERSION="${GITHUB_REF_NAME#vaultenv-}"
           OUT_DIR="dist/sbom"
+          TMP_DIR="$(mktemp -d)"
           mkdir -p "$OUT_DIR"
+          trap 'rm -rf "$TMP_DIR"' EXIT
 
-          INDEX_JSON="$(docker buildx imagetools inspect --raw "$IMAGE_REF")"
-          echo "$INDEX_JSON" | jq .
+          docker buildx imagetools inspect --raw "$IMAGE_REF" > "$TMP_DIR/index.json"
+          jq . "$TMP_DIR/index.json"
 
-          printf '%s' "$INDEX_JSON" \
-            | jq -r '.manifests[] | select(.platform.os != "unknown" and .platform.architecture != "unknown") | "\(.platform.os) \(.platform.architecture) \(.digest)"' \
+          jq -r '.manifests[] | select(.platform.os != "unknown" and .platform.architecture != "unknown") | "\(.platform.os) \(.platform.architecture) \(.digest)"' "$TMP_DIR/index.json" \
             | while read -r os arch subject_digest; do
                 echo "Resolving SBOM for platform ${os}/${arch} with subject digest ${subject_digest}"
 
-                attestation_digest="$(printf '%s' "$INDEX_JSON" | jq -r --arg subject "$subject_digest" '.manifests[] | select(.platform.architecture == "unknown" and .platform.os == "unknown" and .annotations["vnd.docker.reference.type"] == "attestation-manifest" and .annotations["vnd.docker.reference.digest"] == $subject) | .digest')"
+                attestation_digest="$(jq -r --arg subject "$subject_digest" '.manifests[] | select(.platform.architecture == "unknown" and .platform.os == "unknown" and .annotations["vnd.docker.reference.type"] == "attestation-manifest" and .annotations["vnd.docker.reference.digest"] == $subject) | .digest' "$TMP_DIR/index.json")"
                 if [ -z "$attestation_digest" ]; then
                   echo "No attestation manifest found for subject digest ${subject_digest}" >&2
                   exit 1
@@ -84,10 +85,10 @@ jobs:
 
                 echo "Found attestation digest ${attestation_digest}"
 
-                attestation_json="$(docker buildx imagetools inspect --raw "$IMAGE_REF@$attestation_digest")"
-                echo "$attestation_json" | jq .
+                docker buildx imagetools inspect --raw "$IMAGE_REF@$attestation_digest" > "$TMP_DIR/attestation.json"
+                jq . "$TMP_DIR/attestation.json"
 
-                spdx_layer_digest="$(printf '%s' "$attestation_json" | jq -r '.layers[] | select(.annotations["in-toto.io/predicate-type"] == "https://spdx.dev/Document") | .digest')"
+                spdx_layer_digest="$(jq -r '.layers[] | select(.annotations["in-toto.io/predicate-type"] == "https://spdx.dev/Document") | .digest' "$TMP_DIR/attestation.json")"
                 if [ -z "$spdx_layer_digest" ]; then
                   echo "No SPDX layer found in attestation manifest ${attestation_digest}" >&2
                   exit 1
