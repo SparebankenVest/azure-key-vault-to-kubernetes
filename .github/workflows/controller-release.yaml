@@ -64,6 +64,7 @@ jobs:
           set -euo pipefail
 
           IMAGE_REF="${RELEASE_REGISTRY}/azure-keyvault-controller:${GITHUB_REF_NAME#controller-}"
+          IMAGE_REPO="${RELEASE_REGISTRY}/azure-keyvault-controller"
           VERSION="${GITHUB_REF_NAME#controller-}"
           OUT_DIR="dist/sbom"
           TMP_DIR="$(mktemp -d)"
@@ -85,7 +86,7 @@ jobs:
 
                 echo "Found attestation digest ${attestation_digest}"
 
-                docker buildx imagetools inspect --raw "$IMAGE_REF@$attestation_digest" > "$TMP_DIR/attestation.json"
+                docker buildx imagetools inspect --raw "$IMAGE_REPO@$attestation_digest" > "$TMP_DIR/attestation.json"
                 jq . "$TMP_DIR/attestation.json"
 
                 spdx_layer_digest="$(jq -r '.layers[] | select(.annotations["in-toto.io/predicate-type"] == "https://spdx.dev/Document") | .digest' "$TMP_DIR/attestation.json")"
@@ -96,7 +97,7 @@ jobs:
 
                 echo "Found SPDX layer digest ${spdx_layer_digest}"
 
-                oras blob fetch --output - "$IMAGE_REF@$spdx_layer_digest" \
+                oras blob fetch --output - "$IMAGE_REPO@$spdx_layer_digest" \
                   | jq '.predicate' \
                   > "$OUT_DIR/azure-keyvault-controller_${VERSION}_${os}_${arch}.spdx.json"
               done
