@@ -65,6 +65,7 @@ jobs:
 
           IMAGE_REF="${RELEASE_REGISTRY}/azure-keyvault-webhook:${GITHUB_REF_NAME#webhook-}"
           IMAGE_REPO="${RELEASE_REGISTRY}/azure-keyvault-webhook"
+          IMAGE_ORAS_REPO="docker.io/${RELEASE_REGISTRY#docker.io/}/azure-keyvault-webhook"
           VERSION="${GITHUB_REF_NAME#webhook-}"
           OUT_DIR="dist/sbom"
           TMP_DIR="$(mktemp -d)"
@@ -97,7 +98,7 @@ jobs:
 
                 echo "Found SPDX layer digest ${spdx_layer_digest}"
 
-                oras blob fetch --output - "$IMAGE_REPO@$spdx_layer_digest" \
+                oras blob fetch --output - "$IMAGE_ORAS_REPO@$spdx_layer_digest" \
                   | jq '.predicate' \
                   > "$OUT_DIR/azure-keyvault-webhook_${VERSION}_${os}_${arch}.spdx.json"
               done
