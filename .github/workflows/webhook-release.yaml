@@ -103,8 +103,53 @@ jobs:
                   > "$OUT_DIR/azure-keyvault-webhook_${VERSION}_${os}_${arch}.spdx.json"
               done
 
-      - name: Upload SPDX SBOMs to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/sbom/*.spdx.json
-          tag_name: ${{ github.ref_name }}
+      - name: Publish GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          TAG="${GITHUB_REF_NAME}"
+          TMP_DIR="$(mktemp -d)"
+          trap 'rm -rf "$TMP_DIR"' EXIT
+          PREVIOUS_STABLE_TAG="$(git tag --list 'webhook-*' --sort=-version:refname | grep -E '^webhook-[0-9]+\.[0-9]+\.[0-9]+$' | grep -vx "$TAG" | head -n 1)"
+          PRERELEASE=false
+          if [[ "$TAG" == *-alpha* ]] || [[ "$TAG" == *-beta* ]]; then
+            PRERELEASE=true
+          fi
+
+          if gh release view "$TAG" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release delete "$TAG" --repo "${GITHUB_REPOSITORY}" --yes
+          fi
+
+          NOTES_JSON="$TMP_DIR/release-notes.json"
+          if [ -n "$PREVIOUS_STABLE_TAG" ]; then
+            gh api \
+              --method POST \
+              "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+              -f tag_name="$TAG" \
+              -f target_commitish="$GITHUB_SHA" \
+              -f previous_tag_name="$PREVIOUS_STABLE_TAG" \
+              > "$NOTES_JSON"
+          else
+            gh api \
+              --method POST \
+              "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+              -f tag_name="$TAG" \
+              -f target_commitish="$GITHUB_SHA" \
+              > "$NOTES_JSON"
+          fi
+
+          TITLE="$(jq -r '.name // empty' "$NOTES_JSON")"
+          if [ -z "$TITLE" ]; then
+            TITLE="$TAG"
+          fi
+
+          jq -r '.body' "$NOTES_JSON" > "$TMP_DIR/release-notes.md"
+          ASSETS=(dist/sbom/*.spdx.json)
+          CREATE_ARGS=("$TAG" "${ASSETS[@]}" "--repo" "${GITHUB_REPOSITORY}" "--verify-tag" "--title" "$TITLE" "--notes-file" "$TMP_DIR/release-notes.md")
+          if [ "$PRERELEASE" = true ]; then
+            CREATE_ARGS+=("--prerelease")
+          fi
+
+          gh release create "${CREATE_ARGS[@]}"
