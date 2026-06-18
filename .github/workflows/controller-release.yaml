@@ -9,7 +9,7 @@ jobs:
   release:
     runs-on: ubuntu-22.04
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +22,9 @@ jobs:
 
       - name: Setup Cosign
         uses: sigstore/cosign-installer@v3
+
+      - name: Setup ORAS
+        uses: oras-project/setup-oras@v1
 
       - name: Version
         run: make print-v-controller
@@ -53,3 +56,33 @@ jobs:
             | while read -r digest; do
                 cosign sign --yes "$IMAGE_REF@$digest"
               done
+
+      - name: Extract SPDX SBOMs
+        env:
+          RELEASE_REGISTRY: ${{ secrets.PUBLIC_REGISTRY }}
+        run: |
+          set -euo pipefail
+
+          IMAGE_REF="${RELEASE_REGISTRY}/azure-keyvault-controller:${GITHUB_REF_NAME#controller-}"
+          VERSION="${GITHUB_REF_NAME#controller-}"
+          OUT_DIR="dist/sbom"
+          mkdir -p "$OUT_DIR"
+
+          INDEX_JSON="$(docker buildx imagetools inspect --raw "$IMAGE_REF")"
+
+          printf '%s' "$INDEX_JSON" \
+            | jq -r '.manifests[] | select(.platform.os != "unknown" and .platform.architecture != "unknown") | "\(.platform.os) \(.platform.architecture) \(.digest)"' \
+            | while read -r os arch subject_digest; do
+                attestation_digest="$(printf '%s' "$INDEX_JSON" | jq -r --arg subject "$subject_digest" '.manifests[] | select(.platform.architecture == "unknown" and .platform.os == "unknown" and .annotations["vnd.docker.reference.type"] == "attestation-manifest" and .annotations["vnd.docker.reference.digest"] == $subject) | .digest')"
+                spdx_layer_digest="$(docker buildx imagetools inspect --raw "$IMAGE_REF@$attestation_digest" | jq -r '.layers[] | select(.annotations["in-toto.io/predicate-type"] == "https://spdx.dev/Document") | .digest')"
+
+                oras blob fetch --output - "$IMAGE_REF@$spdx_layer_digest" \
+                  | jq '.predicate' \
+                  > "$OUT_DIR/azure-keyvault-controller_${VERSION}_${os}_${arch}.spdx.json"
+              done
+
+      - name: Upload SPDX SBOMs to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/sbom/*.spdx.json
+          tag_name: ${{ github.ref_name }}
