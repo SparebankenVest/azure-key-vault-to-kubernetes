@@ -52,20 +52,51 @@ You can verify a released controller image with:
 cosign verify \
   --certificate-identity-regexp 'https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/.github/workflows/controller-release.yaml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  docker.io/spvest/azure-keyvault-controller:1.8.4-alpha3
+  docker.io/spvest/azure-keyvault-controller:1.8.4-beta2
 ```
 
 Release workflows also sign the published BuildKit attestation manifests. You can list the
 attestation digests from the published multi-arch index and verify one directly with:
 
 ```sh
-docker buildx imagetools inspect --raw docker.io/spvest/azure-keyvault-controller:1.8.4-alpha3 \
+docker buildx imagetools inspect --raw docker.io/spvest/azure-keyvault-controller:1.8.4-beta2 \
   | jq -r '.manifests[] | select(.platform.architecture == "unknown" and .platform.os == "unknown") | .digest'
 
 cosign verify \
   --certificate-identity-regexp 'https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/.github/workflows/controller-release.yaml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   docker.io/spvest/azure-keyvault-controller@sha256:<attestation-digest>
+```
+
+Release workflows also publish GitHub Releases for component tags. Those release pages
+include generated release notes since the previous stable release for that component,
+and attach plain SPDX SBOM assets for each published platform image.
+
+`cosign download attestation` may not discover these BuildKit attestation manifests reliably
+even when they are published. Enumerating attestation manifests from the image index and then
+inspecting the attestation manifest directly is the more reliable path.
+
+You can inspect the attestation manifest and extract the SPDX SBOM layer with:
+
+```sh
+docker buildx imagetools inspect --raw docker.io/spvest/azure-keyvault-controller@sha256:<attestation-digest>
+
+oras blob fetch --output - \
+  docker.io/spvest/azure-keyvault-controller@sha256:<spdx-layer-digest> \
+  | jq '.predicate' \
+  > sbom.spdx.json
+```
+
+For example, for `1.8.4-beta2`, the `linux/amd64` attestation digest is:
+
+```text
+sha256:3de7eff88ef8c6ff3ce291b4c9a99a1b43599cf96045e04e7a3de8eb85a77739
+```
+
+and the SPDX layer digest inside that attestation manifest is:
+
+```text
+sha256:bd6e34e9c4de69f4dff11d0276115184994ce8ea819c919ea5cd949c73e1861d
 ```
 
 ## Overview
