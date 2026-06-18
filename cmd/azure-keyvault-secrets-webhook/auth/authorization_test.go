@@ -163,7 +163,7 @@ func TestTokenReview(t *testing.T) {
 	}
 
 	if trResult == nil {
-		t.Fail()
+		t.Fatal("token review result was nil")
 	}
 
 	sar := &authorizatonapi.SubjectAccessReview{
@@ -184,7 +184,7 @@ func TestTokenReview(t *testing.T) {
 	}
 
 	if sarResult == nil {
-		t.Fail()
+		t.Fatal("subject access review result was nil")
 	}
 
 	t.Logf("ns: %s", trResult.Namespace)

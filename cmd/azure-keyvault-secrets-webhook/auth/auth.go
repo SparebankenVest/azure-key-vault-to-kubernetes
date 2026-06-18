@@ -330,8 +330,6 @@ func (a AuthService) NewMTLSServer(router http.Handler, url string) *http.Server
 		MinVersion:               tls.VersionTLS12,
 	}
 
-	tlsConfig.BuildNameToCertificate()
-
 	return &http.Server{
 		Addr:         url,
 		TLSConfig:    tlsConfig,

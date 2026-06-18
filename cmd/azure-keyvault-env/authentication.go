@@ -50,7 +50,6 @@ func createHTTPClientWithTrustedCAAndMtls(caCert, clientCert, clientKey []byte) 
 		RootCAs:      caCertPool,
 		Certificates: []tls.Certificate{clientKeyPair},
 	}
-	tlsConf.BuildNameToCertificate()
 
 	tlsClient := &http.Client{
 		Timeout: time.Second * 10,

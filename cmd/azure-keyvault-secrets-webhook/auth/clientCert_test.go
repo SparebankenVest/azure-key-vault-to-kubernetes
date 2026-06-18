@@ -63,7 +63,7 @@ func TestCreateClientCert(t *testing.T) {
 		t.Error(err)
 	}
 	if clientCert == nil {
-		t.Fail()
+		t.Fatal("client certificate was nil")
 	}
 
 	if string(clientCert.CA) != string(caCert) {

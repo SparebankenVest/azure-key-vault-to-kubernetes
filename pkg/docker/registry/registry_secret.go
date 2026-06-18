@@ -40,7 +40,7 @@ func toJSON(obj any) []byte {
 	bites, err := json.Marshal(obj)
 
 	if err != nil {
-		fmt.Errorf("unable to json marshal: %w", err)
+		panic(fmt.Errorf("unable to json marshal: %w", err))
 	}
 	return bites
 }
