@@ -52,19 +52,21 @@ jobs:
         run: |
           set -euo pipefail
 
-          IMAGE_REF="${RELEASE_REGISTRY}/azure-keyvault-env:${GITHUB_REF_NAME#vaultenv-}"
+          IMAGE_REPOSITORY="docker.io/${RELEASE_REGISTRY#docker.io/}/azure-keyvault-env"
+          IMAGE_REF="${IMAGE_REPOSITORY}:${GITHUB_REF_NAME#vaultenv-}"
           IMAGE_DIGEST="$(docker buildx imagetools inspect --format '{{json .Manifest}}' "$IMAGE_REF" | jq -r '.digest // empty')"
           if [ -z "$IMAGE_DIGEST" ]; then
             echo "Failed to resolve released image digest for $IMAGE_REF" >&2
             exit 1
           fi
 
+          printf 'image-repository=%s\n' "$IMAGE_REPOSITORY" >> "$GITHUB_OUTPUT"
           printf 'image-digest=%s\n' "$IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
 
       - name: Attest released image provenance
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ${{ secrets.PUBLIC_REGISTRY }}/azure-keyvault-env
+          subject-name: ${{ steps.released-image.outputs.image-repository }}
           subject-digest: ${{ steps.released-image.outputs.image-digest }}
           push-to-registry: true
 
@@ -74,7 +76,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          IMAGE_REF="${RELEASE_REGISTRY}/azure-keyvault-env:${GITHUB_REF_NAME#vaultenv-}"
+          IMAGE_REF="docker.io/${RELEASE_REGISTRY#docker.io/}/azure-keyvault-env:${GITHUB_REF_NAME#vaultenv-}"
           cosign sign --yes "$IMAGE_REF"
 
           docker buildx imagetools inspect --raw "$IMAGE_REF" \
@@ -89,8 +91,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          IMAGE_REF="${RELEASE_REGISTRY}/azure-keyvault-env:${GITHUB_REF_NAME#vaultenv-}"
-          IMAGE_REPO="${RELEASE_REGISTRY}/azure-keyvault-env"
+          IMAGE_REF="docker.io/${RELEASE_REGISTRY#docker.io/}/azure-keyvault-env:${GITHUB_REF_NAME#vaultenv-}"
+          IMAGE_REPO="docker.io/${RELEASE_REGISTRY#docker.io/}/azure-keyvault-env"
           IMAGE_ORAS_REPO="docker.io/${RELEASE_REGISTRY#docker.io/}/azure-keyvault-env"
           VERSION="${GITHUB_REF_NAME#vaultenv-}"
           OUT_DIR="dist/sbom"
