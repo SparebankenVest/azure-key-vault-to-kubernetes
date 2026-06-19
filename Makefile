@@ -32,6 +32,7 @@ DOCKER_RELEASE_TAG_CONTROLLER := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"con
 DOCKER_RELEASE_TAG_VAULTENV := $(shell echo $(DOCKER_RELEASE_TAG) | sed s/"vaultenv-"/""/g)
 
 DOCKER_BUILD_ATTESTATIONS := --attest type=provenance,mode=max --attest type=sbom
+DOCKER_BUILD_METADATA := $(if $(DOCKER_METADATA_FILE),--metadata-file $(DOCKER_METADATA_FILE),)
 
 TAG=
 GOOS ?= linux
@@ -239,6 +240,7 @@ image-webhook:
 		--target webhook \
 		--platform linux/amd64,linux/arm64 \
 		$(DOCKER_BUILD_ATTESTATIONS) \
+		$(DOCKER_BUILD_METADATA) \
 		--build-arg BUILD_SUB_TARGET="-webhook" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
@@ -256,6 +258,7 @@ image-controller:
 		--target controller \
 		--platform linux/amd64,linux/arm64 \
 		$(DOCKER_BUILD_ATTESTATIONS) \
+		$(DOCKER_BUILD_METADATA) \
 		--build-arg BUILD_SUB_TARGET="-controller" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
@@ -273,6 +276,7 @@ image-vaultenv:
 		--target vaultenv \
 		--platform linux/amd64,linux/arm64 \
 		$(DOCKER_BUILD_ATTESTATIONS) \
+		$(DOCKER_BUILD_METADATA) \
 		--build-arg BUILD_SUB_TARGET="-vaultenv" \
 		--build-arg PACKAGE=$(PACKAGE) \
 		--build-arg VCS_REF=$(DOCKER_INTERNAL_TAG) \
@@ -289,6 +293,7 @@ image-akv2k8s-env-test:
 		--progress=plain \
 		--platform linux/amd64,linux/arm64 \
 		$(DOCKER_BUILD_ATTESTATIONS) \
+		$(DOCKER_BUILD_METADATA) \
 		-t $(DOCKER_INTERNAL_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE) \
 		--cache-from=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE):cache \
 		--cache-to=type=registry,ref=$(DOCKER_INTERNAL_REG)/$(DOCKER_AKV2K8S_TEST_IMAGE):cache,mode=max \

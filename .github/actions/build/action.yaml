@@ -3,6 +3,7 @@ description: "Build Go packages"
 
 # Attestation signing with GitHub OIDC requires the calling workflow to grant:
 # permissions:
+#   attestations: write
 #   id-token: write
 # The build step emits provenance and SBOM attestations. If images are copied
 # to another registry later, that release flow must also preserve OCI referrers.
@@ -22,6 +23,14 @@ inputs:
   docker-url:
     description: "Docker registry url docker repository"
     default: "akv2k8s.azurecr.io"
+  image-repository:
+    description: "Container image repository name"
+    required: true
+
+outputs:
+  image-digest:
+    description: "Digest of the pushed image index"
+    value: ${{ steps.image-digest.outputs.image-digest }}
 
 runs:
   using: "composite"
@@ -37,5 +46,30 @@ runs:
       shell: bash
 
     - name: Build docker image
-      run: make ${{ inputs.build-make-action }} DOCKER_INTERNAL_REG=${{ inputs.docker-reg }}
+      run: |
+        metadata_file="${RUNNER_TEMP}/build-metadata.json"
+        rm -f "$metadata_file"
+        make ${{ inputs.build-make-action }} \
+          DOCKER_INTERNAL_REG=${{ inputs.docker-reg }} \
+          DOCKER_METADATA_FILE="$metadata_file"
       shell: bash
+
+    - name: Capture image digest
+      id: image-digest
+      run: |
+        metadata_file="${RUNNER_TEMP}/build-metadata.json"
+        image_digest="$(jq -r '."containerimage.digest" // empty' "$metadata_file")"
+        if [ -z "$image_digest" ]; then
+          echo "Failed to read container image digest from $metadata_file" >&2
+          exit 1
+        fi
+
+        printf 'image-digest=%s\n' "$image_digest" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Attest build provenance
+      uses: actions/attest-build-provenance@v2
+      with:
+        subject-name: ${{ inputs.docker-reg }}/${{ inputs.image-repository }}
+        subject-digest: ${{ steps.image-digest.outputs.image-digest }}
+        push-to-registry: true

@@ -23,6 +23,7 @@ jobs:
   build-deploy:
     runs-on: ubuntu-22.04
     permissions:
+      attestations: write
       contents: read
       id-token: write
     steps:
@@ -47,3 +48,4 @@ jobs:
         docker-passw: ${{ secrets.PRIVATE_REGISTRY_PASSWORD }}
         docker-url: ${{ secrets.PRIVATE_REGISTRY_URL }}
         docker-reg: ${{ secrets.PRIVATE_REGISTRY }}
+        image-repository: azure-keyvault-webhook
