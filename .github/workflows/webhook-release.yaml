@@ -9,6 +9,7 @@ jobs:
   release:
     runs-on: ubuntu-22.04
     permissions:
+      attestations: write
       contents: write
       id-token: write
     steps:
@@ -43,6 +44,29 @@ jobs:
           DOCKER_RELEASE_REG=${{ secrets.PUBLIC_REGISTRY }} \
           DOCKER_RELEASE_TAG=${GITHUB_REF##*/} \
           release-webhook
+
+      - name: Resolve released image digest
+        id: released-image
+        env:
+          RELEASE_REGISTRY: ${{ secrets.PUBLIC_REGISTRY }}
+        run: |
+          set -euo pipefail
+
+          IMAGE_REF="${RELEASE_REGISTRY}/azure-keyvault-webhook:${GITHUB_REF_NAME#webhook-}"
+          IMAGE_DIGEST="$(docker buildx imagetools inspect --format '{{json .Manifest}}' "$IMAGE_REF" | jq -r '.digest // empty')"
+          if [ -z "$IMAGE_DIGEST" ]; then
+            echo "Failed to resolve released image digest for $IMAGE_REF" >&2
+            exit 1
+          fi
+
+          printf 'image-digest=%s\n' "$IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Attest released image provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ secrets.PUBLIC_REGISTRY }}/azure-keyvault-webhook
+          subject-digest: ${{ steps.released-image.outputs.image-digest }}
+          push-to-registry: true
 
       - name: Sign released image and attestations
         env:
