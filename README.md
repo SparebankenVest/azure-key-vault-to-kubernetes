@@ -43,34 +43,60 @@ permissions if you want GitHub OIDC-backed signatures for those attestations.
 
 The current release flow copies images from the internal registry to the release registry.
 That promotion step must also preserve OCI referrers, or released images may lose their
-attached attestations even when the source build produced them successfully.
+attached BuildKit attestations even when the source build produced them successfully.
 
-Release workflows also apply a keyless cosign signature to the final published image digest.
-You can verify a released controller image with:
+Release workflows produce three verifiable outputs for the final published image:
+
+1. A GitHub artifact attestation for the released image digest
+2. A keyless cosign signature for the released image digest
+3. Keyless cosign signatures for the published BuildKit attestation manifests
+
+You can verify the GitHub artifact attestation for a released webhook image with:
+
+```sh
+gh attestation verify \
+  "oci://docker.io/spvest/azure-keyvault-webhook:1.8.4-beta5" \
+  --repo "SparebankenVest/azure-key-vault-to-kubernetes" \
+  --signer-workflow "SparebankenVest/azure-key-vault-to-kubernetes/.github/workflows/webhook-release.yaml" \
+  --source-ref "refs/tags/webhook-1.8.4-beta5"
+```
+
+Add `--format json` if you want to inspect the verified statement, subject digest, and
+workflow identity in detail.
+
+You can verify the corresponding keyless cosign signature with:
 
 ```sh
 cosign verify \
-  --certificate-identity-regexp 'https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/.github/workflows/controller-release.yaml@.*' \
+  --certificate-identity-regexp 'https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/.github/workflows/webhook-release.yaml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  docker.io/spvest/azure-keyvault-controller:1.8.4-beta2
+  docker.io/spvest/azure-keyvault-webhook:1.8.4-beta5
 ```
 
 Release workflows also sign the published BuildKit attestation manifests. You can list the
 attestation digests from the published multi-arch index and verify one directly with:
 
 ```sh
-docker buildx imagetools inspect --raw docker.io/spvest/azure-keyvault-controller:1.8.4-beta2 \
+docker buildx imagetools inspect --raw docker.io/spvest/azure-keyvault-webhook:1.8.4-beta5 \
   | jq -r '.manifests[] | select(.platform.architecture == "unknown" and .platform.os == "unknown") | .digest'
 
 cosign verify \
-  --certificate-identity-regexp 'https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/.github/workflows/controller-release.yaml@.*' \
+  --certificate-identity-regexp 'https://github.com/SparebankenVest/azure-key-vault-to-kubernetes/.github/workflows/webhook-release.yaml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  docker.io/spvest/azure-keyvault-controller@sha256:<attestation-digest>
+  docker.io/spvest/azure-keyvault-webhook@sha256:<attestation-digest>
 ```
 
 Release workflows also publish GitHub Releases for component tags. Those release pages
 include generated release notes since the previous stable release for that component,
 and attach plain SPDX SBOM assets for each published platform image.
+
+You can also download the GitHub attestation bundle for offline verification with:
+
+```sh
+gh attestation download \
+  "oci://docker.io/spvest/azure-keyvault-webhook:1.8.4-beta5" \
+  --repo "SparebankenVest/azure-key-vault-to-kubernetes"
+```
 
 `cosign download attestation` may not discover these BuildKit attestation manifests reliably
 even when they are published. Enumerating attestation manifests from the image index and then
@@ -79,24 +105,24 @@ inspecting the attestation manifest directly is the more reliable path.
 You can inspect the attestation manifest and extract the SPDX SBOM layer with:
 
 ```sh
-docker buildx imagetools inspect --raw docker.io/spvest/azure-keyvault-controller@sha256:<attestation-digest>
+docker buildx imagetools inspect --raw docker.io/spvest/azure-keyvault-webhook@sha256:<attestation-digest>
 
 oras blob fetch --output - \
-  docker.io/spvest/azure-keyvault-controller@sha256:<spdx-layer-digest> \
+  docker.io/spvest/azure-keyvault-webhook@sha256:<spdx-layer-digest> \
   | jq '.predicate' \
   > sbom.spdx.json
 ```
 
-For example, for `1.8.4-beta2`, the `linux/amd64` attestation digest is:
+For example, for `1.8.4-beta5`, the `linux/amd64` attestation digest is:
 
 ```text
-sha256:3de7eff88ef8c6ff3ce291b4c9a99a1b43599cf96045e04e7a3de8eb85a77739
+sha256:554cd2b648c9af939ee41065e8de2be231f0c6ccd7d5b94b9b931795c45a5290
 ```
 
 and the SPDX layer digest inside that attestation manifest is:
 
 ```text
-sha256:bd6e34e9c4de69f4dff11d0276115184994ce8ea819c919ea5cd949c73e1861d
+sha256:9e3cd7dafce50bdc39c19f33eaad76706cf059311388c0611c7607692f9bcff4
 ```
 
 ## Overview
