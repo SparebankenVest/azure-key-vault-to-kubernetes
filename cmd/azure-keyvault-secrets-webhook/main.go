@@ -210,6 +210,7 @@ func initConfig() {
 	viper.SetDefault("webhook_container_security_context_read_only", false)
 	viper.SetDefault("webhook_container_security_context_non_root", false)
 	viper.SetDefault("webhook_container_security_context_privileged", true)
+	viper.SetDefault("webhook_container_security_context_read_only_root_fs", false)
 
 	viper.AutomaticEnv()
 }
