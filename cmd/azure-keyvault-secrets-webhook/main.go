@@ -211,8 +211,8 @@ func initConfig() {
 	viper.SetDefault("webhook_container_security_context_non_root", false)
 	viper.SetDefault("webhook_container_security_context_privileged", true)
 	viper.SetDefault("webhook_init_container_requests_cpu", "5m")
-	viper.SetDefault("webhook_init_container_requests_memory", "16Mi")
-	viper.SetDefault("webhook_init_container_limits_memory", "16Mi")
+	viper.SetDefault("webhook_init_container_requests_memory", "32Mi")
+	viper.SetDefault("webhook_init_container_limits_memory", "32Mi")
 
 	viper.AutomaticEnv()
 }
