@@ -36,7 +36,7 @@ func generateClientCert(mutationID types.UID, validMonths int, caCert, caKey []b
 	}
 
 	klog.V(4).InfoS("generating client key")
-	clientKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	clientKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, err
 	}
