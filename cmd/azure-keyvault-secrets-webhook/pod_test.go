@@ -6,9 +6,40 @@ import (
 	"testing"
 
 	cmp "github.com/google/go-cmp/cmp"
+	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	fake "k8s.io/client-go/kubernetes/fake"
 )
+
+func TestGetInitContainersIncludesResources(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	initConfig()
+
+	pw := podWebHook{
+		injectorDir: "/azure-keyvault/",
+	}
+
+	got := pw.getInitContainers()
+	if len(got) != 1 {
+		t.Fatalf("expected 1 init container, got %d", len(got))
+	}
+
+	resources := got[0].Resources
+	if cpu := resources.Requests.Cpu(); cpu == nil || cpu.Cmp(resource.MustParse("5m")) != 0 {
+		t.Fatalf("expected cpu request 5m, got %v", cpu)
+	}
+	if memory := resources.Requests.Memory(); memory == nil || memory.Cmp(resource.MustParse("16Mi")) != 0 {
+		t.Fatalf("expected memory request 16Mi, got %v", memory)
+	}
+	if memory := resources.Limits.Memory(); memory == nil || memory.Cmp(resource.MustParse("16Mi")) != 0 {
+		t.Fatalf("expected memory limit 16Mi, got %v", memory)
+	}
+	if _, ok := resources.Limits[corev1.ResourceCPU]; ok {
+		t.Fatalf("expected no cpu limit, got %v", resources.Limits[corev1.ResourceCPU])
+	}
+}
 
 func TestMutateContainers(t *testing.T) {
 	t.SkipNow()
