@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/SparebankenVest/azure-key-vault-to-kubernetes/cmd/azure-keyvault-secrets-webhook/auth"
@@ -67,6 +68,15 @@ func (p podWebHook) getInitContainers() []corev1.Container {
 		Image:           viper.GetString("azurekeyvault_env_image"),
 		ImagePullPolicy: corev1.PullPolicy(viper.GetString("webhook_container_image_pull_policy")),
 		Command:         []string{"sh", "-c", cmd},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse(viper.GetString("webhook_init_container_requests_cpu")),
+				corev1.ResourceMemory: resource.MustParse(viper.GetString("webhook_init_container_requests_memory")),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse(viper.GetString("webhook_init_container_limits_memory")),
+			},
+		},
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
