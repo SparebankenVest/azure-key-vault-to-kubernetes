@@ -153,6 +153,20 @@ func (p podWebHook) mutateContainers(ctx context.Context, containers []corev1.Co
 			if strings.Contains(env.Value, envVarReplacementKey) {
 				klog.InfoS("found env var to inject", "env", env.Value, "container", klog.KRef(p.namespace, container.Name))
 				envVars = append(envVars, env)
+			} else if env.ValueFrom != nil && env.ValueFrom.ConfigMapKeyRef != nil {
+					cmRef := env.ValueFrom.ConfigMapKeyRef
+				optional := cmRef.Optional != nil && *cmRef.Optional
+				cm, err := p.clientset.CoreV1().ConfigMaps(p.namespace).Get(ctx, cmRef.Name, metav1.GetOptions{})
+				if err != nil {
+					if optional && errors.IsNotFound(err) {
+						continue
+					}
+					return false, fmt.Errorf("failed to get configmap %s for valueFrom.configMapKeyRef scanning: %w", cmRef.Name, err)
+				}
+				if val, ok := cm.Data[cmRef.Key]; ok && strings.Contains(val, envVarReplacementKey) {
+					klog.InfoS("found env var to inject via valueFrom.configMapKeyRef", "configmap", cmRef.Name, "key", cmRef.Key, "container", klog.KRef(p.namespace, container.Name))
+					envVars = append(envVars, env)
+				}
 			}
 
 			if strings.ToUpper(env.Name) == "ENV_INJECTOR_DISABLE_AUTH_SERVICE" {
@@ -167,9 +181,18 @@ func (p podWebHook) mutateContainers(ctx context.Context, containers []corev1.Co
 			}
 		}
 
+		// Also check envFrom ConfigMap sources when no direct env[] matches were found.
 		if len(envVars) == 0 {
-			klog.Info("found no env vars to inject", "container", klog.KRef(p.namespace, container.Name))
-			continue
+			hasEnvFromInjection, err := p.containerEnvFromHasInjection(ctx, container)
+			if err != nil {
+				return false, err
+			}
+			if !hasEnvFromInjection {
+				klog.Info("found no env vars to inject", "container", klog.KRef(p.namespace, container.Name))
+				continue
+			}
+			klog.InfoS("found env vars to inject via envFrom", "container", klog.KRef(p.namespace, container.Name))
+			envVars = []corev1.EnvVar{{Name: "_envfrom_sentinel_"}}
 		}
 
 		autoArgs, err := getContainerCmd(ctx, p.clientset, &container, podSpec, p.namespace, p.registry)
@@ -294,6 +317,36 @@ func (p podWebHook) createSigningKeys(autoArgs string, containerName string) (*a
 		signature: signature,
 		key:       publicSigningKey,
 	}, nil
+}
+
+// containerEnvFromHasInjection returns true if any ConfigMap referenced via envFrom
+// contains a value with the @azurekeyvault replacement key. Secrets are intentionally
+// skipped as they should not carry plain-text markers.
+func (p podWebHook) containerEnvFromHasInjection(ctx context.Context, container corev1.Container) (bool, error) {
+	for _, envFrom := range container.EnvFrom {
+		if envFrom.ConfigMapRef == nil {
+			continue
+		}
+		cmName := envFrom.ConfigMapRef.Name
+		optional := envFrom.ConfigMapRef.Optional != nil && *envFrom.ConfigMapRef.Optional
+
+		cm, err := p.clientset.CoreV1().ConfigMaps(p.namespace).Get(ctx, cmName, metav1.GetOptions{})
+		if err != nil {
+			if optional && errors.IsNotFound(err) {
+				klog.InfoS("optional envFrom configmap not found, skipping", "configmap", cmName, "container", klog.KRef(p.namespace, container.Name))
+				continue
+			}
+			return false, fmt.Errorf("failed to get envFrom configmap %s for injection scanning: %w", cmName, err)
+		}
+
+		for key, val := range cm.Data {
+			if strings.Contains(val, envVarReplacementKey) {
+				klog.InfoS("found env var to inject in envFrom configmap", "configmap", cmName, "key", key, "container", klog.KRef(p.namespace, container.Name))
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func (p podWebHook) mutatePodSpec(ctx context.Context, pod *corev1.Pod) error {

@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	fake "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -195,4 +197,272 @@ func TestMutateContainers(t *testing.T) {
 	// if !cmp.Equal(tt.args.containers, tt.wantedContainers) {
 	// 	t.Errorf("mutatingWebhook.mutateContainers() = diff %v", cmp.Diff(tt.args.containers, tt.wantedContainers))
 	// }
+}
+
+// configMap is a helper that builds a corev1.ConfigMap pre-seeded with the given key/value pairs.
+func configMap(namespace, name string, data map[string]string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		Data:       data,
+	}
+}
+
+// podWebHookForTest returns a minimal podWebHook wired to a fake clientset
+// pre-loaded with the supplied ConfigMaps.
+func podWebHookForTest(namespace string, cms ...*corev1.ConfigMap) podWebHook {
+	viper.Reset()
+	initConfig()
+	objs := make([]runtime.Object, len(cms))
+	for i, cm := range cms {
+		objs[i] = cm
+	}
+	return podWebHook{
+		clientset:      fake.NewSimpleClientset(objs...),
+		namespace:      namespace,
+		mutationID:     "test-mutation-id",
+		injectorDir:    "/azure-keyvault/",
+		useAuthService: false,
+	}
+}
+
+// wasInjected returns true if mutatePodSpec injected the azure-keyvault-env init container.
+func wasInjected(pod *corev1.Pod) bool {
+	for _, ic := range pod.Spec.InitContainers {
+		if ic.Name == "copy-azurekeyvault-env" {
+			return true
+		}
+	}
+	return false
+}
+
+// TestEnvFromConfigMapInjection validates that a pod whose @azurekeyvault values
+// arrive exclusively via envFrom.configMapRef is mutated (init container injected).
+// This is the primary bug regression test for issue #858.
+func TestEnvFromConfigMapInjection(t *testing.T) {
+	const ns = "test-ns"
+
+	tests := []struct {
+		name        string
+		cms         []*corev1.ConfigMap
+		containers  []corev1.Container
+		wantMutated bool
+	}{
+		{
+			// BUG CASE: all @azurekeyvault values in envFrom ConfigMap — must be mutated.
+			name: "envFrom configmap with @azurekeyvault values triggers mutation",
+			cms: []*corev1.ConfigMap{
+				configMap(ns, "app-config", map[string]string{
+					"SECRET_ALPHA": "my-secret-alpha@azurekeyvault",
+					"SECRET_BETA":  "my-secret-beta@azurekeyvault",
+					"PLAIN_VALUE":  "not-a-secret",
+				}),
+			},
+			containers: []corev1.Container{
+				{
+					Name:    "app",
+					Image:   "myimage",
+					Command: []string{"/bin/sh"},
+					EnvFrom: []corev1.EnvFromSource{
+						{ConfigMapRef: &corev1.ConfigMapEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "app-config"},
+						}},
+					},
+				},
+			},
+			wantMutated: true,
+		},
+		{
+			// envFrom ConfigMap has no @azurekeyvault values — must NOT be mutated.
+			name: "envFrom configmap without @azurekeyvault values skips mutation",
+			cms: []*corev1.ConfigMap{
+				configMap(ns, "plain-config", map[string]string{
+					"LOG_LEVEL": "info",
+					"TIMEOUT":   "30s",
+				}),
+			},
+			containers: []corev1.Container{
+				{
+					Name:    "app",
+					Image:   "myimage",
+					Command: []string{"/bin/sh"},
+					EnvFrom: []corev1.EnvFromSource{
+						{ConfigMapRef: &corev1.ConfigMapEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "plain-config"},
+						}},
+					},
+				},
+			},
+			wantMutated: false,
+		},
+		{
+			// Optional envFrom ConfigMap that does not exist — must not error or mutate.
+			name: "optional envFrom configmap not found skips gracefully",
+			cms:  []*corev1.ConfigMap{},
+			containers: []corev1.Container{
+				{
+					Name:    "app",
+					Image:   "myimage",
+					Command: []string{"/bin/sh"},
+					EnvFrom: []corev1.EnvFromSource{
+						{ConfigMapRef: &corev1.ConfigMapEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "missing-config"},
+							Optional:             func(b bool) *bool { return &b }(true),
+						}},
+					},
+				},
+			},
+			wantMutated: false,
+		},
+		{
+			// Mixed: one envFrom CM without secrets + one with — must still be mutated.
+			name: "multiple envFrom sources — mutation triggered by any matching configmap",
+			cms: []*corev1.ConfigMap{
+				configMap(ns, "plain-config", map[string]string{"LOG_LEVEL": "info"}),
+				configMap(ns, "secret-config", map[string]string{"DB_CONN": "db-connection@azurekeyvault"}),
+			},
+			containers: []corev1.Container{
+				{
+					Name:    "app",
+					Image:   "myimage",
+					Command: []string{"/bin/sh"},
+					EnvFrom: []corev1.EnvFromSource{
+						{ConfigMapRef: &corev1.ConfigMapEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "plain-config"},
+						}},
+						{ConfigMapRef: &corev1.ConfigMapEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "secret-config"},
+						}},
+					},
+				},
+			},
+			wantMutated: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Cleanup(viper.Reset)
+			pw := podWebHookForTest(ns, tt.cms...)
+			pod := &corev1.Pod{Spec: corev1.PodSpec{Containers: tt.containers}}
+
+			if err := pw.mutatePodSpec(context.Background(), pod); err != nil {
+				t.Fatalf("mutatePodSpec() error: %v", err)
+			}
+
+			got := wasInjected(pod)
+			if got != tt.wantMutated {
+				t.Errorf("wasInjected = %v, want %v", got, tt.wantMutated)
+			}
+		})
+	}
+}
+
+// TestValueFromConfigMapKeyRefInjection validates that a pod whose @azurekeyvault value
+// arrives via env[].valueFrom.configMapKeyRef is mutated.
+func TestValueFromConfigMapKeyRefInjection(t *testing.T) {
+	const ns = "test-ns"
+
+	tests := []struct {
+		name        string
+		cms         []*corev1.ConfigMap
+		containers  []corev1.Container
+		wantMutated bool
+	}{
+		{
+			name: "valueFrom.configMapKeyRef pointing to @azurekeyvault triggers mutation",
+			cms: []*corev1.ConfigMap{
+				configMap(ns, "app-config", map[string]string{
+					"my-secret-key": "my-secret@azurekeyvault",
+				}),
+			},
+			containers: []corev1.Container{
+				{
+					Name:    "app",
+					Image:   "myimage",
+					Command: []string{"/bin/sh"},
+					Env: []corev1.EnvVar{
+						{
+							Name: "MY_SECRET",
+							ValueFrom: &corev1.EnvVarSource{
+								ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "app-config"},
+									Key:                  "my-secret-key",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMutated: true,
+		},
+		{
+			name: "valueFrom.configMapKeyRef pointing to plain value skips mutation",
+			cms: []*corev1.ConfigMap{
+				configMap(ns, "app-config", map[string]string{
+					"log-level": "info",
+				}),
+			},
+			containers: []corev1.Container{
+				{
+					Name:    "app",
+					Image:   "myimage",
+					Command: []string{"/bin/sh"},
+					Env: []corev1.EnvVar{
+						{
+							Name: "LOG_LEVEL",
+							ValueFrom: &corev1.EnvVarSource{
+								ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "app-config"},
+									Key:                  "log-level",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMutated: false,
+		},
+		{
+			// Optional valueFrom.configMapKeyRef with missing CM — must not error.
+			name: "optional valueFrom.configMapKeyRef with missing configmap skips gracefully",
+			cms:  []*corev1.ConfigMap{},
+			containers: []corev1.Container{
+				{
+					Name:    "app",
+					Image:   "myimage",
+					Command: []string{"/bin/sh"},
+					Env: []corev1.EnvVar{
+						{
+							Name: "MY_SECRET",
+							ValueFrom: &corev1.EnvVarSource{
+								ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "missing-config"},
+									Key:                  "secret-key",
+									Optional:             func(b bool) *bool { return &b }(true),
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMutated: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Cleanup(viper.Reset)
+			pw := podWebHookForTest(ns, tt.cms...)
+			pod := &corev1.Pod{Spec: corev1.PodSpec{Containers: tt.containers}}
+
+			if err := pw.mutatePodSpec(context.Background(), pod); err != nil {
+				t.Fatalf("mutatePodSpec() error: %v", err)
+			}
+
+			got := wasInjected(pod)
+			if got != tt.wantMutated {
+				t.Errorf("wasInjected = %v, want %v", got, tt.wantMutated)
+			}
+		})
+	}
 }
