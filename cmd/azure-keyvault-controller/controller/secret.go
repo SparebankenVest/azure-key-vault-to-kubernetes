@@ -195,8 +195,8 @@ func createNewSecretFromExisting(akvs *akv.AzureKeyVaultSecret, values map[strin
 	secretName := determineSecretName(akvs)
 	secretType := determineSecretType(akvs)
 
-	// if existing secret is not opaque and owned by a different akvs,
-	// we cannot update this secret, as none opaque secrets cannot have multiple owners,
+	// if existing secret is not Opaque and owned by a different akvs,
+	// we cannot update this secret, as none Opaque secrets cannot have multiple owners,
 	// because they would overrite each others keys
 	if existingSecret.Type != corev1.SecretTypeOpaque {
 		if !isOwnedBy(existingSecret, akvs) {
@@ -293,9 +293,16 @@ func determineSecretName(azureKeyVaultSecret *akv.AzureKeyVaultSecret) string {
 	return name
 }
 
+// determineSecretType determines the secret type based on the provided Azure Key Vault secret.
+// If the secret type is not specified, it defaults to corev1.SecretTypeOpaque.
+// It returns the determined secret type and an error if the secret type is invalid.
 func determineSecretType(azureKeyVaultSecret *akv.AzureKeyVaultSecret) corev1.SecretType {
 	if azureKeyVaultSecret.Spec.Output.Secret.Type == "" {
 		return corev1.SecretTypeOpaque
+	}
+
+	if !ValidateSecretType(string(azureKeyVaultSecret.Spec.Output.Secret.Type)) {
+		fmt.Errorf("invalid secret type: %s", azureKeyVaultSecret.Spec.Output.Secret.Type)
 	}
 
 	return azureKeyVaultSecret.Spec.Output.Secret.Type
@@ -355,3 +362,21 @@ func sortByteValueKeys(values map[string][]byte) []string {
 // 	}
 // 	return false
 // }
+
+// validateSecretType validates the given secret type.
+// It checks if the secret type is one of the supported types and returns true if it is, false otherwise.
+func ValidateSecretType(secretType string) bool {
+	switch secretType {
+	case string(corev1.SecretTypeOpaque),
+		string(corev1.SecretTypeServiceAccountToken),
+		string(corev1.SecretTypeBootstrapToken),
+		string(corev1.SecretTypeDockercfg),
+		string(corev1.SecretTypeDockerConfigJson),
+		string(corev1.SecretTypeBasicAuth),
+		string(corev1.SecretTypeSSHAuth),
+		string(corev1.SecretTypeTLS):
+		return true
+	default:
+		return false
+	}
+}
